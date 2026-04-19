@@ -19,13 +19,12 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.5'
+APP_VERSION = 'v2.6'
 
 
-def generate_quiz_questions(vocabularies, batch_size=5):
+def generate_quiz_questions(vocabularies):
     """
     Use MiniMax API to generate multiple choice questions for Chinese vocabularies.
-    Processes vocabularies in batches to avoid timeout.
     """
     print(f"[DEBUG] generate_quiz_questions called")
     
@@ -35,135 +34,148 @@ def generate_quiz_questions(vocabularies, batch_size=5):
     
     # Split vocabularies
     vocab_list = [v.strip() for v in re.split(r'[\n\s]+', vocabularies) if v.strip()]
-    print(f"[DEBUG] Split into {len(vocab_list)} vocabularies")
+    print(f"[DEBUG] Split into {len(vocab_list)} vocabularies: {vocab_list}")
     
     if not vocab_list:
         return []
     
-    all_questions = []
+    # Limit to 10 words max to avoid timeout
+    if len(vocab_list) > 10:
+        vocab_list = vocab_list[:10]
+        print(f"[DEBUG] Limited to 10 vocabularies: {vocab_list}")
     
-    # Process in batches
-    for i in range(0, len(vocab_list), batch_size):
-        batch = vocab_list[i:i+batch_size]
-        print(f"[DEBUG] Processing batch: {batch}")
-        
-        # Build prompt for fill-in-the-blank style questions
-        vocab_str = ' '.join(batch)
-        
-        prompt = f"""給定以下中文詞彙：{vocab_str}
+    vocab_str = ' '.join(vocab_list)
+    
+    # Improved prompt with clearer instructions
+    prompt = f"""你是一個中文詞彙測驗題目生成器。
+
+給定以下中文詞彙：{vocab_str}
 
 請為每個詞彙生成一道「選詞填空」題目。
 
-題目格式：
-- 句子中有一個空格需要填入詞彙
-- 4個選項，只有1個正確
-- 答案是其中一個詞彙
+要求：
+- 每個題目是一個句子，其中一個詞彙變成「_____」（底線）
+- 4個選項，只有1個正確答案
+- 選項使用其他詞彙的意思作為干擾項
+- 答案必須是提供嘅詞彙其中一個
 
-JSON格式（不要其他文字）：
+嚴格按照以下JSON格式回覆，唔好加任何其他文字：
 {{
   "questions": [
     {{
       "vocabulary": "詞彙",
-      "sentence": "_______最正確的句子",
+      "sentence": "這是一個包含_____的句子",
       "options": {{
         "A": "干擾選項1",
-        "B": "干擾選項2",
+        "B": "干擾選項2", 
         "C": "干擾選項3",
         "D": "干擾選項4"
       }},
       "correct": "A"
     }}
   ]
-}}
+}}"""
 
-每個干擾選項應該是另一個詞彙的意思，看起來合理但唔岩。"""
-
-        try:
-            headers = {
-                'Authorization': f'Bearer {MINIMAX_API_KEY}',
-                'Content-Type': 'application/json'
-            }
-            
-            payload = {
-                'model': 'minimax/MiniMax-M2.7',
-                'messages': [{'role': 'user', 'content': prompt}],
-                'temperature': 0.7,
-                'max_tokens': 800
-            }
-            
-            print(f"[DEBUG] Calling OpenRouter API for batch {i//batch_size + 1}...")
-            response = requests.post(
-                'https://openrouter.ai/api/v1/chat/completions',
-                headers=headers,
-                json=payload,
-                timeout=45
-            )
-            
-            print(f"[DEBUG] Response status: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"[DEBUG] API Error: {response.text[:300]}")
-                continue
-            
-            result = response.json()
-            
-            if 'choices' not in result or len(result['choices']) == 0:
-                print(f"[DEBUG] No choices in response")
-                continue
-            
-            message = result['choices'][0].get('message', {})
-            content = message.get('content', '')
-            
-            if not content:
-                print(f"[DEBUG] Empty content")
-                continue
-            
-            # Extract JSON
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            if start == -1 or end == 0:
-                print(f"[DEBUG] No JSON found in content: {content[:100]}")
-                continue
-            
-            json_str = content[start:end]
-            data = json.loads(json_str)
-            
-            questions = data.get('questions', [])
-            print(f"[DEBUG] Got {len(questions)} questions from batch")
-            
-            # Shuffle options within each question
-            for q in questions:
-                options = q.get('options', {})
-                correct_answer_text = options.get(q.get('correct', 'A'), '')
-                
-                keys = list(options.keys())
-                random.shuffle(keys)
-                
-                new_options = {}
-                new_correct = None
-                for new_key in keys:
-                    new_options[new_key] = options[new_key]
-                    if options[new_key] == correct_answer_text:
-                        new_correct = new_key
-                
-                q['options'] = new_options
-                if new_correct:
-                    q['correct'] = new_correct
-            
-            all_questions.extend(questions)
-            
-        except requests.exceptions.Timeout:
-            print(f"[DEBUG] Batch {i//batch_size + 1} timed out")
-            continue
-        except Exception as e:
-            print(f"[DEBUG] Error in batch {i//batch_size + 1}: {e}")
-            continue
+    print("[DEBUG] Making API request...")
     
-    # Shuffle all questions
-    random.shuffle(all_questions)
-    print(f"[DEBUG] Total questions: {len(all_questions)}")
-    
-    return all_questions
+    try:
+        headers = {
+            'Authorization': f'Bearer {MINIMAX_API_KEY}',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://kelvin-webapp.onrender.com',
+            'X-OpenRouter-Title': 'Chinese Vocab Quiz'
+        }
+        
+        payload = {
+            'model': 'google/gemini-2.5-flash',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': 0.7,
+            'max_tokens': 1500,
+            'response_format': {'type': 'json_object'}
+        }
+        
+        print(f"[DEBUG] Sending request to OpenRouter...")
+        response = requests.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        
+        print(f"[DEBUG] Response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"[DEBUG] API Error {response.status_code}: {response.text[:500]}")
+            return []
+        
+        result = response.json()
+        print(f"[DEBUG] Response keys: {list(result.keys())}")
+        
+        if 'choices' not in result or len(result['choices']) == 0:
+            print(f"[DEBUG] No choices in response: {result}")
+            return []
+        
+        message = result['choices'][0].get('message', {})
+        content = message.get('content', '')
+        
+        if not content:
+            print(f"[DEBUG] Empty content in response")
+            return []
+        
+        print(f"[DEBUG] Content length: {len(content)}, preview: {content[:100]}...")
+        
+        # Extract JSON
+        start = content.find('{')
+        end = content.rfind('}') + 1
+        if start == -1 or end == 0:
+            print(f"[DEBUG] No JSON found. Content: {content[:200]}")
+            return []
+        
+        json_str = content[start:end]
+        print(f"[DEBUG] Parsing JSON: {json_str[:200]}...")
+        
+        data = json.loads(json_str)
+        
+        questions = data.get('questions', [])
+        print(f"[DEBUG] Got {len(questions)} questions")
+        
+        if not questions:
+            print(f"[DEBUG] No questions in data: {data}")
+            return []
+        
+        # Shuffle and process options
+        for q in questions:
+            options = q.get('options', {})
+            correct_key = q.get('correct', 'A')
+            correct_text = options.get(correct_key, '')
+            
+            keys = list(options.keys())
+            random.shuffle(keys)
+            
+            new_options = {}
+            new_correct = None
+            for new_key in keys:
+                new_options[new_key] = options[new_key]
+                if options[new_key] == correct_text:
+                    new_correct = new_key
+            
+            q['options'] = new_options
+            q['correct'] = new_correct or correct_key
+        
+        random.shuffle(questions)
+        return questions
+            
+    except requests.exceptions.Timeout:
+        print("[DEBUG] Request timed out")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"[DEBUG] JSON parse error: {e}")
+        return []
+    except Exception as e:
+        print(f"[DEBUG] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
 
 
 @app.route('/')
@@ -181,14 +193,13 @@ def vocab_test():
 @app.route('/api/generate-quiz', methods=['POST'])
 def api_generate_quiz():
     """API endpoint to generate quiz questions."""
-    print("[DEBUG] /api/generate-quiz called")
     data = request.get_json()
     vocabularies = data.get('vocabularies', '')
     
     if not vocabularies.strip():
         return jsonify({'error': '請輸入中文詞彙'}), 400
     
-    questions = generate_quiz_questions(vocabularies, batch_size=5)
+    questions = generate_quiz_questions(vocabularies)
     
     if questions:
         return jsonify({
@@ -198,7 +209,7 @@ def api_generate_quiz():
         })
     else:
         return jsonify({
-            'error': '生成題目時發生錯誤，請減少詞彙數量或稍後再試'
+            'error': '生成題目失敗，請嘗試減少詞彙數量（最多10個）'
         }), 500
 
 
