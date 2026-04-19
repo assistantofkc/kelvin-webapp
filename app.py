@@ -75,7 +75,7 @@ def generate_quiz_questions(vocabularies):
         }
         
         payload = {
-            'model': 'MiniMax-M2.7',
+            'model': 'minimax/MiniMax-M2.7',
             'messages': [
                 {
                     'role': 'user',
@@ -86,7 +86,7 @@ def generate_quiz_questions(vocabularies):
             'max_tokens': 4000
         }
         
-        response = requests.post(MINIMAX_API_URL, headers=headers, json=payload, timeout=(10, 120))
+        response = requests.post('https://openrouter.ai/api/v1/chat/completions', headers=headers, json=payload, timeout=(10, 120))
         
         if response.status_code != 200:
             print(f"API Error: {response.status_code} - {response.text}")
