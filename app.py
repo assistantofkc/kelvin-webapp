@@ -72,7 +72,7 @@ def generate_quiz_questions(vocabularies):
         }
         
         payload = {
-            'model': 'MiniMax-M2.7-highspeed',
+            'model': 'MiniMax-M2.7',
             'messages': [
                 {
                     'role': 'user',
