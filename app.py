@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.9'
+APP_VERSION = 'v2.10'
 
 
 def generate_quiz_questions(vocabularies, max_retries=2):
@@ -73,13 +73,15 @@ def generate_quiz_questions(vocabularies, max_retries=2):
 
     headers = {
         'Authorization': f'Bearer {MINIMAX_API_KEY}',
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://kelvin-webapp.onrender.com',
-        'X-OpenRouter-Title': 'Chinese Vocab Quiz'
+        'Content-Type': 'application/json'
     }
     
-    payload = {
-        'model': 'minimax/MiniMax-M2.7',
+    # MiniMax direct API
+    mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2'
+    
+    # MiniMax uses different payload format
+    mini_max_payload = {
+        'model': 'MiniMax-M2.7',
         'messages': [{'role': 'user', 'content': prompt}],
         'temperature': 0.7,
         'max_tokens': 1500
@@ -89,11 +91,11 @@ def generate_quiz_questions(vocabularies, max_retries=2):
         print(f"[DEBUG] Attempt {attempt + 1}/{max_retries}")
         
         try:
-            print(f"[DEBUG] Sending request to OpenRouter...")
+            print(f"[DEBUG] Sending request to MiniMax API...")
             response = requests.post(
-                'https://openrouter.ai/api/v1/chat/completions',
+                mini_max_url,
                 headers=headers,
-                json=payload,
+                json=mini_max_payload,
                 timeout=90
             )
             
