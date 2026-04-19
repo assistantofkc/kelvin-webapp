@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', '')
 
 # App version
-APP_VERSION = 'v4.0'
+APP_VERSION = 'v4.01'
 
 
 def generate_quiz_questions(vocabularies):
@@ -42,8 +42,12 @@ def generate_quiz_questions(vocabularies):
     # NVIDIA API endpoint
     invoke_url = 'https://integrate.api.nvidia.com/v1/chat/completions'
     
+    nvidia_api_key = os.environ.get('NVIDIA_API_KEY', '').strip()
+    if not nvidia_api_key:
+        nvidia_api_key = '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'  # fallback
+    
     headers = {
-        'Authorization': 'Bearer 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',
+        'Authorization': f'Bearer {nvidia_api_key}',
         'Content-Type': 'application/json'
     }
     
