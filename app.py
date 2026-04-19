@@ -12,13 +12,14 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.2'
+APP_VERSION = 'v5.3'
 
 
-def generate_sentences(vocabularies):
+def generate_sentences(vocabularies, max_retries=2):
     """
     Generate fill-in-the-blank sentences for each vocabulary word.
     AI only generates {word, sentence} - options are generated client-side.
+    Has retry logic for handling temporary failures.
     """
     print(f"[DEBUG] generate_sentences called")
     
@@ -72,60 +73,77 @@ Rules:
         'max_tokens': 2000
     }
     
-    try:
-        print(f"[DEBUG] Calling MiniMax API...")
-        response = requests.post(
-            mini_max_url,
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
+    for attempt in range(max_retries):
+        try:
+            print(f"[DEBUG] Attempt {attempt + 1}/{max_retries} - Calling MiniMax API...")
+            response = requests.post(
+                mini_max_url,
+                headers=headers,
+                json=payload,
+                timeout=90
+            )
+            
+            print(f"[DEBUG] Response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"[DEBUG] API Error: {response.text[:300]}")
+                if attempt < max_retries - 1:
+                    print("[DEBUG] Retrying...")
+                    continue
+                return []
+            
+            result = response.json()
+            content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+            
+            print(f"[DEBUG] Content length: {len(content)}")
+            print(f"[DEBUG] Content preview: {content[:200]}...")
+            
+            if not content:
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            # Clean and extract JSON
+            content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
+            content = re.sub(r'```', '', content, flags=re.IGNORECASE)
+            
+            start = content.find('[')
+            end = content.rfind(']') + 1
+            if start == -1 or end == 0:
+                print(f"[DEBUG] No JSON array found")
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            json_str = content[start:end]
+            json_str = re.sub(r',\s*}', '}', json_str)
+            json_str = re.sub(r',\s*]', ']', json_str)
+            
+            print(f"[DEBUG] JSON length: {len(json_str)}")
+            
+            data = json.loads(json_str)
+            
+            if not isinstance(data, list):
+                print(f"[DEBUG] Expected list, got: {type(data)}")
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            print(f"[DEBUG] Generated {len(data)} sentences")
+            return data
         
-        print(f"[DEBUG] Response status: {response.status_code}")
-        
-        if response.status_code != 200:
-            print(f"[DEBUG] API Error: {response.text[:300]}")
-            return []
-        
-        result = response.json()
-        content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
-        
-        print(f"[DEBUG] Content length: {len(content)}")
-        print(f"[DEBUG] Content preview: {content[:200]}...")
-        
-        if not content:
-            return []
-        
-        # Clean and extract JSON
-        content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'```', '', content, flags=re.IGNORECASE)
-        
-        start = content.find('[')
-        end = content.rfind(']') + 1
-        if start == -1 or end == 0:
-            print(f"[DEBUG] No JSON array found")
-            return []
-        
-        json_str = content[start:end]
-        json_str = re.sub(r',\s*}', '}', json_str)
-        json_str = re.sub(r',\s*]', ']', json_str)
-        
-        print(f"[DEBUG] JSON length: {len(json_str)}")
-        
-        data = json.loads(json_str)
-        
-        if not isinstance(data, list):
-            print(f"[DEBUG] Expected list, got: {type(data)}")
-            return []
-        
-        print(f"[DEBUG] Generated {len(data)} sentences")
-        return data
+        except requests.exceptions.Timeout:
+            print(f"[DEBUG] Attempt {attempt + 1} timed out")
+            if attempt < max_retries - 1:
+                print("[DEBUG] Retrying...")
+                continue
+        except Exception as e:
+            print(f"[DEBUG] Error: {e}")
+            if attempt < max_retries - 1:
+                continue
     
-    except Exception as e:
-        print(f"[DEBUG] Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+    print(f"[DEBUG] All retries failed")
+    return []
 
 
 @app.route('/')
