@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.12'
+APP_VERSION = 'v2.13'
 
 
 def generate_quiz_questions(vocabularies, max_retries=2):
@@ -42,6 +42,7 @@ def generate_quiz_questions(vocabularies, max_retries=2):
     
     all_questions = []
     batch_size = 5  # Process 5 words at a time
+    max_retries = 1  # Reduced to avoid timeout
     
     headers = {
         'Authorization': f'Bearer {MINIMAX_API_KEY}',
@@ -74,7 +75,7 @@ JSON格式：
             'model': 'MiniMax-M2.7',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.7,
-            'max_tokens': 1000
+            'max_tokens': 800
         }
         
         success = False
@@ -85,7 +86,7 @@ JSON格式：
                     mini_max_url,
                     headers=headers,
                     json=mini_max_payload,
-                    timeout=60
+                    timeout=45
                 )
                 
                 print(f"[DEBUG] Batch {i//batch_size + 1} status: {response.status_code}")
@@ -98,18 +99,42 @@ JSON格式：
                 message = result.get('choices', [{}])[0].get('message', {})
                 content = message.get('content', '')
                 
+                print(f"[DEBUG] Content length: {len(content)}")
+                
                 if not content:
+                    print(f"[DEBUG] Empty content")
                     continue
                 
-                # Extract JSON
+                # Improved JSON extraction - try multiple methods
+                json_str = None
+                
+                # Method 1: Look for JSON block
                 start = content.find('{')
                 end = content.rfind('}') + 1
-                if start == -1:
+                if start != -1 and end > start:
+                    json_str = content[start:end]
+                
+                # Method 2: Try regex for JSON-like structure
+                if not json_str:
+                    import re
+                    match = re.search(r'\{.*\}', content, re.DOTALL)
+                    if match:
+                        json_str = match.group(0)
+                
+                if not json_str:
+                    print(f"[DEBUG] No JSON found in: {content[:100]}")
                     continue
                 
-                json_str = content[start:end]
-                data = json.loads(json_str)
+                print(f"[DEBUG] JSON str length: {len(json_str)}")
+                
+                try:
+                    data = json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    print(f"[DEBUG] JSON parse error: {e}")
+                    continue
+                
                 questions = data.get('questions', [])
+                print(f"[DEBUG] Got {len(questions)} questions")
                 
                 if questions:
                     # Shuffle options
@@ -133,9 +158,11 @@ JSON格式：
                     
                     all_questions.extend(questions)
                     success = True
-                    print(f"[DEBUG] Batch {i//batch_size + 1} got {len(questions)} questions")
+                    print(f"[DEBUG] Batch {i//batch_size + 1} SUCCESS")
                     break
                 
+            except requests.exceptions.Timeout:
+                print(f"[DEBUG] Batch {i//batch_size + 1} timed out")
             except Exception as e:
                 print(f"[DEBUG] Batch error: {e}")
                 continue
