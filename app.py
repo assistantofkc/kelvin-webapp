@@ -19,13 +19,11 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.17'
+APP_VERSION = 'v2.18'
 
 
 def generate_quiz_questions(vocabularies, max_retries=3):
-    """
-    最終穩定版：加大 tokens + 更強 prompt + 處理不完整 JSON
-    """
+    """最終穩定版"""
     print(f"[DEBUG] generate_quiz_questions called")
     
     if not vocabularies:
@@ -38,7 +36,7 @@ def generate_quiz_questions(vocabularies, max_retries=3):
         return []
     
     all_questions = []
-    batch_size = 4  # 改小一點，更安全
+    batch_size = 4
     headers = {
         'Authorization': f'Bearer {MINIMAX_API_KEY}',
         'Content-Type': 'application/json'
@@ -82,7 +80,7 @@ def generate_quiz_questions(vocabularies, max_retries=3):
                 {"role": "user", "content": user_prompt}
             ],
             'temperature': 0.5,
-            'max_tokens': 3000,  # 大幅增加
+            'max_tokens': 3000,
             'stream': False
         }
         
@@ -103,88 +101,79 @@ def generate_quiz_questions(vocabularies, max_retries=3):
                 if not content:
                     continue
                 
-                # === 強力 JSON 清理 ===
+                # 強力 JSON 清理
                 content = re.sub(r'(?:```json)?', '', content, flags=re.IGNORECASE)
                 content = re.sub(r'```', '', content, flags=re.IGNORECASE)
                 
-                # 找出最後一個完整的 JSON 物件（處理截斷情況）
+                # 找出所有 JSON 物件
                 json_matches = re.findall(r'\{[\s\S]*?\}', content)
                 if not json_matches:
                     print(f"[DEBUG] No JSON found")
                     continue
                 
-                # Try each match until we find valid JSON with questions
-                questions = []
-                for match in reversed(json_matches):
-                    json_str = match.strip()
-                    # Clean trailing comma issues
-                    json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
-                    try:
-                        data = json.loads(json_str)
-                        questions = data.get('questions', [])
-                        if questions:
-                            print(f"[DEBUG] Found valid JSON with {len(questions)} questions")
-                            break
-                    except json.JSONDecodeError:
-                        continue
+                json_str = json_matches[-1].strip()  # 取最後一個（通常是最完整的）
                 
-                if not questions:
-                    print(f"[DEBUG] No questions found in any JSON match")
-                    continue
+                # 修復常見的截斷問題
+                json_str = re.sub(r',\s*}', '}', json_str)
+                json_str = re.sub(r',\s*]', ']', json_str)
+                json_str = re.sub(r'"\s*,\s*"', '", "', json_str)  # 修復可能的引號問題
                 
-                # Shuffle options inside each question
-                for q in questions:
-                    options = q.get('options', {})
-                    correct_key = q.get('correct', 'A')
-                    correct_text = options.get(correct_key, '')
-                    
-                    keys = list(options.keys())
-                    random.shuffle(keys)
-                    
-                    new_options = {}
-                    new_correct = None
-                    for new_key in keys:
-                        new_options[new_key] = options[new_key]
-                        if options[new_key] == correct_text:
-                            new_correct = new_key
-                    
-                    q['options'] = new_options
-                    q['correct'] = new_correct or correct_key
+                print(f"[DEBUG] Cleaned JSON length: {len(json_str)}")
                 
-                all_questions.extend(questions)
-                print(f"[DEBUG] Batch {i//batch_size + 1} SUCCESS with {len(questions)} questions ✅")
-                break
+                data = json.loads(json_str)
+                questions = data.get('questions', [])
+                
+                print(f"[DEBUG] Got {len(questions)} questions from batch")
+                
+                if questions:
+                    # Shuffle options
+                    for q in questions:
+                        options = q.get('options', {})
+                        correct_key = str(q.get('correct', 'A')).strip()
+                        correct_text = options.get(correct_key, '')
+                        
+                        keys = list(options.keys())
+                        random.shuffle(keys)
+                        
+                        new_options = {}
+                        new_correct = None
+                        for new_key in keys:
+                            new_options[new_key] = options[new_key]
+                            if options[new_key] == correct_text:
+                                new_correct = new_key
+                        
+                        q['options'] = new_options
+                        q['correct'] = new_correct or correct_key
+                    
+                    all_questions.extend(questions)
+                    print(f"[DEBUG] Batch {i//batch_size + 1} SUCCESS")
+                    break
             
-            except requests.exceptions.Timeout:
-                print(f"[DEBUG] Batch timed out")
             except json.JSONDecodeError as e:
-                print(f"[DEBUG] JSON decode error: {e}")
+                print(f"[DEBUG] JSON parse error: {e}")
             except Exception as e:
-                print(f"[DEBUG] Unexpected error: {e}")
+                print(f"[DEBUG] Error: {type(e).name}: {e}")
         
-        if not all_questions or len(all_questions) == 0:
-            print(f"[DEBUG] Batch {i//batch_size + 1} completely failed")
+        else:
+            print(f"[DEBUG] Batch {i//batch_size + 1} failed after {max_retries} attempts")
     
     random.shuffle(all_questions)
-    print(f"[DEBUG] TOTAL questions generated: {len(all_questions)}")
+    print(f"[DEBUG] Total questions returned: {len(all_questions)}")
     return all_questions
 
 
 @app.route('/')
 def index():
-    """Home page"""
     return render_template('index.html', version=APP_VERSION)
 
 
 @app.route('/vocab-test')
 def vocab_test():
-    """Chinese Vocabulary Test page"""
     return render_template('vocab_test.html', version=APP_VERSION)
 
 
 @app.route('/api/generate-quiz', methods=['POST'])
 def api_generate_quiz():
-    """API endpoint to generate quiz questions."""
     data = request.get_json()
     vocabularies = data.get('vocabularies', '')
     
