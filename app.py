@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.3'
+APP_VERSION = 'v2.4'
 
 
 def generate_quiz_questions(vocabularies):
@@ -90,7 +90,7 @@ def generate_quiz_questions(vocabularies):
                 }
             ],
             'temperature': 0.7,
-            'max_tokens': 2000  # Reduced to speed up
+            'max_tokens': 1000
         }
         
         print(f"[DEBUG] API URL: https://openrouter.ai/api/v1/chat/completions")
