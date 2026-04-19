@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.15'
+APP_VERSION = 'v2.16'
 
 
 def generate_quiz_questions(vocabularies, max_retries=2):
@@ -93,7 +93,7 @@ def generate_quiz_questions(vocabularies, max_retries=2):
                 {"role": "system", "name": "QuizGenerator", "content": system_prompt},
                 {"role": "user", "name": "User", "content": user_prompt}
             ],
-            'temperature': 0.6,  # slightly lower = more consistent JSON
+            'temperature': 0.5,  # more stable output
             'max_tokens': 2000,  # increased — very important for 5 questions
             'stream': False
         }
@@ -123,19 +123,33 @@ def generate_quiz_questions(vocabularies, max_retries=2):
                 if not content:
                     continue
                 
-                # === MUCH MORE ROBUST JSON EXTRACTION ===
-                # 1. Remove markdown code blocks
-                content = re.sub(r'```\s*|\s*```', '', content, flags=re.IGNORECASE)
+                # === 改進後的 JSON 提取（更穩健）===
+                # 先移除 markdown code blocks
+                content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'```', '', content, flags=re.IGNORECASE)  # 移除結尾
                 
-                # 2. Find the largest JSON object
-                json_match = re.search(r'\{[\s\S]*\}', content)
+                # 再找出整個 JSON 物件（最可靠的方法）
+                json_match = re.search(r'\{[\s\S]*?\}', content)  # 非貪婪模式，匹配第一個完整的 {}
                 if not json_match:
-                    print(f"[DEBUG] No JSON object found")
+                    print(f"[DEBUG] No JSON object found in content")
+                    print(f"[DEBUG] Content preview: {content[:300]}")
                     continue
                 
                 json_str = json_match.group(0).strip()
                 
-                data = json.loads(json_str)
+                # 額外清理（防止有些模型會加逗號或多餘符號）
+                json_str = re.sub(r',\s*}', '}', json_str)  # 移除最後一個多餘逗號
+                json_str = re.sub(r',\s*]', ']', json_str)
+                
+                print(f"[DEBUG] Cleaned JSON length: {len(json_str)} | Preview: {json_str[:150]}...")
+                
+                try:
+                    data = json.loads(json_str)
+                except json.JSONDecodeError as e:
+                    print(f"[DEBUG] JSON parse error after cleaning: {e}")
+                    print(f"[DEBUG] Problematic JSON: {json_str[:500]}")
+                    continue
+                
                 questions = data.get('questions', [])
                 
                 print(f"[DEBUG] Parsed {len(questions)} questions from batch")
