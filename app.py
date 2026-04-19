@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.1'
+APP_VERSION = 'v2.2'
 
 
 def generate_quiz_questions(vocabularies):
@@ -27,13 +27,18 @@ def generate_quiz_questions(vocabularies):
     Use MiniMax API to generate multiple choice questions for Chinese vocabularies.
     Returns a list of question dictionaries.
     """
+    print(f"[DEBUG] generate_quiz_questions called with: {vocabularies[:50]}...")
+    
     if not vocabularies:
+        print("[DEBUG] Empty vocabularies, returning []")
         return []
     
     # Split vocabularies by newlines OR spaces
     vocab_list = [v.strip() for v in re.split(r'[\n\s]+', vocabularies) if v.strip()]
+    print(f"[DEBUG] Split into {len(vocab_list)} vocabularies: {vocab_list}")
     
     if not vocab_list:
+        print("[DEBUG] No valid vocabularies, returning []")
         return []
     
     # Build the prompt for MiniMax
@@ -68,6 +73,8 @@ def generate_quiz_questions(vocabularies):
 
 請確保干擾項看起來合理但不正確。題目順序要隨機。"""
 
+    print("[DEBUG] Making API request to OpenRouter...")
+    
     try:
         headers = {
             'Authorization': f'Bearer {MINIMAX_API_KEY}',
@@ -83,55 +90,70 @@ def generate_quiz_questions(vocabularies):
                 }
             ],
             'temperature': 0.7,
-            'max_tokens': 4000
+            'max_tokens': 2000  # Reduced to speed up
         }
         
-        response = requests.post('https://openrouter.ai/api/v1/chat/completions', headers=headers, json=payload, timeout=(10, 120))
+        print(f"[DEBUG] API URL: https://openrouter.ai/api/v1/chat/completions")
+        print(f"[DEBUG] Payload model: {payload['model']}")
+        
+        response = requests.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=60  # Single timeout value
+        )
+        
+        print(f"[DEBUG] Response status: {response.status_code}")
         
         if response.status_code != 200:
-            print(f"API Error: {response.status_code} - {response.text}")
+            print(f"[DEBUG] API Error: {response.status_code} - {response.text[:500]}")
             return []
         
         result = response.json()
+        print(f"[DEBUG] Response JSON received, keys: {list(result.keys())}")
         
         # Get content from the response
         if 'choices' not in result or len(result['choices']) == 0:
-            print(f"No choices in response: {result}")
+            print(f"[DEBUG] No choices in response: {result}")
             return []
         
         message = result['choices'][0].get('message', {})
         content = message.get('content', '')
         
         if not content:
-            print(f"Empty content in response")
+            print(f"[DEBUG] Empty content in response")
             return []
         
+        print(f"[DEBUG] Content length: {len(content)}")
+        
         # Extract JSON from content
-        # Try multiple methods to find JSON
         json_str = None
         
         # Method 1: Find JSON block between { and }
         start = content.find('{')
-        end = content.rfind('}')
+        end = content.rfind('}') + 1
         if start != -1 and end != -1 and end > start:
             json_str = content[start:end+1]
         
         if not json_str:
-            print(f"Could not find JSON in content: {content[:200]}")
+            print(f"[DEBUG] Could not find JSON in content: {content[:200]}")
             return []
+        
+        print(f"[DEBUG] JSON string length: {len(json_str)}")
         
         # Parse JSON
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as e:
-            print(f"JSON parse error: {e}")
-            print(f"JSON string: {json_str[:500]}")
+            print(f"[DEBUG] JSON parse error: {e}")
+            print(f"[DEBUG] JSON string: {json_str[:500]}")
             return []
         
         questions = data.get('questions', [])
+        print(f"[DEBUG] Found {len(questions)} questions")
         
         if not questions:
-            print(f"No questions in data: {data}")
+            print(f"[DEBUG] No questions in data: {data}")
             return []
         
         # Shuffle questions for randomness
@@ -156,13 +178,17 @@ def generate_quiz_questions(vocabularies):
             if new_correct:
                 q['correct'] = new_correct
         
+        print(f"[DEBUG] Returning {len(questions)} questions")
         return questions
             
     except requests.exceptions.Timeout:
-        print("API request timed out - PythonAnywhere network may be slow")
-        raise Exception("API request timed out")
+        print("[DEBUG] API request timed out")
+        return []
+    except requests.exceptions.RequestException as e:
+        print(f"[DEBUG] Request exception: {e}")
+        return []
     except Exception as e:
-        print(f"Error generating questions: {e}")
+        print(f"[DEBUG] Error generating questions: {e}")
         import traceback
         traceback.print_exc()
         return []
@@ -187,13 +213,19 @@ def api_generate_quiz():
     Receives vocabularies from client, calls MiniMax API, returns questions.
     API key is never exposed to client.
     """
+    print("[DEBUG] /api/generate-quiz endpoint called")
     data = request.get_json()
     vocabularies = data.get('vocabularies', '')
     
+    print(f"[DEBUG] Received vocabularies: {vocabularies[:50]}...")
+    
     if not vocabularies.strip():
+        print("[DEBUG] Empty vocabularies, returning 400")
         return jsonify({'error': '請輸入中文詞彙'}), 400
     
     questions = generate_quiz_questions(vocabularies)
+    
+    print(f"[DEBUG] Generated {len(questions)} questions")
     
     if questions:
         return jsonify({
@@ -203,7 +235,7 @@ def api_generate_quiz():
         })
     else:
         return jsonify({
-            'error': '生成題目超時，請減少詞彙數量或稍後再試'
+            'error': '生成題目時發生錯誤，請稍後再試'
         }), 500
 
 
