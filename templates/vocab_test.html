@@ -524,8 +524,8 @@
             `).join('');
 
             questionCard.innerHTML = `
-                <div class="question-vocab">${question.vocabulary}</div>
-                <div class="question-text">「${question.vocabulary}」的意思是什麼？</div>
+                <div class="question-vocab">${question.vocabulary || question.word || '詞彙'}</div>
+                <div class="question-text">${question.sentence || question.question || '選詞填空'}</div>
                 <div class="options">${optionsHtml}</div>
             `;
 
