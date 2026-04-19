@@ -15,11 +15,11 @@ app = Flask(__name__)
 try:
     from config import MINIMAX_API_KEY, MINIMAX_API_URL
 except ImportError:
-    MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '')
+    MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '').strip()
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.2'
+APP_VERSION = 'v2.3'
 
 
 def generate_quiz_questions(vocabularies):
