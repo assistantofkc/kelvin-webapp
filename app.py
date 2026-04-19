@@ -18,6 +18,9 @@ except ImportError:
     MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '')
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
+# App version
+APP_VERSION = 'v2.0'
+
 
 def generate_quiz_questions(vocabularies):
     """
@@ -168,13 +171,13 @@ def generate_quiz_questions(vocabularies):
 @app.route('/')
 def index():
     """Home page"""
-    return render_template('index.html')
+    return render_template('index.html', version=APP_VERSION)
 
 
 @app.route('/vocab-test')
 def vocab_test():
     """Chinese Vocabulary Test page"""
-    return render_template('vocab_test.html')
+    return render_template('vocab_test.html', version=APP_VERSION)
 
 
 @app.route('/api/generate-quiz', methods=['POST'])
