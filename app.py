@@ -19,12 +19,13 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.8'
+APP_VERSION = 'v2.9'
 
 
-def generate_quiz_questions(vocabularies):
+def generate_quiz_questions(vocabularies, max_retries=2):
     """
     Use MiniMax API to generate multiple choice questions for Chinese vocabularies.
+    Has retry logic for handling temporary failures.
     """
     print(f"[DEBUG] generate_quiz_questions called")
     
@@ -41,7 +42,6 @@ def generate_quiz_questions(vocabularies):
     
     vocab_str = ' '.join(vocab_list)
     
-    # Improved prompt with clearer instructions
     prompt = f"""你是一個中文詞彙測驗題目生成器。
 
 給定以下中文詞彙：{vocab_str}
@@ -71,105 +71,120 @@ def generate_quiz_questions(vocabularies):
   ]
 }}"""
 
-    print("[DEBUG] Making API request...")
+    headers = {
+        'Authorization': f'Bearer {MINIMAX_API_KEY}',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://kelvin-webapp.onrender.com',
+        'X-OpenRouter-Title': 'Chinese Vocab Quiz'
+    }
     
-    try:
-        headers = {
-            'Authorization': f'Bearer {MINIMAX_API_KEY}',
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://kelvin-webapp.onrender.com',
-            'X-OpenRouter-Title': 'Chinese Vocab Quiz'
-        }
+    payload = {
+        'model': 'minimax/MiniMax-M2.7',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'temperature': 0.7,
+        'max_tokens': 1500
+    }
+    
+    for attempt in range(max_retries):
+        print(f"[DEBUG] Attempt {attempt + 1}/{max_retries}")
         
-        payload = {
-            'model': 'minimax/MiniMax-M2.7',
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.7,
-            'max_tokens': 1500
-        }
-        
-        print(f"[DEBUG] Sending request to OpenRouter...")
-        response = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=60
-        )
-        
-        print(f"[DEBUG] Response status: {response.status_code}")
-        
-        if response.status_code != 200:
-            print(f"[DEBUG] API Error {response.status_code}: {response.text[:500]}")
-            return []
-        
-        result = response.json()
-        print(f"[DEBUG] Response keys: {list(result.keys())}")
-        
-        if 'choices' not in result or len(result['choices']) == 0:
-            print(f"[DEBUG] No choices in response: {result}")
-            return []
-        
-        message = result['choices'][0].get('message', {})
-        content = message.get('content', '')
-        
-        if not content:
-            print(f"[DEBUG] Empty content in response")
-            return []
-        
-        print(f"[DEBUG] Content length: {len(content)}, preview: {content[:100]}...")
-        
-        # Extract JSON
-        start = content.find('{')
-        end = content.rfind('}') + 1
-        if start == -1 or end == 0:
-            print(f"[DEBUG] No JSON found. Content: {content[:200]}")
-            return []
-        
-        json_str = content[start:end]
-        print(f"[DEBUG] Parsing JSON: {json_str[:200]}...")
-        
-        data = json.loads(json_str)
-        
-        questions = data.get('questions', [])
-        print(f"[DEBUG] Got {len(questions)} questions")
-        
-        if not questions:
-            print(f"[DEBUG] No questions in data: {data}")
-            return []
-        
-        # Shuffle and process options
-        for q in questions:
-            options = q.get('options', {})
-            correct_key = q.get('correct', 'A')
-            correct_text = options.get(correct_key, '')
+        try:
+            print(f"[DEBUG] Sending request to OpenRouter...")
+            response = requests.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers=headers,
+                json=payload,
+                timeout=90
+            )
             
-            keys = list(options.keys())
-            random.shuffle(keys)
+            print(f"[DEBUG] Response status: {response.status_code}")
             
-            new_options = {}
-            new_correct = None
-            for new_key in keys:
-                new_options[new_key] = options[new_key]
-                if options[new_key] == correct_text:
-                    new_correct = new_key
+            if response.status_code != 200:
+                print(f"[DEBUG] API Error {response.status_code}: {response.text[:300]}")
+                if attempt < max_retries - 1:
+                    print("[DEBUG] Retrying...")
+                    continue
+                return []
             
-            q['options'] = new_options
-            q['correct'] = new_correct or correct_key
-        
-        random.shuffle(questions)
-        return questions
+            result = response.json()
             
-    except requests.exceptions.Timeout:
-        print("[DEBUG] Request timed out")
-        return []
-    except json.JSONDecodeError as e:
-        print(f"[DEBUG] JSON parse error: {e}")
-        return []
-    except Exception as e:
-        print(f"[DEBUG] Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+            if 'choices' not in result or len(result['choices']) == 0:
+                print(f"[DEBUG] No choices in response")
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            message = result['choices'][0].get('message', {})
+            content = message.get('content', '')
+            
+            if not content:
+                print(f"[DEBUG] Empty content")
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            # Extract JSON
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start == -1 or end == 0:
+                print(f"[DEBUG] No JSON found")
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            json_str = content[start:end]
+            data = json.loads(json_str)
+            
+            questions = data.get('questions', [])
+            print(f"[DEBUG] Got {len(questions)} questions")
+            
+            if not questions:
+                if attempt < max_retries - 1:
+                    continue
+                return []
+            
+            # Shuffle and process options
+            for q in questions:
+                options = q.get('options', {})
+                correct_key = q.get('correct', 'A')
+                correct_text = options.get(correct_key, '')
+                
+                keys = list(options.keys())
+                random.shuffle(keys)
+                
+                new_options = {}
+                new_correct = None
+                for new_key in keys:
+                    new_options[new_key] = options[new_key]
+                    if options[new_key] == correct_text:
+                        new_correct = new_key
+                
+                q['options'] = new_options
+                q['correct'] = new_correct or correct_key
+            
+            random.shuffle(questions)
+            return questions
+                
+        except requests.exceptions.Timeout:
+            print(f"[DEBUG] Attempt {attempt + 1} timed out")
+            if attempt < max_retries - 1:
+                print("[DEBUG] Retrying...")
+                continue
+            return []
+        except json.JSONDecodeError as e:
+            print(f"[DEBUG] JSON parse error: {e}")
+            if attempt < max_retries - 1:
+                continue
+            return []
+        except Exception as e:
+            print(f"[DEBUG] Error: {e}")
+            if attempt < max_retries - 1:
+                continue
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    return []
 
 
 @app.route('/')
