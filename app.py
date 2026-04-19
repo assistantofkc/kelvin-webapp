@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.10'
+APP_VERSION = 'v2.11'
 
 
 def generate_quiz_questions(vocabularies, max_retries=2):
@@ -76,8 +76,8 @@ def generate_quiz_questions(vocabularies, max_retries=2):
         'Content-Type': 'application/json'
     }
     
-    # MiniMax direct API
-    mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2'
+    # MiniMax direct API with GroupId
+    mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
     
     # MiniMax uses different payload format
     mini_max_payload = {
