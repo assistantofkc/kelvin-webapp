@@ -12,7 +12,7 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.0'
+APP_VERSION = 'v5.2'
 
 
 def generate_sentences(vocabularies):
@@ -32,7 +32,7 @@ def generate_sentences(vocabularies):
     if not vocab_list:
         return []
     
-    # MiniMax API endpoint
+    # MiniMax API
     mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
     
     mini_max_api_key = os.environ.get('MINIMAX_API_KEY', '').strip()
@@ -44,7 +44,7 @@ def generate_sentences(vocabularies):
         'Content-Type': 'application/json'
     }
     
-    # Join words - use all words in one prompt for efficiency
+    # Join words
     vocab_str = ', '.join(vocab_list)
     
     # Prompt: AI only generates word + sentence, NO options
@@ -73,9 +73,9 @@ Rules:
     }
     
     try:
-        print(f"[DEBUG] Calling NVIDIA/kimi API...")
+        print(f"[DEBUG] Calling MiniMax API...")
         response = requests.post(
-            invoke_url,
+            mini_max_url,
             headers=headers,
             json=payload,
             timeout=60
