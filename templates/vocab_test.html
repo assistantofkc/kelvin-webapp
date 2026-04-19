@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中文詞彙測試</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .hamburger {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .hamburger:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .hamburger-icon {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: #fff;
+            margin: 5px 0;
+            border-radius: 2px;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            padding-top: 80px;
+            padding-left: 30px;
+            transition: left 0.3s ease;
+            z-index: 999;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar a {
+            display: block;
+            color: #fff;
+            text-decoration: none;
+            padding: 15px 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar a:hover {
+            color: #667eea;
+        }
+
+        .sidebar a span {
+            margin-right: 10px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 998;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding-top: 60px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            color: #667eea;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .quiz-section {
+            display: none;
+        }
+
+        .quiz-section.show {
+            display: block;
+        }
+
+        .progress {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            color: #a0a0a0;
+        }
+
+        .question-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .question-vocab {
+            font-size: 1.8rem;
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .question-text {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .option.correct {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .option.wrong {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .option-letter {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .option-text {
+            flex: 1;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-nav {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .btn-nav:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-nav:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .results {
+            text-align: center;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .score {
+            font-size: 4rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .score-text {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 30px;
+        }
+
+        .btn-restart {
+            display: inline-block;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-restart:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 10px;
+                padding-top: 70px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .question-vocab {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hamburger" onclick="toggleSidebar()">
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+    </div>
+
+    <nav class="sidebar" id="sidebar">
+        <a href="/"><span>🏠</span> Home</a>
+        <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
+    </nav>
+
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="container">
+        <h1>📝 中文詞彙測試</h1>
+
+        <div class="card input-section" id="inputSection">
+            <div class="input-section">
+                <label for="vocabInput">請輸入中文詞彙（用空格分隔）：</label>
+                <textarea id="vocabInput" placeholder="例如：經歷 糾結 挫敗 借鑒 逃避 悲憤 煩惱 正視 化解"></textarea>
+            </div>
+            <button class="btn" id="startBtn" onclick="startQuiz()">開始測試</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在生成題目，請稍候...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="quiz-section" id="quizSection">
+            <div class="progress" id="progress"></div>
+            <div class="question-card" id="questionCard"></div>
+            <div class="nav-buttons">
+                <button class="btn-nav" id="prevBtn" onclick="prevQuestion()" disabled>上一題</button>
+                <button class="btn-nav" id="nextBtn" onclick="nextQuestion()">下一題</button>
+                <button class="btn-nav" id="submitBtn" onclick="showResults()" style="display: none;">查看結果</button>
+            </div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="card">
+                <div class="score" id="score">0</div>
+                <div class="score-text" id="scoreText"></div>
+                <button class="btn-restart" onclick="restartQuiz()">重新測試</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        let currentIndex = 0;
+        let userAnswers = [];
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        async function startQuiz() {
+            const vocabInput = document.getElementById('vocabInput').value.trim();
+            
+            if (!vocabInput) {
+                showError('請輸入至少一個中文詞彙');
+                return;
+            }
+
+            hideError();
+            showLoading();
+            document.getElementById('startBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/generate-quiz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ vocabularies: vocabInput })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    questions = data.questions;
+                    userAnswers = new Array(questions.length).fill(null);
+                    currentIndex = 0;
+                    hideLoading();
+                    showQuiz();
+                    displayQuestion();
+                } else {
+                    showError(data.error || '生成題目時發生錯誤，請稍後再試');
+                    hideLoading();
+                    document.getElementById('startBtn').disabled = false;
+                }
+            } catch (error) {
+                showError('網絡錯誤，請稍後再試');
+                hideLoading();
+                document.getElementById('startBtn').disabled = false;
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('inputSection').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('show');
+        }
+
+        function showQuiz() {
+            document.getElementById('quizSection').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+        }
+
+        function displayQuestion() {
+            const question = questions[currentIndex];
+            const progress = document.getElementById('progress');
+            const questionCard = document.getElementById('questionCard');
+            
+            progress.textContent = `第 ${currentIndex + 1} 題，共 ${questions.length} 題`;
+            
+            const optionsHtml = Object.entries(question.options).map(([key, value]) => `
+                <div class="option ${userAnswers[currentIndex] === key ? 'selected' : ''}" 
+                     data-key="${key}" onclick="selectOption('${key}')">
+                    <span class="option-letter">${key}</span>
+                    <span class="option-text">${value}</span>
+                </div>
+            `).join('');
+
+            questionCard.innerHTML = `
+                <div class="question-vocab">${question.vocabulary}</div>
+                <div class="question-text">「${question.vocabulary}」的意思是什麼？</div>
+                <div class="options">${optionsHtml}</div>
+            `;
+
+            document.getElementById('prevBtn').disabled = currentIndex === 0;
+            
+            if (currentIndex < questions.length - 1) {
+                document.getElementById('nextBtn').style.display = 'block';
+                document.getElementById('submitBtn').style.display = 'none';
+            } else {
+                document.getElementById('nextBtn').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'block';
+            }
+        }
+
+        function selectOption(key) {
+            userAnswers[currentIndex] = key;
+            displayQuestion();
+        }
+
+        function prevQuestion() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                displayQuestion();
+            }
+        }
+
+        function nextQuestion() {
+            if (currentIndex < questions.length - 1) {
+                currentIndex++;
+                displayQuestion();
+            }
+        }
+
+        function showResults() {
+            let correct = 0;
+            
+            questions.forEach((q, i) => {
+                if (userAnswers[i] === q.correct) {
+                    correct++;
+                }
+            });
+
+            const percentage = Math.round((correct / questions.length) * 100);
+            
+            document.getElementById('quizSection').classList.remove('show');
+            document.getElementById('results').classList.add('show');
+            document.getElementById('score').textContent = `${correct}/${questions.length}`;
+            document.getElementById('scoreText').textContent = `正確率：${percentage}%`;
+        }
+
+        function restartQuiz() {
+            document.getElementById('results').classList.remove('show');
+            document.getElementById('inputSection').style.display = 'block';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('vocabInput').value = '';
+            questions = [];
+            userAnswers = [];
+            currentIndex = 0;
+        }
+    </script>
+</body>
+</html>

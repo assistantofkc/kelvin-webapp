@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: kelvin-webapp
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    envVars:
+      - key: MINIMAX_API_KEY
+        value: sk-cp-yrzrhj9MPRYAZ2Xit1OgVVCitgM7LBYmridy2CzkpNDN_R0LLi2Xubm69-Q0v0YIivMiJRtKcL7ngzNbPRq_2DlNmPK5iyeIIcDZAhpFS7e4w3Z5xwQvxNg
