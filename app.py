@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.6'
+APP_VERSION = 'v2.7'
 
 
 def generate_quiz_questions(vocabularies):
@@ -87,11 +87,10 @@ def generate_quiz_questions(vocabularies):
         }
         
         payload = {
-            'model': 'google/gemini-2.5-flash',
+            'model': 'minimax/MiniMax-M2.7',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.7,
-            'max_tokens': 1500,
-            'response_format': {'type': 'json_object'}
+            'max_tokens': 1500
         }
         
         print(f"[DEBUG] Sending request to OpenRouter...")
