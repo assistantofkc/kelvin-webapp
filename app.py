@@ -43,7 +43,10 @@ def generate_quiz_questions(vocabularies):
     }
     
     # Gemini API endpoint
-    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyC9aEJ_GD92Rb0M6HKXAmwQPDZgQHRXKCw'
+    gemini_api_key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not gemini_api_key:
+        gemini_api_key = 'AIzaSyC9aEJ_GD92Rb0M6HKXAmwQPDZgQHRXKCw'  # fallback
+    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}'
     
     for i in range(0, len(vocab_list), batch_size):
         batch = vocab_list[i:i + batch_size]
