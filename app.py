@@ -16,17 +16,18 @@ try:
     from config import MINIMAX_API_KEY, MINIMAX_API_URL
 except ImportError:
     MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '').strip()
-    MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
+    MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://generativelanguage.googleapis.com')
 
 # App version
-APP_VERSION = 'v2.18'
+APP_VERSION = 'v3.0'
 
 
-def generate_quiz_questions(vocabularies, max_retries=3):
-    """最終穩定版"""
+def generate_quiz_questions(vocabularies):
+    """使用 Gemini API 生成中文詞彙測驗題目"""
     print(f"[DEBUG] generate_quiz_questions called")
     
     if not vocabularies:
+        print("[DEBUG] Empty vocabularies")
         return []
     
     vocab_list = [v.strip() for v in re.split(r'[\n\s]+', vocabularies) if v.strip()]
@@ -36,37 +37,35 @@ def generate_quiz_questions(vocabularies, max_retries=3):
         return []
     
     all_questions = []
-    batch_size = 4
+    batch_size = 5
     headers = {
-        'Authorization': f'Bearer {MINIMAX_API_KEY}',
         'Content-Type': 'application/json'
     }
     
-    mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
+    # Gemini API endpoint
+    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyC9aEJ_GD92Rb0M6HKXAmwQPDZgQHRXKCw'
     
     for i in range(0, len(vocab_list), batch_size):
         batch = vocab_list[i:i + batch_size]
         vocab_str = ' '.join(batch)
         print(f"[DEBUG] Processing batch {i//batch_size + 1}: {batch}")
         
-        system_prompt = "你是一個嚴格的中文詞彙測驗生成器。只輸出有效的JSON，不要有任何其他文字、解釋或markdown。"
-        
-        user_prompt = f"""給定詞彙：{vocab_str}
+        prompt = f"""給定以下中文詞彙：{vocab_str}
 
-為每個詞彙生成一道選詞填空題。
+請為每個詞彙生成一道「選詞填空」題目。
+
 要求：
-- 把該詞彙放在句子中，並用 _____ 代替
-- 提供正好 4 個選項 (A B C D)，只有 1 個正確
-- 其他 3 個是合理但錯誤的干擾項
-- 必須為所有 {len(batch)} 個詞彙都生成題目
+1. 每個題目是一個句子，空格用_____表示
+2. 4個選項(A/B/C/D)，只有1個正確答案
+3. 答案必須是輸入詞彙的其中一個
+4. 每個干擾選項必須是另一個詞彙的意思，看起來合理但不正確
 
-嚴格只輸出以下格式的完整 JSON，不要加任何多餘內容：
-
+嚴格按照以下JSON格式輸出，唔好加任何其他文字：
 {{
   "questions": [
     {{
       "vocabulary": "詞彙",
-      "sentence": "包含_____的完整自然句子。",
+      "sentence": "包含_____的完整句子",
       "options": {{"A": "選項1", "B": "選項2", "C": "選項3", "D": "正確答案"}},
       "correct": "D"
     }}
@@ -74,91 +73,97 @@ def generate_quiz_questions(vocabularies, max_retries=3):
 }}"""
         
         payload = {
-            'model': 'MiniMax-M2.7',
-            'messages': [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            'temperature': 0.5,
-            'max_tokens': 3000,
-            'stream': False
+            'contents': [{
+                'parts': [{'text': prompt}]
+            }],
+            'generationConfig': {
+                'temperature': 0.5,
+                'maxOutputTokens': 2048
+            }
         }
         
-        for attempt in range(max_retries):
-            try:
-                print(f"[DEBUG] Batch {i//batch_size + 1} attempt {attempt + 1}")
-                response = requests.post(mini_max_url, headers=headers, json=payload, timeout=70)
-                
-                if response.status_code != 200:
-                    print(f"[DEBUG] API Error {response.status_code}: {response.text[:200]}")
-                    continue
-                
-                result = response.json()
-                content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
-                
-                print(f"[DEBUG] Raw content length: {len(content)}")
-                
-                if not content:
-                    continue
-                
-                # 強力 JSON 清理
-                content = re.sub(r'(?:```json)?', '', content, flags=re.IGNORECASE)
-                content = re.sub(r'```', '', content, flags=re.IGNORECASE)
-                
-                # 找出所有 JSON 物件
-                json_matches = re.findall(r'\{[\s\S]*?\}', content)
-                if not json_matches:
-                    print(f"[DEBUG] No JSON found")
-                    continue
-                
-                json_str = json_matches[-1].strip()  # 取最後一個（通常是最完整的）
-                
-                # 修復常見的截斷問題
-                json_str = re.sub(r',\s*}', '}', json_str)
-                json_str = re.sub(r',\s*]', ']', json_str)
-                json_str = re.sub(r'"\s*,\s*"', '", "', json_str)  # 修復可能的引號問題
-                
-                print(f"[DEBUG] Cleaned JSON length: {len(json_str)}")
-                
-                data = json.loads(json_str)
-                questions = data.get('questions', [])
-                
-                print(f"[DEBUG] Got {len(questions)} questions from batch")
-                
-                if questions:
-                    # Shuffle options
-                    for q in questions:
-                        options = q.get('options', {})
-                        correct_key = str(q.get('correct', 'A')).strip()
-                        correct_text = options.get(correct_key, '')
-                        
-                        keys = list(options.keys())
-                        random.shuffle(keys)
-                        
-                        new_options = {}
-                        new_correct = None
-                        for new_key in keys:
-                            new_options[new_key] = options[new_key]
-                            if options[new_key] == correct_text:
-                                new_correct = new_key
-                        
-                        q['options'] = new_options
-                        q['correct'] = new_correct or correct_key
-                    
-                    all_questions.extend(questions)
-                    print(f"[DEBUG] Batch {i//batch_size + 1} SUCCESS")
-                    break
+        try:
+            print(f"[DEBUG] Calling Gemini API...")
+            response = requests.post(
+                gemini_url,
+                headers=headers,
+                json=payload,
+                timeout=60
+            )
             
-            except json.JSONDecodeError as e:
-                print(f"[DEBUG] JSON parse error: {e}")
-            except Exception as e:
-                print(f"[DEBUG] Error: {type(e).name}: {e}")
+            print(f"[DEBUG] Response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"[DEBUG] API Error: {response.text[:300]}")
+                continue
+            
+            result = response.json()
+            
+            # Gemini returns text in candidates[0].content.parts[0].text
+            try:
+                content = result['candidates'][0]['content']['parts'][0]['text']
+            except (KeyError, IndexError) as e:
+                print(f"[DEBUG] Failed to extract content: {e}")
+                print(f"[DEBUG] Result: {result}")
+                continue
+            
+            print(f"[DEBUG] Content length: {len(content)}")
+            print(f"[DEBUG] Content preview: {content[:200]}...")
+            
+            if not content:
+                continue
+            
+            # Extract JSON
+            content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
+            content = re.sub(r'```', '', content, flags=re.IGNORECASE)
+            
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            if start == -1 or end == 0:
+                print(f"[DEBUG] No JSON found")
+                continue
+            
+            json_str = content[start:end]
+            json_str = re.sub(r',\s*}', '}', json_str)
+            json_str = re.sub(r',\s*]', ']', json_str)
+            
+            print(f"[DEBUG] JSON length: {len(json_str)}")
+            
+            data = json.loads(json_str)
+            questions = data.get('questions', [])
+            
+            print(f"[DEBUG] Got {len(questions)} questions")
+            
+            if questions:
+                # Shuffle options
+                for q in questions:
+                    options = q.get('options', {})
+                    correct_key = q.get('correct', 'A')
+                    correct_text = options.get(correct_key, '')
+                    
+                    keys = list(options.keys())
+                    random.shuffle(keys)
+                    
+                    new_options = {}
+                    new_correct = None
+                    for new_key in keys:
+                        new_options[new_key] = options[new_key]
+                        if options[new_key] == correct_text:
+                            new_correct = new_key
+                    
+                    q['options'] = new_options
+                    q['correct'] = new_correct or correct_key
+                
+                all_questions.extend(questions)
+                print(f"[DEBUG] Batch SUCCESS")
         
-        else:
-            print(f"[DEBUG] Batch {i//batch_size + 1} failed after {max_retries} attempts")
+        except requests.exceptions.Timeout:
+            print(f"[DEBUG] Request timed out")
+        except Exception as e:
+            print(f"[DEBUG] Error: {e}")
     
     random.shuffle(all_questions)
-    print(f"[DEBUG] Total questions returned: {len(all_questions)}")
+    print(f"[DEBUG] Total questions: {len(all_questions)}")
     return all_questions
 
 
