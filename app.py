@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.7'
+APP_VERSION = 'v2.8'
 
 
 def generate_quiz_questions(vocabularies):
@@ -38,11 +38,6 @@ def generate_quiz_questions(vocabularies):
     
     if not vocab_list:
         return []
-    
-    # Limit to 10 words max to avoid timeout
-    if len(vocab_list) > 10:
-        vocab_list = vocab_list[:10]
-        print(f"[DEBUG] Limited to 10 vocabularies: {vocab_list}")
     
     vocab_str = ' '.join(vocab_list)
     
