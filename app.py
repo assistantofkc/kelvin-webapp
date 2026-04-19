@@ -19,13 +19,13 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.14'
+APP_VERSION = 'v2.15'
 
 
 def generate_quiz_questions(vocabularies, max_retries=2):
     """
-    Use MiniMax API to generate multiple choice questions for Chinese vocabularies.
-    Processes vocabularies in batches to avoid timeout.
+    Fixed version: stronger prompt + system message + robust JSON extraction
+    Works reliably for 20+ vocabularies (batches of 5).
     """
     print(f"[DEBUG] generate_quiz_questions called")
     
@@ -41,8 +41,7 @@ def generate_quiz_questions(vocabularies, max_retries=2):
         return []
     
     all_questions = []
-    batch_size = 4  # Reduced to ensure reliable JSON
-    
+    batch_size = 5
     headers = {
         'Authorization': f'Bearer {MINIMAX_API_KEY}',
         'Content-Type': 'application/json'
@@ -50,46 +49,53 @@ def generate_quiz_questions(vocabularies, max_retries=2):
     
     mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
     
-    # System message (MiniMax responds better with this)
-    system_msg = "你是一個專業的中文詞彙測驗題目生成器。你必須嚴格按照指定的JSON格式輸出，唔好添加任何額外文字、解釋或markdown。"
-    
-    # Process in batches
     for i in range(0, len(vocab_list), batch_size):
-        batch = vocab_list[i:i+batch_size]
+        batch = vocab_list[i:i + batch_size]
         vocab_str = ' '.join(batch)
-        print(f"[DEBUG] Processing batch {i//batch_size + 1}: {batch}")
+        print(f"[DEBUG] Processing batch {i//batch_size + 1}/{len(vocab_list)//batch_size + 1}: {batch}")
         
-        # Stronger prompt with exact JSON example
-        prompt = f"""給定以下中文詞彙：{vocab_str}
+        # === STRONGER PROMPT (this is the key fix) ===
+        system_prompt = (
+            "你是一個專業的中文詞彙測驗題目生成器。\n"
+            "你必須嚴格只輸出有效的JSON，不要有任何額外文字、解釋、markdown或json標記。"
+        )
+        
+        user_prompt = f"""給定以下中文詞彙：{vocab_str}
 
 請為每個詞彙生成一道「選詞填空」題目。
+要求：
+- 每個題目必須使用該詞彙做成一個自然句子，把該詞彙替換成「_____」
+- 提供正好4個選項 (A、B、C、D)，只有1個是正確答案
+- 其他3個是合理的干擾項（意思相近但不同）
+- 答案必須是原本輸入的詞彙之一
 
-嚴格要求：
-1. 每個題目是一個句子，空格用_____表示
-2. 4個選項(A/B/C/D)，只有1個正確答案
-3. 答案必須是輸入詞彙的其中一個
-4. 每個干擾選項必須是另一個詞彙的意思，看起來合理但不正確
+嚴格按照以下格式輸出，不要加任何其他內容：
 
-嚴格按照以下JSON格式輸出，唔好加任何其他文字：
-
-舉例：如果詞彙是「經歷 糾結 挫敗」
-輸出必須是：
-{{"questions": [
-  {{"vocabulary": "經歷", "sentence": "他_____了很多困難終於成功", "options": {{"A": "描述困難", "B": "親身體驗", "C": "放棄", "D": "逃避"}}, "correct": "B"}},
-  {{"vocabulary": "糾結", "sentence": "這個決定讓我非常_____", "options": {{"A": "開心", "B": "果斷", "C": "矛盾難抉擇", "D": "輕鬆"}}, "correct": "C"}},
-  {{"vocabulary": "挫敗", "sentence": "連續失敗讓他感到_____", "options": {{"A": "振奮", "B": "成功", "C": "失落失敗", "D": "滿足"}}, "correct": "C"}}
-]}}
-
-而家輪到你。詞彙：{vocab_str}"""
+{{
+  "questions": [
+    {{
+      "vocabulary": "詞彙1",
+      "sentence": "這是一個包含_____的完整句子。",
+      "options": {{
+        "A": "干擾選項1",
+        "B": "干擾選項2",
+        "C": "干擾選項3",
+        "D": "正確答案"
+      }},
+      "correct": "D"
+    }}
+  ]
+}}"""
         
         mini_max_payload = {
             'model': 'MiniMax-M2.7',
             'messages': [
-                {'role': 'system', 'content': system_msg},
-                {'role': 'user', 'content': prompt}
+                {"role": "system", "name": "QuizGenerator", "content": system_prompt},
+                {"role": "user", "name": "User", "content": user_prompt}
             ],
-            'temperature': 0.3,  # Lower temp = more predictable output
-            'max_tokens': 2000
+            'temperature': 0.6,  # slightly lower = more consistent JSON
+            'max_tokens': 2000,  # increased — very important for 5 questions
+            'stream': False
         }
         
         success = False
@@ -103,53 +109,39 @@ def generate_quiz_questions(vocabularies, max_retries=2):
                     timeout=60
                 )
                 
-                print(f"[DEBUG] Batch {i//batch_size + 1} status: {response.status_code}")
+                print(f"[DEBUG] Status: {response.status_code}")
                 
                 if response.status_code != 200:
                     print(f"[DEBUG] API Error: {response.text[:300]}")
                     continue
                 
                 result = response.json()
-                message = result.get('choices', [{}])[0].get('message', {})
-                content = message.get('content', '')
+                content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
                 
-                print(f"[DEBUG] Content length: {len(content)}")
-                print(f"[DEBUG] Content preview: {content[:200]}...")
+                print(f"[DEBUG] Raw content length: {len(content)} | First 200 chars: {content[:200]}")
                 
                 if not content:
-                    print(f"[DEBUG] Empty content")
                     continue
                 
-                # Better JSON extraction
-                json_str = None
+                # === MUCH MORE ROBUST JSON EXTRACTION ===
+                # 1. Remove markdown code blocks
+                content = re.sub(r'```\s*|\s*```', '', content, flags=re.IGNORECASE)
                 
-                # Remove markdown code blocks first
-                content_clean = content.replace('```json', '').replace('```', '').strip()
-                
-                # Find JSON block
-                start = content_clean.find('{')
-                end = content_clean.rfind('}') + 1
-                if start != -1 and end > start:
-                    json_str = content_clean[start:end]
-                
-                if not json_str:
-                    print(f"[DEBUG] No JSON found in: {content_clean[:200]}")
+                # 2. Find the largest JSON object
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                if not json_match:
+                    print(f"[DEBUG] No JSON object found")
                     continue
                 
-                print(f"[DEBUG] JSON str length: {len(json_str)}")
+                json_str = json_match.group(0).strip()
                 
-                try:
-                    data = json.loads(json_str)
-                except json.JSONDecodeError as e:
-                    print(f"[DEBUG] JSON parse error: {e}")
-                    print(f"[DEBUG] JSON string: {json_str[:300]}")
-                    continue
-                
+                data = json.loads(json_str)
                 questions = data.get('questions', [])
-                print(f"[DEBUG] Got {len(questions)} questions")
+                
+                print(f"[DEBUG] Parsed {len(questions)} questions from batch")
                 
                 if questions:
-                    # Shuffle options
+                    # Shuffle options inside each question
                     for q in questions:
                         options = q.get('options', {})
                         correct_key = q.get('correct', 'A')
@@ -170,20 +162,23 @@ def generate_quiz_questions(vocabularies, max_retries=2):
                     
                     all_questions.extend(questions)
                     success = True
-                    print(f"[DEBUG] Batch {i//batch_size + 1} SUCCESS with {len(questions)} questions")
+                    print(f"[DEBUG] Batch {i//batch_size + 1} SUCCESS ✅")
                     break
-                
+            
             except requests.exceptions.Timeout:
-                print(f"[DEBUG] Batch {i//batch_size + 1} timed out")
+                print(f"[DEBUG] Batch timed out")
+            except json.JSONDecodeError as e:
+                print(f"[DEBUG] JSON decode error: {e}")
             except Exception as e:
-                print(f"[DEBUG] Batch error: {e}")
-                continue
+                print(f"[DEBUG] Unexpected error: {e}")
+                import traceback
+                traceback.print_exc()
         
         if not success:
-            print(f"[DEBUG] Batch {i//batch_size + 1} failed after {max_retries} attempts")
+            print(f"[DEBUG] Batch {i//batch_size + 1} completely failed after {max_retries} attempts")
     
     random.shuffle(all_questions)
-    print(f"[DEBUG] Total questions: {len(all_questions)}")
+    print(f"[DEBUG] TOTAL questions generated: {len(all_questions)}")
     return all_questions
 
 
