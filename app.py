@@ -11,20 +11,16 @@ import re
 
 app = Flask(__name__)
 
-# Import config (contains API keys - server-side only)
-try:
-    from config import MINIMAX_API_KEY, MINIMAX_API_URL
-except ImportError:
-    MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '').strip()
-    MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', '')
-
 # App version
-APP_VERSION = 'v4.01'
+APP_VERSION = 'v5.0'
 
 
-def generate_quiz_questions(vocabularies):
-    """使用 NVIDIA/kimi-k2.5 API 生成中文詞彙測驗題目"""
-    print(f"[DEBUG] generate_quiz_questions called")
+def generate_sentences(vocabularies):
+    """
+    Generate fill-in-the-blank sentences for each vocabulary word.
+    AI only generates {word, sentence} - options are generated client-side.
+    """
+    print(f"[DEBUG] generate_sentences called")
     
     if not vocabularies:
         print("[DEBUG] Empty vocabularies")
@@ -36,139 +32,102 @@ def generate_quiz_questions(vocabularies):
     if not vocab_list:
         return []
     
-    all_questions = []
-    batch_size = 5
-    
     # NVIDIA API endpoint
     invoke_url = 'https://integrate.api.nvidia.com/v1/chat/completions'
     
     nvidia_api_key = os.environ.get('NVIDIA_API_KEY', '').strip()
     if not nvidia_api_key:
-        nvidia_api_key = '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'  # fallback
+        nvidia_api_key = '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'
     
     headers = {
         'Authorization': f'Bearer {nvidia_api_key}',
         'Content-Type': 'application/json'
     }
     
-    for i in range(0, len(vocab_list), batch_size):
-        batch = vocab_list[i:i + batch_size]
-        vocab_str = ' '.join(batch)
-        print(f"[DEBUG] Processing batch {i//batch_size + 1}: {batch}")
-        
-        prompt = f"""給定以下中文詞彙：{vocab_str}
-
-請為每個詞彙生成一道「選詞填空」題目。
-
-要求：
-1. 每個題目是一個句子，空格用_____表示
-2. 4個選項(A/B/C/D)，只有1個正確答案
-3. 答案必須是輸入詞彙的其中一個
-4. 每個干擾選項必須是另一個詞彙的意思，看起來合理但不正確
-
-嚴格按照以下JSON格式輸出，唔好加任何其他文字：
-{{
-  "questions": [
-    {{
-      "vocabulary": "詞彙",
-      "sentence": "包含_____的完整句子",
-      "options": {{"A": "選項1", "B": "選項2", "C": "選項3", "D": "正確答案"}},
-      "correct": "D"
-    }}
-  ]
-}}"""
-        
-        payload = {
-            'model': 'moonshotai/kimi-k2.5',
-            'messages': [{'role': 'user', 'content': prompt}],
-            'max_tokens': 2048,
-            'temperature': 0.7,
-            'top_p': 1.0,
-            'stream': False
-        }
-        
-        try:
-            print(f"[DEBUG] Calling NVIDIA/kimi API...")
-            response = requests.post(
-                invoke_url,
-                headers=headers,
-                json=payload,
-                timeout=60
-            )
-            
-            print(f"[DEBUG] Response status: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"[DEBUG] API Error: {response.text[:300]}")
-                continue
-            
-            result = response.json()
-            
-            # Extract content from the response
-            try:
-                content = result['choices'][0]['message']['content']
-            except (KeyError, IndexError) as e:
-                print(f"[DEBUG] Failed to extract content: {e}")
-                continue
-            
-            print(f"[DEBUG] Content length: {len(content)}")
-            print(f"[DEBUG] Content preview: {content[:200]}...")
-            
-            if not content:
-                continue
-            
-            # Extract JSON
-            content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
-            content = re.sub(r'```', '', content, flags=re.IGNORECASE)
-            
-            start = content.find('{')
-            end = content.rfind('}') + 1
-            if start == -1 or end == 0:
-                print(f"[DEBUG] No JSON found")
-                continue
-            
-            json_str = content[start:end]
-            json_str = re.sub(r',\s*}', '}', json_str)
-            json_str = re.sub(r',\s*]', ']', json_str)
-            
-            print(f"[DEBUG] JSON length: {len(json_str)}")
-            
-            data = json.loads(json_str)
-            questions = data.get('questions', [])
-            
-            print(f"[DEBUG] Got {len(questions)} questions")
-            
-            if questions:
-                # Shuffle options
-                for q in questions:
-                    options = q.get('options', {})
-                    correct_key = q.get('correct', 'A')
-                    correct_text = options.get(correct_key, '')
-                    
-                    keys = list(options.keys())
-                    random.shuffle(keys)
-                    
-                    new_options = {}
-                    new_correct = None
-                    for new_key in keys:
-                        new_options[new_key] = options[new_key]
-                        if options[new_key] == correct_text:
-                            new_correct = new_key
-                    
-                    q['options'] = new_options
-                    q['correct'] = new_correct or correct_key
-                
-                all_questions.extend(questions)
-                print(f"[DEBUG] Batch SUCCESS")
-        
-        except requests.exceptions.Timeout:
-            print(f"[DEBUG] Request timed out")
-        except Exception as e:
-            print(f"[DEBUG] Error: {e}")
+    # Join words - use all words in one prompt for efficiency
+    vocab_str = ', '.join(vocab_list)
     
-    random.shuffle(all_questions)
-    print(f"[DEBUG] Total questions: {len(all_questions)}")
-    return all_questions
+    # Prompt: AI only generates word + sentence, NO options
+    prompt = f"""Given these Chinese words: {vocab_str}
+
+For EACH word, create a unique fill-in-the-blank sentence where the word is replaced with "____".
+
+Output ONLY valid JSON array, no other text:
+[
+  {{"word": "經歷", "sentence": "他_____了很多困難終於成功"}},
+  {{"word": "糾結", "sentence": "這個決定讓我非常_____"}}
+]
+
+Rules:
+- Each sentence must be natural and context-rich
+- The word must be naturally fit in the sentence
+- Use "____" (4 underscores) as the placeholder
+- Generate a DIFFERENT sentence for each word
+- Output valid JSON array only, no markdown, no explanation"""
+
+    payload = {
+        'model': 'moonshotai/kimi-k2.5',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': 2048,
+        'temperature': 0.7,
+        'top_p': 1.0,
+        'stream': False
+    }
+    
+    try:
+        print(f"[DEBUG] Calling NVIDIA/kimi API...")
+        response = requests.post(
+            invoke_url,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        
+        print(f"[DEBUG] Response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"[DEBUG] API Error: {response.text[:300]}")
+            return []
+        
+        result = response.json()
+        content = result['choices'][0]['message']['content']
+        
+        print(f"[DEBUG] Content length: {len(content)}")
+        print(f"[DEBUG] Content preview: {content[:200]}...")
+        
+        if not content:
+            return []
+        
+        # Clean and extract JSON
+        content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'```', '', content, flags=re.IGNORECASE)
+        
+        start = content.find('[')
+        end = content.rfind(']') + 1
+        if start == -1 or end == 0:
+            print(f"[DEBUG] No JSON array found")
+            return []
+        
+        json_str = content[start:end]
+        json_str = re.sub(r',\s*}', '}', json_str)
+        json_str = re.sub(r',\s*]', ']', json_str)
+        
+        print(f"[DEBUG] JSON length: {len(json_str)}")
+        
+        data = json.loads(json_str)
+        
+        if not isinstance(data, list):
+            print(f"[DEBUG] Expected list, got: {type(data)}")
+            return []
+        
+        print(f"[DEBUG] Generated {len(data)} sentences")
+        return data
+    
+    except Exception as e:
+        print(f"[DEBUG] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
 
 
 @app.route('/')
@@ -183,19 +142,23 @@ def vocab_test():
 
 @app.route('/api/generate-quiz', methods=['POST'])
 def api_generate_quiz():
+    """
+    API endpoint to generate quiz sentences.
+    Returns {word, sentence} pairs. Options are generated client-side.
+    """
     data = request.get_json()
     vocabularies = data.get('vocabularies', '')
     
     if not vocabularies.strip():
         return jsonify({'error': '請輸入中文詞彙'}), 400
     
-    questions = generate_quiz_questions(vocabularies)
+    results = generate_sentences(vocabularies)
     
-    if questions:
+    if results:
         return jsonify({
             'success': True,
-            'questions': questions,
-            'total': len(questions)
+            'data': results,
+            'total': len(results)
         })
     else:
         return jsonify({

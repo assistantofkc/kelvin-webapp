@@ -74,10 +74,6 @@
             color: #667eea;
         }
 
-        .sidebar a span {
-            margin-right: 10px;
-        }
-
         .overlay {
             position: fixed;
             top: 0;
@@ -207,6 +203,7 @@
             display: block;
         }
 
+        /* Quiz Section */
         .quiz-section {
             display: none;
         }
@@ -238,62 +235,56 @@
         }
 
         .question-text {
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-            line-height: 1.6;
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            line-height: 1.8;
+            text-align: center;
+            font-family: 'Noto Serif TC', serif;
         }
 
         .options {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
 
         .option {
             display: flex;
             align-items: center;
-            padding: 15px 20px;
-            background: rgba(0, 0, 0, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            justify-content: center;
+            padding: 18px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 1.2rem;
+            font-weight: 600;
         }
 
         .option:hover {
             border-color: #667eea;
-            background: rgba(102, 126, 234, 0.1);
+            background: rgba(102, 126, 234, 0.2);
         }
 
         .option.selected {
             border-color: #667eea;
-            background: rgba(102, 126, 234, 0.2);
+            background: rgba(102, 126, 234, 0.3);
         }
 
         .option.correct {
             border-color: #22c55e;
-            background: rgba(34, 197, 94, 0.2);
+            background: rgba(34, 197, 94, 0.3);
         }
 
         .option.wrong {
             border-color: #ef4444;
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.3);
         }
 
-        .option-letter {
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            margin-right: 15px;
-            font-weight: bold;
-        }
-
-        .option-text {
-            flex: 1;
+        .option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .nav-buttons {
@@ -322,6 +313,7 @@
             cursor: not-allowed;
         }
 
+        /* Results */
         .results {
             text-align: center;
             display: none;
@@ -332,7 +324,7 @@
         }
 
         .score {
-            font-size: 4rem;
+            font-size: 5rem;
             font-weight: bold;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
@@ -377,6 +369,10 @@
             .question-vocab {
                 font-size: 1.5rem;
             }
+            
+            .options {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -397,21 +393,25 @@
     <div class="container">
         <h1>📝 中文詞彙測試</h1>
 
+        <!-- Input Section -->
         <div class="card input-section" id="inputSection">
             <div class="input-section">
-                <label for="vocabInput">請輸入中文詞彙（用空格分隔）：</label>
-                <textarea id="vocabInput" placeholder="例如：經歷 糾結 挫敗 借鑒 逃避 悲憤 煩惱 正視 化解"></textarea>
+                <label for="vocabInput">請輸入中文詞彙（用空格分隔，至少4個詞）：</label>
+                <textarea id="vocabInput" placeholder="例如：經歷 糾結 挫敗 借鑒 逃避 悲憤 煩惱 正視 化解 難免"></textarea>
             </div>
             <button class="btn" id="startBtn" onclick="startQuiz()">開始測試</button>
         </div>
 
+        <!-- Loading -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>正在生成題目，請稍候...</p>
         </div>
 
+        <!-- Error -->
         <div class="error" id="error"></div>
 
+        <!-- Quiz Section -->
         <div class="quiz-section" id="quizSection">
             <div class="progress" id="progress"></div>
             <div class="question-card" id="questionCard"></div>
@@ -422,6 +422,7 @@
             </div>
         </div>
 
+        <!-- Results -->
         <div class="results" id="results">
             <div class="card">
                 <div class="score" id="score">0</div>
@@ -429,12 +430,13 @@
                 <button class="btn-restart" onclick="restartQuiz()">重新測試</button>
             </div>
         </div>
-        <div style="text-align:center; margin-top:20px; color:#666; font-size:0.9rem;">{{ version }}</div>
     </div>
 
     <script>
-        let questions = [];
+        let quizData = [];  // {word, sentence} from API
+        let allWords = [];  // All vocabulary words
         let currentIndex = 0;
+        let score = 0;
         let userAnswers = [];
 
         function toggleSidebar() {
@@ -442,11 +444,41 @@
             document.getElementById('overlay').classList.toggle('active');
         }
 
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function generateOptions(correctWord, allWords) {
+            // Get all unique words except the correct one
+            const uniqueWords = [...new Set(allWords)];
+            const distractors = uniqueWords.filter(w => w !== correctWord);
+            
+            // Shuffle and take 3
+            const selectedDistractors = shuffleArray(distractors).slice(0, 3);
+            
+            // Combine with correct answer and shuffle
+            const options = shuffleArray([correctWord, ...selectedDistractors]);
+            return options;
+        }
+
         async function startQuiz() {
             const vocabInput = document.getElementById('vocabInput').value.trim();
             
             if (!vocabInput) {
-                showError('請輸入至少一個中文詞彙');
+                showError('請輸入至少4個中文詞彙');
+                return;
+            }
+
+            // Parse vocabulary
+            allWords = vocabInput.split(/[\n\s]+/).filter(w => w.trim());
+            
+            if (allWords.length < 4) {
+                showError('請輸入至少4個中文詞彙');
                 return;
             }
 
@@ -466,9 +498,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    questions = data.questions;
-                    userAnswers = new Array(questions.length).fill(null);
+                    quizData = data.data;
+                    userAnswers = new Array(quizData.length).fill(null);
                     currentIndex = 0;
+                    score = 0;
                     hideLoading();
                     showQuiz();
                     displayQuestion();
@@ -509,29 +542,33 @@
         }
 
         function displayQuestion() {
-            const question = questions[currentIndex];
+            const item = quizData[currentIndex];
             const progress = document.getElementById('progress');
             const questionCard = document.getElementById('questionCard');
             
-            progress.textContent = `第 ${currentIndex + 1} 題，共 ${questions.length} 題`;
+            progress.textContent = `第 ${currentIndex + 1} 題，共 ${quizData.length} 題`;
             
-            const optionsHtml = Object.entries(question.options).map(([key, value]) => `
-                <div class="option ${userAnswers[currentIndex] === key ? 'selected' : ''}" 
-                     data-key="${key}" onclick="selectOption('${key}')">
-                    <span class="option-letter">${key}</span>
-                    <span class="option-text">${value}</span>
+            // Format sentence - replace ____ with _____ (4 underscores to 5)
+            const formattedSentence = item.sentence.replace('____', '_____');
+            
+            // Generate options using all words (like Google Studio version)
+            const options = generateOptions(item.word, allWords);
+            userAnswers[currentIndex] = { options: options, selected: null };
+            
+            const optionsHtml = options.map((option, idx) => `
+                <div class="option" data-index="${idx}" onclick="selectOption(${idx})">
+                    ${option}
                 </div>
             `).join('');
 
             questionCard.innerHTML = `
-                <div class="question-vocab">${question.vocabulary || question.word || '詞彙'}</div>
-                <div class="question-text">${question.sentence || question.question || '選詞填空'}</div>
+                <div class="question-text">${formattedSentence}</div>
                 <div class="options">${optionsHtml}</div>
             `;
 
             document.getElementById('prevBtn').disabled = currentIndex === 0;
             
-            if (currentIndex < questions.length - 1) {
+            if (currentIndex < quizData.length - 1) {
                 document.getElementById('nextBtn').style.display = 'block';
                 document.getElementById('submitBtn').style.display = 'none';
             } else {
@@ -540,9 +577,32 @@
             }
         }
 
-        function selectOption(key) {
-            userAnswers[currentIndex] = key;
-            displayQuestion();
+        function selectOption(idx) {
+            const answerData = userAnswers[currentIndex];
+            if (answerData.selected !== null) return;  // Already answered
+            
+            const options = answerData.options;
+            const selectedWord = options[idx];
+            const correctWord = quizData[currentIndex].word;
+            const isCorrect = selectedWord === correctWord;
+            
+            if (isCorrect) {
+                score += 10;
+            }
+            
+            answerData.selected = idx;
+            answerData.correct = isCorrect;
+            
+            // Update UI
+            const optionElements = document.querySelectorAll('.option');
+            optionElements.forEach((el, i) => {
+                el.classList.add('disabled');
+                if (options[i] === correctWord) {
+                    el.classList.add('correct');
+                } else if (i === idx && !isCorrect) {
+                    el.classList.add('wrong');
+                }
+            });
         }
 
         function prevQuestion() {
@@ -553,27 +613,20 @@
         }
 
         function nextQuestion() {
-            if (currentIndex < questions.length - 1) {
+            if (currentIndex < quizData.length - 1) {
                 currentIndex++;
                 displayQuestion();
             }
         }
 
         function showResults() {
-            let correct = 0;
-            
-            questions.forEach((q, i) => {
-                if (userAnswers[i] === q.correct) {
-                    correct++;
-                }
-            });
-
-            const percentage = Math.round((correct / questions.length) * 100);
-            
             document.getElementById('quizSection').classList.remove('show');
             document.getElementById('results').classList.add('show');
-            document.getElementById('score').textContent = `${correct}/${questions.length}`;
-            document.getElementById('scoreText').textContent = `正確率：${percentage}%`;
+            document.getElementById('score').textContent = score;
+            
+            const percentage = Math.round((score / (quizData.length * 10)) * 100);
+            document.getElementById('scoreText').textContent = 
+                `總分：${score} / ${quizData.length * 10} | 正確率：${percentage}%`;
         }
 
         function restartQuiz() {
@@ -581,9 +634,11 @@
             document.getElementById('inputSection').style.display = 'block';
             document.getElementById('startBtn').disabled = false;
             document.getElementById('vocabInput').value = '';
-            questions = [];
+            quizData = [];
+            allWords = [];
             userAnswers = [];
             currentIndex = 0;
+            score = 0;
         }
     </script>
 </body>
