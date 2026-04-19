@@ -16,14 +16,14 @@ try:
     from config import MINIMAX_API_KEY, MINIMAX_API_URL
 except ImportError:
     MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '').strip()
-    MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://generativelanguage.googleapis.com')
+    MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', '')
 
 # App version
-APP_VERSION = 'v3.0'
+APP_VERSION = 'v4.0'
 
 
 def generate_quiz_questions(vocabularies):
-    """使用 Gemini API 生成中文詞彙測驗題目"""
+    """使用 NVIDIA/kimi-k2.5 API 生成中文詞彙測驗題目"""
     print(f"[DEBUG] generate_quiz_questions called")
     
     if not vocabularies:
@@ -38,15 +38,14 @@ def generate_quiz_questions(vocabularies):
     
     all_questions = []
     batch_size = 5
+    
+    # NVIDIA API endpoint
+    invoke_url = 'https://integrate.api.nvidia.com/v1/chat/completions'
+    
     headers = {
+        'Authorization': 'Bearer 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',
         'Content-Type': 'application/json'
     }
-    
-    # Gemini API endpoint
-    gemini_api_key = os.environ.get('GEMINI_API_KEY', '').strip()
-    if not gemini_api_key:
-        gemini_api_key = 'AIzaSyC9aEJ_GD92Rb0M6HKXAmwQPDZgQHRXKCw'  # fallback
-    gemini_url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}'
     
     for i in range(0, len(vocab_list), batch_size):
         batch = vocab_list[i:i + batch_size]
@@ -76,19 +75,18 @@ def generate_quiz_questions(vocabularies):
 }}"""
         
         payload = {
-            'contents': [{
-                'parts': [{'text': prompt}]
-            }],
-            'generationConfig': {
-                'temperature': 0.5,
-                'maxOutputTokens': 2048
-            }
+            'model': 'moonshotai/kimi-k2.5',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'max_tokens': 2048,
+            'temperature': 0.7,
+            'top_p': 1.0,
+            'stream': False
         }
         
         try:
-            print(f"[DEBUG] Calling Gemini API...")
+            print(f"[DEBUG] Calling NVIDIA/kimi API...")
             response = requests.post(
-                gemini_url,
+                invoke_url,
                 headers=headers,
                 json=payload,
                 timeout=60
@@ -102,12 +100,11 @@ def generate_quiz_questions(vocabularies):
             
             result = response.json()
             
-            # Gemini returns text in candidates[0].content.parts[0].text
+            # Extract content from the response
             try:
-                content = result['candidates'][0]['content']['parts'][0]['text']
+                content = result['choices'][0]['message']['content']
             except (KeyError, IndexError) as e:
                 print(f"[DEBUG] Failed to extract content: {e}")
-                print(f"[DEBUG] Result: {result}")
                 continue
             
             print(f"[DEBUG] Content length: {len(content)}")
