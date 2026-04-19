@@ -32,15 +32,15 @@ def generate_sentences(vocabularies):
     if not vocab_list:
         return []
     
-    # NVIDIA API endpoint
-    invoke_url = 'https://integrate.api.nvidia.com/v1/chat/completions'
+    # MiniMax API endpoint
+    mini_max_url = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
     
-    nvidia_api_key = os.environ.get('NVIDIA_API_KEY', '').strip()
-    if not nvidia_api_key:
-        nvidia_api_key = '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'
+    mini_max_api_key = os.environ.get('MINIMAX_API_KEY', '').strip()
+    if not mini_max_api_key:
+        mini_max_api_key = 'sk-cp-yrzrhj9MPRYAZ2Xit1OgVVCitgM7LBYmridy2CzkpNDN_R0LLi2Xubm69-Q0v0YIivMiJRtKcL7ngzNbPRq_2DlNmPK5iyeIIcDZAhpFS7e4w3Z5xwQvxNg'
     
     headers = {
-        'Authorization': f'Bearer {nvidia_api_key}',
+        'Authorization': f'Bearer {mini_max_api_key}',
         'Content-Type': 'application/json'
     }
     
@@ -66,12 +66,10 @@ Rules:
 - Output valid JSON array only, no markdown, no explanation"""
 
     payload = {
-        'model': 'moonshotai/kimi-k2.5',
+        'model': 'MiniMax-M2.7',
         'messages': [{'role': 'user', 'content': prompt}],
-        'max_tokens': 2048,
         'temperature': 0.7,
-        'top_p': 1.0,
-        'stream': False
+        'max_tokens': 2000
     }
     
     try:
@@ -90,7 +88,7 @@ Rules:
             return []
         
         result = response.json()
-        content = result['choices'][0]['message']['content']
+        content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
         
         print(f"[DEBUG] Content length: {len(content)}")
         print(f"[DEBUG] Content preview: {content[:200]}...")
