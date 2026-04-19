@@ -19,7 +19,7 @@ except ImportError:
     MINIMAX_API_URL = os.environ.get('MINIMAX_API_URL', 'https://api.minimax.io/v1/text/chatcompletion_v2')
 
 # App version
-APP_VERSION = 'v2.0'
+APP_VERSION = 'v2.1'
 
 
 def generate_quiz_questions(vocabularies):
