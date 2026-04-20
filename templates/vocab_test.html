@@ -656,23 +656,41 @@
                 if (debugEl) debugEl.textContent = 'Step 4: data.success=' + data.success + ', data.error=' + data.error;
 
                 if (data.success) {
-                    // 成功！顯示藍色確認再移除
+                    // 成功！顯示藍色確認
                     if (blockerMsg) {
-                        blockerMsg.textContent = '🎉 API 成功！顯示題目中...';
+                        blockerMsg.textContent = '🎉 API 成功！正在顯示題目... data.data.length=' + data.data.length;
                         blockerMsg.style.background = 'blue';
                     }
                     quizData = shuffleArray(data.data);  // Shuffle questions for random order
                     userAnswers = new Array(quizData.length).fill(null);
                     currentIndex = 0;
                     score = 0;
-                    hideLoading();
-                    showQuiz();
+                    
+                    // 強制隱藏 loading
+                    const loadingEl = document.getElementById('loading');
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (loadingEl) loadingEl.classList.remove('show');
+                    
+                    // 確保 inputSection 係 hidden
+                    const inputSection = document.getElementById('inputSection');
+                    if (inputSection) inputSection.style.display = 'none';
+                    
+                    // 強制顯示 quizSection
+                    const quizSection = document.getElementById('quizSection');
+                    if (quizSection) {
+                        quizSection.style.display = 'block';
+                        quizSection.classList.add('show');
+                        if (blockerMsg) {
+                            blockerMsg.textContent = '✅ 完成！quizSection display=' + quizSection.style.display;
+                        }
+                    }
+                    
                     displayQuestion();
+                    
                     // 3秒後移除 blocker
                     if (blockerMsg) {
                         setTimeout(() => {
                             if (blockerMsg) blockerMsg.remove();
-                            // 都移除埋 testMsg
                             const testMsg = document.getElementById('testMsg');
                             if (testMsg) testMsg.remove();
                         }, 3000);
@@ -750,7 +768,9 @@
         }
 
         function showQuiz() {
-            document.getElementById('quizSection').classList.add('show');
+            const quizSection = document.getElementById('quizSection');
+            quizSection.style.display = 'block';
+            quizSection.classList.add('show');
             document.getElementById('results').classList.remove('show');
         }
 
