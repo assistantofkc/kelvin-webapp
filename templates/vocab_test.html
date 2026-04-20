@@ -559,7 +559,7 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    quizData = data.data;
+                    quizData = shuffleArray(data.data);  // Shuffle questions for random order
                     userAnswers = new Array(quizData.length).fill(null);
                     currentIndex = 0;
                     score = 0;
