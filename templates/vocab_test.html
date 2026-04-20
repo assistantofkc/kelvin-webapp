@@ -589,11 +589,11 @@
             }
             if (debugEl) debugEl.textContent = 'Step 1.5: About to fetch...';
 
+            // Create abort controller and timeout OUTSIDE try block
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s client timeout
+            
             try {
-                // Create abort controller for timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s client timeout
-                
                 if (debugEl) debugEl.textContent = 'Step 2: Fetch started...';
                 
                 // 更新 blocker 顯示正在等待
@@ -612,9 +612,6 @@
                 });
                 
                 clearTimeout(timeoutId);
-
-                // 立即更新 blockerMsg 顯示 API 已回應
-                const blockerMsg = document.getElementById('blockerMsg');
                 if (blockerMsg) {
                     blockerMsg.textContent = '📩 API 回應了！status:' + response.status + ' - 處理中...';
                     blockerMsg.style.background = 'green';
