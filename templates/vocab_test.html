@@ -442,6 +442,7 @@
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>正在生成題目（請稍候，最多需時約2分鐘）...</p>
+            <div id="debugMsg" style="color: #667eea; margin-top: 15px; font-size: 0.9rem;"></div>
         </div>
 
         <!-- Error -->
@@ -534,6 +535,10 @@
         }
 
         async function loadNextBatch() {
+            // Show debug on page
+            const debugEl = document.getElementById('debugMsg');
+            if (debugEl) debugEl.textContent = 'Step 1: Starting...';
+            
             showLoading();
             
             // Calculate batch range
@@ -547,6 +552,8 @@
             document.getElementById('batchInfo').textContent = 
                 `第 ${batchNum} 批，共 ${totalBatches} 批（${startIdx + 1}-${endIdx} 詞）`;
 
+            if (debugEl) debugEl.textContent = 'Step 2: Calling API...';
+
             try {
                 const response = await fetch('/api/generate-quiz', {
                     method: 'POST',
@@ -556,9 +563,7 @@
                     body: JSON.stringify({ vocabularies: currentBatchVocab.join(' ') })
                 });
 
-                console.log('Response status:', response.status);
-                const data = await response.json();
-                console.log('API response:', data);
+                if (debugEl) debugEl.textContent = 'Step 3: API returned, status: ' + response.status;
 
                 if (!response.ok) {
                     showError('伺服器錯誤: ' + response.status);
@@ -566,6 +571,9 @@
                     document.getElementById('startBtn').disabled = false;
                     return;
                 }
+
+                const data = await response.json();
+                if (debugEl) debugEl.textContent = 'Step 4: data.success=' + data.success;
 
                 if (data.success) {
                     quizData = shuffleArray(data.data);  // Shuffle questions for random order
