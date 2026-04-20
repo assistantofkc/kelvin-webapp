@@ -871,7 +871,7 @@
             currentBatchIndex++;
             
             const totalBatches = Math.ceil(allWords.length / BATCH_SIZE);
-            const hasMoreBatches = (currentBatchIndex + 1) < totalBatches;
+            const hasMoreBatches = currentBatchIndex < totalBatches;
             
             document.getElementById('quizSection').style.display = 'none';
             document.getElementById('quizSection').classList.remove('show');
