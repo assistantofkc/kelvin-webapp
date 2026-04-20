@@ -915,10 +915,17 @@
 
         function restartQuiz() {
             document.getElementById('results').classList.remove('show');
+            document.getElementById('results').style.display = 'none';
             document.getElementById('inputSection').style.display = 'block';
             document.getElementById('startBtn').disabled = false;
             document.getElementById('vocabInput').value = '';
             document.getElementById('error').classList.remove('show');
+            document.getElementById('error').style.display = 'none';
+            
+            // 清除 scoreText 同 score display
+            document.getElementById('score').textContent = '0';
+            document.getElementById('scoreText').textContent = '';
+            document.getElementById('batchActions').innerHTML = '';
             
             // Reset all state
             allWords = [];
