@@ -890,6 +890,12 @@
             }
             alert('batchActionsHtml built');
             
+            // 強制顯示 results
+            const resultsEl = document.getElementById('results');
+            resultsEl.style.display = 'block';
+            resultsEl.classList.add('show');
+            alert('results style set to block, class added');
+            
             document.getElementById('batchActions').innerHTML = batchActionsHtml;
             alert('batchActions.innerHTML set - 完成！');
         }
