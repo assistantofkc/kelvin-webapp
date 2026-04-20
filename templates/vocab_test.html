@@ -555,13 +555,22 @@
             if (debugEl) debugEl.textContent = 'Step 2: Calling API...';
 
             try {
+                // Create abort controller for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s client timeout
+                
+                if (debugEl) debugEl.textContent = 'Step 2.5: Fetch started...';
+                
                 const response = await fetch('/api/generate-quiz', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ vocabularies: currentBatchVocab.join(' ') })
+                    body: JSON.stringify({ vocabularies: currentBatchVocab.join(' ') }),
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
 
                 if (debugEl) debugEl.textContent = 'Step 3: API returned, status: ' + response.status + ', statusText: ' + response.statusText;
 
@@ -596,7 +605,10 @@
                     document.getElementById('startBtn').disabled = false;
                 }
             } catch (error) {
-                const errMsg = '網絡錯誤: ' + error.message;
+                let errMsg = '網絡錯誤: ' + error.message;
+                if (error.name === 'AbortError') {
+                    errMsg = '請求超時（服務器回應太慢）';
+                }
                 if (debugEl) debugEl.textContent = 'ERROR: ' + errMsg;
                 showError(errMsg);
                 hideLoading();
