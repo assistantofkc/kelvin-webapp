@@ -887,21 +887,24 @@
             document.getElementById('score').textContent = score;
             
             const percentage = Math.round((score / (quizData.length * 10)) * 100);
-            document.getElementById('scoreText').textContent = 
-                `這一批：${score} / ${quizData.length * 10} | 正確率：${percentage}%`;
+            document.getElementById('scoreText').innerHTML = 
+                `這一批：${score} / ${quizData.length * 10} | 正確率：${percentage}%<br>` +
+                `<span style="color:yellow; font-size:1.2rem;">📊 累積總分：${totalScore} 分（${batchesCompleted} 批已完成）</span>`;
             
             // Build batch actions
             let batchActionsHtml = '';
             if (hasMoreBatches) {
                 batchActionsHtml = `
-                    <button class="btn-next-batch" id="nextBatchBtn" onclick="alert('next batch clicked!'); loadNextBatch(); return false;">下一批題目 (${(currentBatchIndex + 2)}/${totalBatches})</button>
-                    <button class="btn-restart" onclick="alert('restart clicked!'); restartQuiz(); return false;">重新開始</button>
+                    <button class="btn-next-batch" id="nextBatchBtn" onclick="loadNextBatch(); return false;">下一批題目 (${(currentBatchIndex + 2)}/${totalBatches})</button>
+                    <button class="btn-restart" onclick="restartQuiz(); return false;">重新開始</button>
                 `;
             } else {
+                const totalPossible = allWords.length * 10;
+                const totalPercentage = Math.round((totalScore / totalPossible) * 100);
                 batchActionsHtml = `
                     <div class="all-complete">
-                        🎉 恭喜完成所有詞彙！<br>
-                        總分：${totalScore} / ${allWords.length * 10} 分
+                        🎉 恭喜完成所有詞彙！<br><br>
+                        📊 累積總分：${totalScore} / ${totalPossible} 分（${totalPercentage}%正確）
                     </div>
                     <button class="btn-restart" onclick="restartQuiz()" style="margin-top: 20px;">重新開始</button>
                 `;
