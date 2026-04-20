@@ -543,13 +543,6 @@
 
             hideError();
             
-            // 立即喺輸入框上方顯示測試文字
-            const inputSection = document.getElementById('inputSection');
-            if (inputSection) {
-                inputSection.style.border = '5px solid red';
-                inputSection.insertAdjacentHTML('beforebegin', '<div id="testMsg" style="color:red; font-size:2rem; text-align:center; padding:20px;">🔥 startQuiz() 成功執行！border 變紅色係為咗測試</div>');
-            }
-            
             document.getElementById('startBtn').disabled = true;
             document.getElementById('startBtn').textContent = '🔥 正在生成題目...';
             
@@ -917,7 +910,9 @@
             document.getElementById('results').classList.remove('show');
             document.getElementById('results').style.display = 'none';
             document.getElementById('inputSection').style.display = 'block';
+            document.getElementById('inputSection').style.border = ''; // 清除紅色 border
             document.getElementById('startBtn').disabled = false;
+            document.getElementById('startBtn').textContent = '開始測試';
             document.getElementById('vocabInput').value = '';
             document.getElementById('error').classList.remove('show');
             document.getElementById('error').style.display = 'none';
