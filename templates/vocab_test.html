@@ -507,9 +507,14 @@
         }
 
         async function startQuiz() {
-            // 測試用：立即改變頁面文字確認 JS 運行
+            // 測試用：立即顯示 alert 確認 JS 運行
             const debugEl = document.getElementById('debugMsg');
-            if (debugEl) debugEl.textContent = '🔔 JS 已運行！';
+            if (debugEl) {
+                debugEl.textContent = '🔔 startQuiz() 被調用了！';
+                debugEl.style.color = 'red';
+                debugEl.style.fontSize = '1.5rem';
+            }
+            alert('JS 正常運行！如果你見到呢個，JavaScript 係正常嘅。');
             
             const vocabInput = document.getElementById('vocabInput').value.trim();
             
@@ -533,6 +538,7 @@
 
             hideError();
             document.getElementById('startBtn').disabled = true;
+            document.getElementById('startBtn').textContent = '🔥 正在生成題目...';
             
             // Start first batch
             await loadNextBatch();
