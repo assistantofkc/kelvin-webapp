@@ -507,6 +507,12 @@
         }
 
         async function startQuiz() {
+            // 清理之前測試殘留
+            const oldBlocker = document.getElementById('blockerMsg');
+            if (oldBlocker) oldBlocker.remove();
+            const oldTestMsg = document.getElementById('testMsg');
+            if (oldTestMsg) oldTestMsg.remove();
+            
             // 測試用：立即顯示 alert 確認 JS 運行
             alert('JS 正常運行！');
             
@@ -551,11 +557,10 @@
             const debugEl = document.getElementById('debugMsg');
             const inputSection = document.getElementById('inputSection');
             
-            // 先喺 inputSection 插入 debug 文字（就算 showLoading 都會保留）
-            if (inputSection) {
-                inputSection.insertAdjacentHTML('beforebegin', 
-                    '<div id="preLoadMsg" style="color:yellow; font-size:1.5rem; text-align:center; padding:10px; background:orange;">🚨 loadNextBatch() 開始執行！</div>');
-            }
+            // 用 document.body 插入绝对不会被 hideLoading() 移除的訊息
+            document.body.insertAdjacentHTML('afterbegin', 
+                '<div id="blockerMsg" style="position:fixed; top:0; left:0; right:0; z-index:9999; background:red; color:white; font-size:2rem; padding:20px; text-align:center;">🚨 loadNextBatch() 正在執行，請稍候...</div>');
+            
             if (debugEl) {
                 debugEl.textContent = 'Step 0: loadNextBatch() 入口';
                 debugEl.style.color = 'yellow';
