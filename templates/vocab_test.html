@@ -501,7 +501,14 @@
         function generateOptions(correctWord, allWords) {
             const uniqueWords = [...new Set(allWords)];
             const distractors = uniqueWords.filter(w => w !== correctWord);
-            const selectedDistractors = shuffleArray(distractors).slice(0, 3);
+            // 要4個選項，所以需要3個干擾詞。如果不夠，用現有的重複。<br>            let selectedDistractors = shuffleArray(distractors).slice(0, 3);
+            
+            // 如果干擾詞不夠3個，重複補足
+            while (selectedDistractors.length < 3) {
+                selectedDistractors.push(...shuffleArray(distractors).slice(0, 1));
+                selectedDistractors = [...new Set(selectedDistractors)]; // 去重
+            }
+            
             const options = shuffleArray([correctWord, ...selectedDistractors]);
             return options;
         }
@@ -566,7 +573,12 @@
                 debugEl.style.color = 'yellow';
             }
             
+            // 強制顯示 loading 動畫
             showLoading();
+            
+            // 強制顯示 blockerMsg
+            document.body.insertAdjacentHTML('afterbegin', 
+                '<div id="blockerMsg" style="position:fixed; top:60px; left:0; right:0; z-index:9999; background:orange; color:white; font-size:1.5rem; padding:15px; text-align:center;">⏳ 正在生成第 ' + (currentBatchIndex + 1) + ' 批題目...</div>');
             
             // Calculate batch range
             const startIdx = currentBatchIndex * BATCH_SIZE;
@@ -744,10 +756,15 @@
 
         function showLoading() {
             const loading = document.getElementById('loading');
-            if (loading) loading.classList.add('show');
+            if (loading) {
+                loading.style.display = 'block';
+                loading.classList.add('show');
+            }
             document.getElementById('inputSection').style.display = 'none';
             document.getElementById('quizSection').style.display = 'none';
+            document.getElementById('quizSection').classList.remove('show');
             document.getElementById('results').style.display = 'none';
+            document.getElementById('results').classList.remove('show');
         }
 
         function hideLoading() {
@@ -785,8 +802,8 @@
             // Format sentence
             const formattedSentence = item.sentence.replace('____', '_____');
             
-            // Generate options using current batch vocabulary
-            const options = generateOptions(item.word, currentBatchVocab);
+            // Generate options using ALL vocabulary (not just current batch) for 4 choices
+            const options = generateOptions(item.word, allWords);
             userAnswers[currentIndex] = { options: options, selected: null };
             
             const optionsHtml = options.map((option, idx) => `
@@ -855,6 +872,9 @@
         function showBatchResults() {
             totalScore += score;
             batchesCompleted++;
+            
+            // 重要：完成這批後增加 currentBatchIndex
+            currentBatchIndex++;
             
             const totalBatches = Math.ceil(allWords.length / BATCH_SIZE);
             const hasMoreBatches = (currentBatchIndex + 1) < totalBatches;
