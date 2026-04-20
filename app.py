@@ -16,7 +16,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.54'
+APP_VERSION = 'v5.57'
 
 
 def generate_sentences(vocabularies, max_retries=2):

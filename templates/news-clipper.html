@@ -7,6 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
   
     <style>
+        :root {
+            --bg-primary: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            --bg-sidebar: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            --text-primary: #fff;
+            --text-secondary: #b0b0b0;
+            --accent: #667eea;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --card-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        body.light-mode {
+            --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            --bg-sidebar: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+            --text-primary: #1a1a2e;
+            --text-secondary: #555;
+            --accent: #4a5fd6;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+        
         .hamburger {
             position: fixed;
             top: 20px;
@@ -14,16 +41,17 @@
             z-index: 1000;
             cursor: pointer;
             padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 8px;
             transition: background 0.3s;
         }
-        .hamburger:hover { background: rgba(255, 255, 255, 0.2); }
+        .hamburger:hover { background: var(--card-border); }
         .hamburger-icon {
             display: block;
             width: 25px;
             height: 3px;
-            background: #fff;
+            background: var(--text-primary);
             margin: 5px 0;
             border-radius: 2px;
         }
@@ -33,7 +61,7 @@
             left: -280px;
             width: 280px;
             height: 100vh;
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            background: var(--bg-sidebar);
             padding-top: 80px;
             padding-left: 30px;
             transition: left 0.3s ease;
@@ -43,13 +71,13 @@
         .sidebar.active { left: 0; }
         .sidebar a {
             display: block;
-            color: #fff;
+            color: var(--text-primary);
             text-decoration: none;
             padding: 15px 0;
             font-size: 1.1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--card-border);
         }
-        .sidebar a:hover { color: #667eea; }
+        .sidebar a:hover { color: var(--accent); }
         .sidebar a span { margin-right: 10px; }
         .overlay {
             position: fixed;
@@ -64,6 +92,36 @@
             z-index: 998;
         }
         .overlay.active { opacity: 1; visibility: visible; }
+        
+        /* Theme Switch */
+        .theme-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        
+        .theme-switch:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+        
+        body.light-mode .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+        }
+        
+        body.light-mode #root {
+            background: var(--bg-primary);
+        }
     </style>
 </head>
 <body>
@@ -76,6 +134,10 @@
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
+        <div class="theme-switch" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-text">Dark Mode</span>
+        </div>
         <a href="/"><span>🏠</span> Home</a>
         <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
         <a href="/news-clipper"><span>📰</span> News Clipper</a>
@@ -557,6 +619,21 @@ This is the main content for the news article. Paste the text for a single artic
       const root = ReactDOM.createRoot(rootElement);
       root.render(<App />);
 
+      // Theme toggle
+      function toggleTheme() {
+          document.body.classList.toggle('light-mode');
+          const isLight = document.body.classList.contains('light-mode');
+          document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
+          document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+          localStorage.setItem('theme', isLight ? 'light' : 'dark');
+      }
+      
+      // Load saved theme
+      if (localStorage.getItem('theme') === 'light') {
+          document.body.classList.add('light-mode');
+          document.getElementById('theme-icon').textContent = '☀️';
+          document.getElementById('theme-text').textContent = 'Light Mode';
+      }
     </script>
 </body>
 </html>
