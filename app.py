@@ -12,7 +12,7 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.34'
+APP_VERSION = 'v5.35'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -49,17 +49,19 @@ def generate_sentences(vocabularies, max_retries=2):
     vocab_str = ', '.join(vocab_list)
     
     # Prompt: AI only generates word + sentence, NO options
-    prompt = f"""Given these Chinese words: {vocab_str}
+    prompt = f"""Given these Traditional Chinese words: {vocab_str}
 
-For EACH word, create a unique fill-in-the-blank sentence where the word is replaced with "____".
+For EACH word, create a unique fill-in-the-blank sentence (MUST use TRADITIONAL Chinese characters, NOT Simplified Chinese) where the word is replaced with "____".
 
 Output ONLY valid JSON array, no other text:
 [
-  {{"word": "經歷", "sentence": "他_____了很多困難終於成功"}},
-  {{"word": "糾結", "sentence": "這個決定讓我非常_____"}}
+  {{"word": "經歷", "sentence": "創業者在道路上面對了很多____最終找到成功方向"}},
+  {{"word": "糾結", "sentence": "這個決定讓我陷入嚴重的_____難以果斷行動"}}
 ]
 
 Rules:
+- 請使用繁體中文（台灣/香港用字），絕對不要使用簡體中文
+- 所有句子必須是繁體中文，包括所有標點符號
 - Each sentence must be natural and context-rich
 - The word must be naturally fit in the sentence
 - Use "____" (4 underscores) as the placeholder
