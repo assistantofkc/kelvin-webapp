@@ -545,7 +545,8 @@
         }
 
         async function loadNextBatch() {
-            // 測試用：喺 showLoading 之前就顯示訊息
+            const debugEl = document.getElementById('debugMsg');
+            
             if (debugEl) {
                 debugEl.textContent = 'Step 0: loadNextBatch() 入口';
                 debugEl.style.color = 'yellow';
