@@ -875,8 +875,8 @@
             let batchActionsHtml = '';
             if (hasMoreBatches) {
                 batchActionsHtml = `
-                    <button class="btn-next-batch" onclick="loadNextBatch()">下一批題目 (${(currentBatchIndex + 2)}/${totalBatches})</button>
-                    <button class="btn-restart" onclick="restartQuiz()">重新開始</button>
+                    <button class="btn-next-batch" id="nextBatchBtn" onclick="alert('next batch clicked!'); loadNextBatch(); return false;">下一批題目 (${(currentBatchIndex + 2)}/${totalBatches})</button>
+                    <button class="btn-restart" onclick="alert('restart clicked!'); restartQuiz(); return false;">重新開始</button>
                 `;
             } else {
                 batchActionsHtml = `
