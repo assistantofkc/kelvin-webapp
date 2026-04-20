@@ -12,7 +12,7 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.6'
+APP_VERSION = 'v5.7'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -80,7 +80,7 @@ Rules:
                 mini_max_url,
                 headers=headers,
                 json=payload,
-                timeout=90
+                timeout=120
             )
             
             print(f"[DEBUG] Response status: {response.status_code}")

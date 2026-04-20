@@ -441,7 +441,7 @@
         <!-- Loading -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>正在生成題目，請稍候...</p>
+            <p>正在生成題目（請稍候，最多需時約2分鐘）...</p>
         </div>
 
         <!-- Error -->
@@ -471,7 +471,7 @@
     </div>
 
     <script>
-        const BATCH_SIZE = 10;  // Maximum vocabularies per batch
+        const BATCH_SIZE = 5;  // Maximum vocabularies per batch
         
         let allWords = [];  // All vocabulary words from user input
         let currentBatchIndex = 0;  // Current batch number (0-indexed)
