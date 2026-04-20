@@ -515,12 +515,6 @@
         }
 
         async function startQuiz() {
-            // 清理之前測試殘留
-            const oldBlocker = document.getElementById('blockerMsg');
-            if (oldBlocker) oldBlocker.remove();
-            const oldTestMsg = document.getElementById('testMsg');
-            if (oldTestMsg) oldTestMsg.remove();
-            
             const vocabInput = document.getElementById('vocabInput').value.trim();
             
             if (!vocabInput) {
@@ -552,13 +546,6 @@
 
         async function loadNextBatch() {
             // 測試用：喺 showLoading 之前就顯示訊息
-            const debugEl = document.getElementById('debugMsg');
-            const inputSection = document.getElementById('inputSection');
-            
-            // 用 document.body 插入绝对不会被 hideLoading() 移除的訊息
-            document.body.insertAdjacentHTML('afterbegin', 
-                '<div id="blockerMsg" style="position:fixed; top:0; left:0; right:0; z-index:9999; background:red; color:white; font-size:2rem; padding:20px; text-align:center;">🚨 loadNextBatch() 正在執行，請稍候...</div>');
-            
             if (debugEl) {
                 debugEl.textContent = 'Step 0: loadNextBatch() 入口';
                 debugEl.style.color = 'yellow';
@@ -566,10 +553,6 @@
             
             // 強制顯示 loading 動畫
             showLoading();
-            
-            // 強制顯示 blockerMsg
-            document.body.insertAdjacentHTML('afterbegin', 
-                '<div id="blockerMsg" style="position:fixed; top:60px; left:0; right:0; z-index:9999; background:orange; color:white; font-size:1.5rem; padding:15px; text-align:center;">⏳ 正在生成第 ' + (currentBatchIndex + 1) + ' 批題目...</div>');
             
             // Calculate batch range
             const startIdx = currentBatchIndex * BATCH_SIZE;
@@ -584,27 +567,12 @@
 
             if (debugEl) debugEl.textContent = 'Step 2: Calling API...';
 
-            // 更新 blocker 顯示即將發送 API 請求
-            const blockerMsg = document.getElementById('blockerMsg');
-            if (blockerMsg) {
-                blockerMsg.textContent = '📡 準備發送 API 請求到 /api/generate-quiz...';
-                blockerMsg.style.background = 'purple';
-            }
-            if (debugEl) debugEl.textContent = 'Step 1.5: About to fetch...';
-
             // Create abort controller and timeout OUTSIDE try block
-            // Timeout must be > server timeout (120s) to allow full server processing
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 180000); // 180s client timeout (longer than server 120s)
+            const timeoutId = setTimeout(() => controller.abort(), 180000); // 180s client timeout
             
             try {
                 if (debugEl) debugEl.textContent = 'Step 2: Fetch started...';
-                
-                // 更新 blocker 顯示正在等待
-                if (blockerMsg) {
-                    blockerMsg.textContent = '⏳ 等待 API 回應中...（最多3分鐘）';
-                    blockerMsg.style.background = 'orange';
-                }
                 
                 const response = await fetch('/api/generate-quiz', {
                     method: 'POST',
@@ -616,19 +584,11 @@
                 });
                 
                 clearTimeout(timeoutId);
-                if (blockerMsg) {
-                    blockerMsg.textContent = '📩 API 回應了！status:' + response.status + ' - 處理中...';
-                    blockerMsg.style.background = 'green';
-                }
 
                 if (debugEl) debugEl.textContent = 'Step 3: API returned, status: ' + response.status + ', statusText: ' + response.statusText;
 
                 if (!response.ok) {
                     const errMsg = '伺服器錯誤: ' + response.status + ' ' + response.statusText;
-                    if (blockerMsg) {
-                        blockerMsg.textContent = '❌ ' + errMsg;
-                        blockerMsg.style.background = 'darkred';
-                    }
                     showError(errMsg);
                     hideLoading();
                     document.getElementById('startBtn').disabled = false;
@@ -638,9 +598,6 @@
                 let data;
                 try {
                     const text = await response.text();
-                    if (blockerMsg) {
-                        blockerMsg.textContent = '📩 API 回應了！status:' + response.status + ' text長度:' + text.length + ' - 解析中...';
-                    }
                     if (debugEl) debugEl.textContent = `Step 3.5: Received ${text.length} chars. First 100: ${text.substring(0, 100)}`;
 
                     if (!text || text.trim() === '') {
@@ -650,21 +607,12 @@
                     data = JSON.parse(text);
                 } catch (jsonErr) {
                     console.error('JSON parse failed:', jsonErr);
-                    if (blockerMsg) {
-                        blockerMsg.textContent = '❌ JSON 解析失敗: ' + jsonErr.message;
-                        blockerMsg.style.background = 'darkred';
-                    }
                     if (debugEl) debugEl.textContent = 'JSON parse error: ' + jsonErr.message;
                     data = { success: false, error: '伺服器返回無效格式（可能是超時或錯誤頁面）' };
                 }
                 if (debugEl) debugEl.textContent = 'Step 4: data.success=' + data.success + ', data.error=' + data.error;
 
                 if (data.success) {
-                    // 成功！顯示藍色確認
-                    if (blockerMsg) {
-                        blockerMsg.textContent = '🎉 API 成功！正在顯示題目... data.data.length=' + data.data.length;
-                        blockerMsg.style.background = 'blue';
-                    }
                     quizData = shuffleArray(data.data);  // Shuffle questions for random order
                     userAnswers = new Array(quizData.length).fill(null);
                     currentIndex = 0;
@@ -684,28 +632,12 @@
                     if (quizSection) {
                         quizSection.style.display = 'block';
                         quizSection.classList.add('show');
-                        if (blockerMsg) {
-                            blockerMsg.textContent = '✅ 完成！quizSection display=' + quizSection.style.display;
-                        }
                     }
                     
                     displayQuestion();
-                    
-                    // 3秒後移除 blocker
-                    if (blockerMsg) {
-                        setTimeout(() => {
-                            if (blockerMsg) blockerMsg.remove();
-                            const testMsg = document.getElementById('testMsg');
-                            if (testMsg) testMsg.remove();
-                        }, 3000);
-                    }
                 } else {
-                    // Show error but keep blocker visible
+                    // Show error
                     const errMsg = data.error || '生成題目時發生錯誤，請稍後再試';
-                    if (blockerMsg) {
-                        blockerMsg.textContent = '❌ ' + errMsg;
-                        blockerMsg.style.background = 'darkred';
-                    }
                     if (debugEl) debugEl.textContent = 'API ERROR: ' + errMsg;
                     showError(errMsg);
                     hideLoading();
@@ -726,10 +658,6 @@
                     errMsg = error.message || errMsg;
                 }
 
-                if (blockerMsg) {
-                    blockerMsg.textContent = '❌ CATCH: ' + errMsg;
-                    blockerMsg.style.background = 'darkred';
-                }
                 if (debugEl) {
                     debugEl.textContent = 'CATCH ERROR: ' + errMsg;
                     debugEl.style.color = 'red';
