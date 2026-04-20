@@ -617,14 +617,16 @@
         }
 
         function showLoading() {
-            document.getElementById('loading').classList.add('show');
+            const loading = document.getElementById('loading');
+            if (loading) loading.classList.add('show');
             document.getElementById('inputSection').style.display = 'none';
             document.getElementById('quizSection').style.display = 'none';
             document.getElementById('results').style.display = 'none';
         }
 
         function hideLoading() {
-            document.getElementById('loading').classList.remove('show');
+            const loading = document.getElementById('loading');
+            if (loading) loading.classList.remove('show');
         }
 
         function showError(message) {
@@ -772,6 +774,25 @@
             totalScore = 0;
             batchesCompleted = 0;
         }
+        
+        // Global error handler for uncaught errors
+        window.onerror = function(msg, url, line, col, error) {
+            const debugEl = document.getElementById('debugMsg');
+            if (debugEl) {
+                debugEl.textContent = 'GLOBAL ERROR: ' + msg + ' (line:' + line + ')';
+                debugEl.style.color = 'red';
+            }
+            return true; // Prevent default error handling
+        };
+        
+        // Promise rejection handler
+        window.onunhandledrejection = function(event) {
+            const debugEl = document.getElementById('debugMsg');
+            if (debugEl) {
+                debugEl.textContent = 'UNHANDLED REJECTION: ' + event.reason;
+                debugEl.style.color = 'red';
+            }
+        };
     </script>
 </body>
 </html>
