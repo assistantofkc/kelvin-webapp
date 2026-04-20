@@ -501,7 +501,8 @@
         function generateOptions(correctWord, allWords) {
             const uniqueWords = [...new Set(allWords)];
             const distractors = uniqueWords.filter(w => w !== correctWord);
-            // 要4個選項，所以需要3個干擾詞。如果不夠，用現有的重複。<br>            let selectedDistractors = shuffleArray(distractors).slice(0, 3);
+            // 要4個選項，所以需要3個干擾詞。如果不夠，用現有的重複。
+            let selectedDistractors = shuffleArray(distractors).slice(0, 3);
             
             // 如果干擾詞不夠3個，重複補足
             while (selectedDistractors.length < 3) {
@@ -519,9 +520,6 @@
             if (oldBlocker) oldBlocker.remove();
             const oldTestMsg = document.getElementById('testMsg');
             if (oldTestMsg) oldTestMsg.remove();
-            
-            // 測試用：立即顯示 alert 確認 JS 運行
-            alert('JS 正常運行！');
             
             const vocabInput = document.getElementById('vocabInput').value.trim();
             
