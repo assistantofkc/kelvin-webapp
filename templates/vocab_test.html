@@ -645,8 +645,11 @@
                 if (debugEl) debugEl.textContent = 'Step 4: data.success=' + data.success + ', data.error=' + data.error;
 
                 if (data.success) {
-                    // 成功！移除 blocker 並顯示 quiz
-                    if (blockerMsg) blockerMsg.remove();
+                    // 成功！顯示藍色確認再移除
+                    if (blockerMsg) {
+                        blockerMsg.textContent = '🎉 API 成功！顯示題目中...';
+                        blockerMsg.style.background = 'blue';
+                    }
                     quizData = shuffleArray(data.data);  // Shuffle questions for random order
                     userAnswers = new Array(quizData.length).fill(null);
                     currentIndex = 0;
@@ -654,7 +657,17 @@
                     hideLoading();
                     showQuiz();
                     displayQuestion();
+                    // 3秒後移除 blocker
+                    if (blockerMsg) {
+                        setTimeout(() => {
+                            if (blockerMsg) blockerMsg.remove();
+                            // 都移除埋 testMsg
+                            const testMsg = document.getElementById('testMsg');
+                            if (testMsg) testMsg.remove();
+                        }, 3000);
+                    }
                 } else {
+                    // Show error but keep blocker visible
                     const errMsg = data.error || '生成題目時發生錯誤，請稍後再試';
                     if (blockerMsg) {
                         blockerMsg.textContent = '❌ ' + errMsg;
