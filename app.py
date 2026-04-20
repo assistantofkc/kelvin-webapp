@@ -38,7 +38,10 @@ def generate_sentences(vocabularies, max_retries=2):
     
     mini_max_api_key = os.environ.get('MINIMAX_API_KEY', '').strip()
     if not mini_max_api_key:
-        mini_max_api_key = 'sk-cp-yrzrhj9MPRYAZ2Xit1OgVVCitgM7LBYmridy2CzkpNDN_R0LLi2Xubm69-Q0v0YIivMiJRtKcL7ngzNbPRq_2DlNmPK5iyeIIcDZAhpFS7e4w3Z5xwQvxNg'
+        return jsonify({
+            'success': False,
+            'error': 'MiniMax API key not configured. Please set MINIMAX_API_KEY environment variable.'
+        }), 500
     
     headers = {
         'Authorization': f'Bearer {mini_max_api_key}',
