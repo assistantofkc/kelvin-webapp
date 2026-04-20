@@ -852,20 +852,25 @@
         }
 
         function showBatchResults() {
-            alert('showBatchResults() 被點擊了！currentIndex=' + currentIndex + ', quizData.length=' + quizData.length);
+            alert('showBatchResults() 被點擊了！');
             totalScore += score;
             batchesCompleted++;
+            alert('totalScore=' + totalScore + ', batchesCompleted=' + batchesCompleted);
             
             const totalBatches = Math.ceil(allWords.length / BATCH_SIZE);
             const hasMoreBatches = (currentBatchIndex + 1) < totalBatches;
+            alert('totalBatches=' + totalBatches + ', hasMoreBatches=' + hasMoreBatches);
             
             document.getElementById('quizSection').classList.remove('show');
             document.getElementById('results').classList.add('show');
+            alert('quizSection hidden, results shown');
+            
             document.getElementById('score').textContent = score;
             
             const percentage = Math.round((score / (quizData.length * 10)) * 100);
             document.getElementById('scoreText').textContent = 
                 `這一批：${score} / ${quizData.length * 10} | 正確率：${percentage}%`;
+            alert('scoreText updated');
             
             // Build batch actions
             let batchActionsHtml = '';
@@ -883,8 +888,10 @@
                     <button class="btn-restart" onclick="restartQuiz()" style="margin-top: 20px;">重新開始</button>
                 `;
             }
+            alert('batchActionsHtml built');
             
             document.getElementById('batchActions').innerHTML = batchActionsHtml;
+            alert('batchActions.innerHTML set - 完成！');
         }
 
         function restartQuiz() {
