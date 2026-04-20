@@ -599,11 +599,21 @@
                 
                 clearTimeout(timeoutId);
 
+                // 立即更新 blockerMsg 顯示 API 已回應
+                const blockerMsg = document.getElementById('blockerMsg');
+                if (blockerMsg) {
+                    blockerMsg.textContent = '📩 API 回應了！status:' + response.status + ' - 處理中...';
+                    blockerMsg.style.background = 'green';
+                }
+
                 if (debugEl) debugEl.textContent = 'Step 3: API returned, status: ' + response.status + ', statusText: ' + response.statusText;
 
                 if (!response.ok) {
                     const errMsg = '伺服器錯誤: ' + response.status + ' ' + response.statusText;
-                    if (debugEl) debugEl.textContent = errMsg;
+                    if (blockerMsg) {
+                        blockerMsg.textContent = '❌ ' + errMsg;
+                        blockerMsg.style.background = 'darkred';
+                    }
                     showError(errMsg);
                     hideLoading();
                     document.getElementById('startBtn').disabled = false;
@@ -613,11 +623,8 @@
                 let data;
                 try {
                     const text = await response.text();
-                    // 強制顯示 response 內容（無論係咩）
-                    const preLoadMsg = document.getElementById('preLoadMsg');
-                    if (preLoadMsg) {
-                        preLoadMsg.textContent = `📩 API 回應了！status:${response.status} text長度:${text.length}`;
-                        preLoadMsg.style.background = 'green';
+                    if (blockerMsg) {
+                        blockerMsg.textContent = '📩 API 回應了！status:' + response.status + ' text長度:' + text.length + ' - 解析中...';
                     }
                     if (debugEl) debugEl.textContent = `Step 3.5: Received ${text.length} chars. First 100: ${text.substring(0, 100)}`;
 
@@ -628,12 +635,18 @@
                     data = JSON.parse(text);
                 } catch (jsonErr) {
                     console.error('JSON parse failed:', jsonErr);
+                    if (blockerMsg) {
+                        blockerMsg.textContent = '❌ JSON 解析失敗: ' + jsonErr.message;
+                        blockerMsg.style.background = 'darkred';
+                    }
                     if (debugEl) debugEl.textContent = 'JSON parse error: ' + jsonErr.message;
                     data = { success: false, error: '伺服器返回無效格式（可能是超時或錯誤頁面）' };
                 }
                 if (debugEl) debugEl.textContent = 'Step 4: data.success=' + data.success + ', data.error=' + data.error;
 
                 if (data.success) {
+                    // 成功！移除 blocker 並顯示 quiz
+                    if (blockerMsg) blockerMsg.remove();
                     quizData = shuffleArray(data.data);  // Shuffle questions for random order
                     userAnswers = new Array(quizData.length).fill(null);
                     currentIndex = 0;
@@ -643,6 +656,10 @@
                     displayQuestion();
                 } else {
                     const errMsg = data.error || '生成題目時發生錯誤，請稍後再試';
+                    if (blockerMsg) {
+                        blockerMsg.textContent = '❌ ' + errMsg;
+                        blockerMsg.style.background = 'darkred';
+                    }
                     if (debugEl) debugEl.textContent = 'API ERROR: ' + errMsg;
                     showError(errMsg);
                     hideLoading();
@@ -663,6 +680,10 @@
                     errMsg = error.message || errMsg;
                 }
 
+                if (blockerMsg) {
+                    blockerMsg.textContent = '❌ CATCH: ' + errMsg;
+                    blockerMsg.style.background = 'darkred';
+                }
                 if (debugEl) {
                     debugEl.textContent = 'CATCH ERROR: ' + errMsg;
                     debugEl.style.color = 'red';
