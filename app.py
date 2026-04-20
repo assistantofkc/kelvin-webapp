@@ -8,6 +8,10 @@ import random
 import json
 import os
 import re
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 app = Flask(__name__)
 
