@@ -507,6 +507,10 @@
         }
 
         async function startQuiz() {
+            // 測試用：立即改變頁面文字確認 JS 運行
+            const debugEl = document.getElementById('debugMsg');
+            if (debugEl) debugEl.textContent = '🔔 JS 已運行！';
+            
             const vocabInput = document.getElementById('vocabInput').value.trim();
             
             if (!vocabInput) {
