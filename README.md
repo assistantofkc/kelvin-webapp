@@ -1,107 +1,53 @@
-# Personal Homepage - PythonAnywhere Deployment Guide
+# 中文詞彙測試 (Chinese Vocabulary Test)
 
-## Step 1: Create PythonAnywhere Account
-1. Go to https://www.pythonanywhere.com
-2. Sign up for a free account (Beginner tier)
-3. Verify your email
+🌐 **Live Demo**: https://assistantofkc.pythonanywhere.com
 
-## Step 2: Upload Files to PythonAnywhere
+## 簡介
 
-### Option A: Use PythonAnywhere Web UI
+呢個係一個中文詞彙測試工具，用戶輸入詞彙後，系統會自動生成填空題測驗。
 
-1. Log in to PythonAnywhere
-2. Go to **Files** tab
-3. Navigate to `/home/yourusername/` (or create a folder called `webapp`)
-4. Click **Upload** and upload these files:
-   - `app.py`
-   - `requirements.txt`
-5. Create folder `templates` and upload `templates/index.html`
+### 功能特點
 
-### Option B: Use Git (Recommended)
+- ✅ 輸入中文詞彙，AI 自動生成填空題
+- ✅ 批次式題目（每批 4 題）
+- ✅ 支援多批次測驗
+- ✅ 累積分數顯示
+- ✅ 繁體中文句子生成
+- ✅ 4 個選擇題（1 個正確 + 3 個干擾選項）
+- ✅ 響應式設計（支持桌面和手機）
 
-1. Push this folder to GitHub/GitLab
-2. In PythonAnywhere Bash console:
-   ```bash
-   cd ~
-   git clone https://github.com/YOURUSERNAME/webapp.git
-   ```
+## 使用方法
 
-## Step 3: Set Up Virtual Environment
+1. 喺輸入框輸入中文詞彙（用空格或換行分隔）
+2. 撳「開始測試」
+3. 完成每批題目後可以繼續下一批
+4. 完成所有批次後可以看到總分
 
-In PythonAnywhere Bash console:
-```bash
-cd ~/webapp
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+## 技術架構
+
+- **前端**: HTML5 + CSS3 + JavaScript (Vanilla)
+- **後端**: Flask (Python)
+- **AI API**: MiniMax-M2.7
+- **托管**: PythonAnywhere
+
+## 版本歷史
+
+- v5.43 - 修復 blockerMsg 清理導致嘅 debugEl undefined 問題
+- v5.41 - 修復最後一批 button 顯示問題
+- v5.37 - blockerMsg 清理完成備份
+
+## 文件結構
+
+```
+webapp/
+├── app.py                  # Flask 後端
+├── requirements.txt         # Python 依賴
+├── templates/
+│   ├── index.html         # 個人首頁
+│   └── vocab_test.html     # 詞彙測試頁面
+└── README.md
 ```
 
-## Step 4: Configure Web App
+## 部署
 
-1. Go to **Web** tab
-2. Click **Add a new web app**
-3. Choose **Manual configuration**
-4. Select **Python 3.x**
-5. For WSGI file, click **Edit** and replace content with:
-
-```python
-import sys
-path = '/home/yourusername/webapp'
-if path not in sys.path:
-    sys.path.append(path)
-
-from app import app as application
-```
-
-## Step 5: Configure Static Files
-
-In the Web tab, add a static files mapping:
-- URL: `/static/`
-- Path: `/home/yourusername/webapp/static/`
-
-## Step 6: Reload and Access
-
-1. Click **Reload** button
-2. Your site will be at: `https://yourusername.pythonanywhere.com`
-
----
-
-## Troubleshooting
-
-### 500 Internal Server Error
-- Check the **Error log** in Web tab
-- Common issues:
-  - Wrong path in WSGI file
-  - Missing templates folder
-  - Virtual environment not activated
-
-### Static files not loading
-- Make sure `/static/` mapping is configured in Web tab
-
-### Need to edit files?
-- Use PythonAnywhere **Files** tab or
-- Edit locally and re-upload
-
----
-
-## Customization
-
-Edit `templates/index.html` to update:
-- Your name
-- Bio text
-- Social links
-- Avatar emoji
-- Colors/styles
-
-Then reload the web app to see changes.
-
----
-
-## Free Tier Limitations
-
-- Web app goes to sleep after 3 months of inactivity (wake it up by visiting)
-- Only one web app per account on free tier
-- No custom domain (uses pythonanywhere.com subdomain)
-- Limited to Python web apps only
-
-For better reliability, consider upgrading to Hacker plan ($5/month).
+詳細部署說明請睇 [DEPLOY.md](./DEPLOY.md)
