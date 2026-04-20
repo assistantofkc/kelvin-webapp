@@ -12,7 +12,7 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.3'
+APP_VERSION = 'v5.4'
 
 
 def generate_sentences(vocabularies, max_retries=2):
