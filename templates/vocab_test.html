@@ -472,7 +472,7 @@
     </div>
 
     <script>
-        const BATCH_SIZE = 5;  // Maximum vocabularies per batch
+        const BATCH_SIZE = 3;  // Reduced for faster generation
         
         let allWords = [];  // All vocabulary words from user input
         let currentBatchIndex = 0;  // Current batch number (0-indexed)
@@ -583,10 +583,21 @@
                     return;
                 }
 
-                const data = await response.json().catch(e => {
-                    if (debugEl) debugEl.textContent = 'JSON parse error: ' + e.message;
-                    return { success: false, error: 'JSON解析錯誤' };
-                });
+                let data;
+                try {
+                    const text = await response.text();
+                    if (debugEl) debugEl.textContent = `Step 3.5: Received ${text.length} chars. First 100: ${text.substring(0, 100)}`;
+
+                    if (!text || text.trim() === '') {
+                        throw new Error('Empty response from server');
+                    }
+
+                    data = JSON.parse(text);
+                } catch (jsonErr) {
+                    console.error('JSON parse failed:', jsonErr);
+                    if (debugEl) debugEl.textContent = 'JSON parse error: ' + jsonErr.message;
+                    data = { success: false, error: '伺服器返回無效格式（可能是超時或錯誤頁面）' };
+                }
                 if (debugEl) debugEl.textContent = 'Step 4: data.success=' + data.success + ', data.error=' + data.error;
 
                 if (data.success) {
@@ -605,14 +616,32 @@
                     document.getElementById('startBtn').disabled = false;
                 }
             } catch (error) {
-                let errMsg = '網絡錯誤: ' + error.message;
+                clearTimeout(timeoutId);
+
+                let errMsg = '網絡錯誤，請稍後再試';
+
                 if (error.name === 'AbortError') {
-                    errMsg = '請求超時（服務器回應太慢）';
+                    errMsg = '生成時間過長（建議每批最多 3–4 個詞彙）';
+                } else if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
+                    errMsg = '後端返回異常（很可能 Worker Timeout），請減少詞彙數量或稍後再試';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errMsg = '無法連接到伺服器';
+                } else {
+                    errMsg = error.message || errMsg;
                 }
-                if (debugEl) debugEl.textContent = 'ERROR: ' + errMsg;
+
+                if (debugEl) {
+                    debugEl.textContent = 'CATCH ERROR: ' + errMsg;
+                    debugEl.style.color = 'red';
+                }
+
                 showError(errMsg);
                 hideLoading();
                 document.getElementById('startBtn').disabled = false;
+
+                // 強制還原輸入區塊（防止空白畫面）
+                const inputSection = document.getElementById('inputSection');
+                if (inputSection) inputSection.style.display = 'block';
             }
         }
 
@@ -625,8 +654,11 @@
         }
 
         function hideLoading() {
-            const loading = document.getElementById('loading');
-            if (loading) loading.classList.remove('show');
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) loadingEl.classList.remove('show');
+            // 重要：還原輸入區塊，防止空白畫面
+            const inputSection = document.getElementById('inputSection');
+            if (inputSection) inputSection.style.display = 'block';
         }
 
         function showError(message) {

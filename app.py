@@ -12,7 +12,7 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.12'
+APP_VERSION = 'v5.13'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -69,8 +69,8 @@ Rules:
     payload = {
         'model': 'MiniMax-M2.7',
         'messages': [{'role': 'user', 'content': prompt}],
-        'temperature': 0.7,
-        'max_tokens': 2000
+        'temperature': 0.3,
+        'max_tokens': 2500
     }
     
     for attempt in range(max_retries):
