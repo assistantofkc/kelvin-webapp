@@ -547,9 +547,19 @@
         }
 
         async function loadNextBatch() {
-            // Show debug on page
+            // 測試用：喺 showLoading 之前就顯示訊息
             const debugEl = document.getElementById('debugMsg');
-            if (debugEl) debugEl.textContent = 'Step 1: Starting...';
+            const inputSection = document.getElementById('inputSection');
+            
+            // 先喺 inputSection 插入 debug 文字（就算 showLoading 都會保留）
+            if (inputSection) {
+                inputSection.insertAdjacentHTML('beforebegin', 
+                    '<div id="preLoadMsg" style="color:yellow; font-size:1.5rem; text-align:center; padding:10px; background:orange;">🚨 loadNextBatch() 開始執行！</div>');
+            }
+            if (debugEl) {
+                debugEl.textContent = 'Step 0: loadNextBatch() 入口';
+                debugEl.style.color = 'yellow';
+            }
             
             showLoading();
             
@@ -598,6 +608,12 @@
                 let data;
                 try {
                     const text = await response.text();
+                    // 強制顯示 response 內容（無論係咩）
+                    const preLoadMsg = document.getElementById('preLoadMsg');
+                    if (preLoadMsg) {
+                        preLoadMsg.textContent = `📩 API 回應了！status:${response.status} text長度:${text.length}`;
+                        preLoadMsg.style.background = 'green';
+                    }
                     if (debugEl) debugEl.textContent = `Step 3.5: Received ${text.length} chars. First 100: ${text.substring(0, 100)}`;
 
                     if (!text || text.trim() === '') {
