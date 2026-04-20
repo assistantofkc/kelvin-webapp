@@ -761,9 +761,12 @@
         function hideLoading() {
             const loadingEl = document.getElementById('loading');
             if (loadingEl) loadingEl.classList.remove('show');
-            // 重要：還原輸入區塊，防止空白畫面
+            // 還原輸入區塊，防止空白畫面
             const inputSection = document.getElementById('inputSection');
-            if (inputSection) inputSection.style.display = 'block';
+            if (inputSection) {
+                inputSection.style.display = 'block';
+                inputSection.style.border = '2px solid rgba(255, 255, 255, 0.1)';
+            }
         }
 
         function showError(message) {
@@ -910,7 +913,7 @@
             document.getElementById('results').classList.remove('show');
             document.getElementById('results').style.display = 'none';
             document.getElementById('inputSection').style.display = 'block';
-            document.getElementById('inputSection').style.border = ''; // 清除紅色 border
+            document.getElementById('inputSection').style.border = '2px solid rgba(255, 255, 255, 0.1)';
             document.getElementById('startBtn').disabled = false;
             document.getElementById('startBtn').textContent = '開始測試';
             document.getElementById('vocabInput').value = '';
