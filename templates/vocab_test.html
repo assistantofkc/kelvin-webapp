@@ -590,15 +590,16 @@
             if (debugEl) debugEl.textContent = 'Step 1.5: About to fetch...';
 
             // Create abort controller and timeout OUTSIDE try block
+            // Timeout must be > server timeout (120s) to allow full server processing
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s client timeout
+            const timeoutId = setTimeout(() => controller.abort(), 180000); // 180s client timeout (longer than server 120s)
             
             try {
                 if (debugEl) debugEl.textContent = 'Step 2: Fetch started...';
                 
                 // 更新 blocker 顯示正在等待
                 if (blockerMsg) {
-                    blockerMsg.textContent = '⏳ 等待 API 回應中...（最多45秒）';
+                    blockerMsg.textContent = '⏳ 等待 API 回應中...（最多3分鐘）';
                     blockerMsg.style.background = 'orange';
                 }
                 
@@ -713,7 +714,7 @@
                 let errMsg = '網絡錯誤，請稍後再試';
 
                 if (error.name === 'AbortError') {
-                    errMsg = '生成時間過長（建議每批最多 3–4 個詞彙）';
+                    errMsg = '請求超時（伺服器處理時間太長，可能需要2-3分鐘）';
                 } else if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
                     errMsg = '後端返回異常（很可能 Worker Timeout），請減少詞彙數量或稍後再試';
                 } else if (error.message.includes('Failed to fetch')) {
