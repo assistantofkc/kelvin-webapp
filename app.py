@@ -12,7 +12,7 @@ import re
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v5.44'
+APP_VERSION = 'v5.47'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -151,6 +151,11 @@ Rules:
 @app.route('/')
 def index():
     return render_template('index.html', version=APP_VERSION)
+
+
+@app.route('/news-clipper')
+def news_clipper():
+    return render_template('news-clipper.html', version=APP_VERSION)
 
 
 @app.route('/vocab-test')

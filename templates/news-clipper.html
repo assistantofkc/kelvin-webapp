@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>News Clipper Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  
+</head>
+  <body class="bg-slate-900">
+    <div id="root"></div>
+
+    <!-- Load React and ReactDOM from a common CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Load Babel Standalone to transpile JSX in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Application code -->
+    <script type="text/babel">
+      // --- Logic from services/parser.ts ---
+      const parseSingleArticle = (rawText) => {
+        if (!rawText || !rawText.trim()) {
+          return null;
+        }
+        
+        const trimmedBlock = rawText.trim();
+        const lines = trimmedBlock.split('\n');
+        if (lines.length < 3) return null;
+
+        const hasStheadlineUrl = /stheadline\.com/.test(trimmedBlock);
+
+        let heading = lines[0]?.trim() || '';
+        let source = lines[1]?.trim() || '';
+        let date = '';
+        let dateLineIndex = -1;
+        const dateRegex = /(\d{4}-\d{2}-\d{2})/; // Use a capturing group for reliability
+
+        if (hasStheadlineUrl) {
+          source = '星島日報';
+          // Search for date in the first few lines for stheadline articles
+          for (let i = 1; i < Math.min(lines.length, 5); i++) {
+            const line = lines[i];
+            const match = line.match(dateRegex);
+            if (match) {
+              date = match[1]; // Get the captured date
+              dateLineIndex = i;
+              break;
+            }
+          }
+        } else {
+          // Fallback for non-stheadline articles
+          for (let i = 2; i < lines.length; i++) {
+            const line = lines[i];
+            const match = line.match(dateRegex);
+            if (match) {
+                date = match[1]; // Get the captured date
+                dateLineIndex = i;
+                break;
+            }
+          }
+        }
+
+        if (dateLineIndex === -1) return null;
+
+        let contentStartIndex = -1;
+        const CONTENT_LINE_MIN_LENGTH = 30; 
+
+        for (let i = dateLineIndex + 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.length > CONTENT_LINE_MIN_LENGTH) {
+              contentStartIndex = i;
+              break;
+          }
+        }
+
+        if (contentStartIndex === -1) return null;
+        
+        let content = lines.slice(contentStartIndex).join('\n').trim();
+        const sourceBracketRegex = /^【.*?】\s*/;
+        content = content.replace(sourceBracketRegex, '');
+
+        if (hasStheadlineUrl) {
+            const sourceUrlMarker = '來源網址 :';
+            const sourceUrlIndex = content.indexOf(sourceUrlMarker);
+            if (sourceUrlIndex !== -1) {
+                content = content.substring(0, sourceUrlIndex).trim();
+            }
+        }
+
+        if (heading && content) {
+          return { heading, source, date, content };
+        }
+
+        return null;
+      };
+
+      // --- Logic from App.tsx ---
+      const { useState, useCallback } = React;
+
+      const App = () => {
+        const [newArticleText, setNewArticleText] = useState('');
+        const [newArticleImages, setNewArticleImages] = useState([null, null, null, null]);
+        const [articles, setArticles] = useState([]);
+        const [copyStatus, setCopyStatus] = useState('idle');
+        const [selectedArticleIndex, setSelectedArticleIndex] = useState(null);
+
+        const placeholderText = `News Heading One
+Some Newspaper
+Junk line
+2024-07-25
+
+This is the main content for the news article. Paste the text for a single article here.
+`;
+
+        const handleAddArticle = (position = 'bottom') => {
+            const parsed = parseSingleArticle(newArticleText);
+            if (!parsed) {
+                alert("Could not parse the article text. Please ensure it has a heading, source, date, and content.");
+                return;
+            }
+            const newArticle = { ...parsed, images: newArticleImages };
+            
+            if (position === 'top') {
+                setArticles(prev => [newArticle, ...prev]);
+                if (selectedArticleIndex !== null) {
+                    setSelectedArticleIndex(prev => prev + 1);
+                }
+            } else if (position === 'afterSelected' && selectedArticleIndex !== null) {
+                setArticles(prev => {
+                    const newArticles = [...prev];
+                    newArticles.splice(selectedArticleIndex + 1, 0, newArticle);
+                    return newArticles;
+                });
+            } else { // 'bottom' or default
+                setArticles(prev => [...prev, newArticle]);
+            }
+
+            // Reset form
+            setNewArticleText('');
+            setNewArticleImages([null, null, null, null]);
+        };
+
+
+        const handleRemoveArticle = (indexToRemove) => {
+            setArticles(prev => prev.filter((_, index) => index !== indexToRemove));
+            if (selectedArticleIndex === indexToRemove) {
+                setSelectedArticleIndex(null);
+            } else if (selectedArticleIndex !== null && selectedArticleIndex > indexToRemove) {
+                setSelectedArticleIndex(prev => prev - 1);
+            }
+        };
+
+        const handleMoveArticle = (index, direction) => {
+            if (direction === 'up' && index === 0) return;
+            if (direction === 'down' && index === articles.length - 1) return;
+
+            const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+            const newArticles = [...articles];
+            const item = newArticles[index];
+            newArticles.splice(index, 1);
+            newArticles.splice(newIndex, 0, item);
+            setArticles(newArticles);
+            
+            if (selectedArticleIndex === index) {
+                setSelectedArticleIndex(newIndex);
+            } else if (selectedArticleIndex === newIndex) {
+                setSelectedArticleIndex(index);
+            }
+        };
+        
+        const handleMoveArticleToExtreme = (index, destination) => {
+            if ((destination === 'top' && index === 0) || (destination === 'bottom' && index === articles.length - 1)) {
+                return;
+            }
+
+            const newArticles = [...articles];
+            const item = newArticles.splice(index, 1)[0];
+
+            let newSelectedIndex = selectedArticleIndex;
+
+            if (destination === 'top') {
+                newArticles.unshift(item);
+                if (selectedArticleIndex === index) {
+                    newSelectedIndex = 0;
+                } else if (selectedArticleIndex !== null && selectedArticleIndex < index) {
+                    newSelectedIndex = selectedArticleIndex + 1;
+                }
+            } else { // 'bottom'
+                newArticles.push(item);
+                if (selectedArticleIndex === index) {
+                    newSelectedIndex = newArticles.length - 1;
+                } else if (selectedArticleIndex !== null && selectedArticleIndex > index) {
+                    newSelectedIndex = selectedArticleIndex - 1;
+                }
+            }
+
+            setArticles(newArticles);
+            setSelectedArticleIndex(newSelectedIndex);
+        };
+
+        const handleImageUpdate = (articleIndex, imageIndex, imageData) => {
+             setArticles(prevArticles => {
+                const newArticles = [...prevArticles];
+                newArticles[articleIndex].images[imageIndex] = imageData;
+                return newArticles;
+            });
+        };
+        
+        const handleNewArticleImageUpdate = (imageIndex, imageData) => {
+            const updatedImages = [...newArticleImages];
+            updatedImages[imageIndex] = imageData;
+            setNewArticleImages(updatedImages);
+        };
+
+        const handleImagePaste = (event, updateFn, articleIndex, imageIndex) => {
+            const items = event.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const file = items[i].getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                       if (articleIndex === null) { // New article form
+                           updateFn(imageIndex, e.target.result);
+                       } else { // Existing article
+                           updateFn(articleIndex, imageIndex, e.target.result);
+                       }
+                    };
+                    reader.readAsDataURL(file);
+                    event.preventDefault();
+                    break;
+                }
+            }
+        };
+
+        const getHtmlForClipboard = (articlesToCopy) => {
+          return articlesToCopy.map(article => {
+            const headingHtml = `<p style="font-family: Calibri, sans-serif; font-size: 16px; margin: 0 0 4px 0; font-weight: bold; color: #2F5496;">${article.heading}</p>`;
+            const sourceHtml = `<p style="font-family: Calibri, sans-serif; font-size: 12px; font-style: italic; color: #595959; margin: 0 0 4px 0; font-weight: normal;">${article.source}</p>`;
+            const dateHtml = `<p style="font-family: Calibri, sans-serif; font-size: 12px; color: #595959; margin: 0 0 12px 0; font-weight: normal;">${article.date}</p>`;
+            
+            const contentHtml = article.content
+              .split('\n')
+              .filter(p => p.trim() !== '')
+              .map(p => `<p style="font-family: Calibri, sans-serif; font-size: 14px; color: #000000; margin: 0 0 12px 0; font-weight: normal;">${p.trim()}</p>`)
+              .join('');
+              
+            const imagesHtml = article.images
+              .filter(img => img !== null)
+              .map(imgSrc => `<p style="margin: 12px 0 0 0;"><img src="${imgSrc}" alt="${article.heading} graphic" style="max-width: 540px; height: auto; border: none;"></p>`)
+              .join('');
+
+            return `<div>${headingHtml}${sourceHtml}${dateHtml}${contentHtml}${imagesHtml}</div>`;
+          }).join('<br><br>');
+        };
+
+        const handleCopy = async () => {
+          if (articles.length === 0) return;
+          const htmlString = getHtmlForClipboard(articles);
+          const plainTextString = articles.map(a => `${a.heading}\n${a.source}\n${a.date}\n\n${a.content}`).join('\n\n\n');
+
+          try {
+              const blobHtml = new Blob([htmlString], { type: 'text/html' });
+              const blobText = new Blob([plainTextString], { type: 'text/plain' });
+              await navigator.clipboard.write([ new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText }) ]);
+              setCopyStatus('copied');
+              setTimeout(() => setCopyStatus('idle'), 2000);
+          } catch (error) {
+              console.error('Copy failed:', error);
+              alert('Failed to copy content to clipboard.');
+          }
+        };
+        
+        const ImagePaster = ({ image, onPaste, onRemove }) => {
+            return image ? (
+                <div className="relative group">
+                    <img src={image} alt="Pasted graphic" className="w-full h-auto rounded-md border border-slate-600 aspect-video object-cover" />
+                    <button
+                        onClick={onRemove}
+                        aria-label="Remove image"
+                        className="absolute top-2 right-2 bg-slate-900/70 text-white rounded-full h-6 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            ) : (
+                <div
+                    onPaste={onPaste}
+                    tabIndex="0"
+                    className="w-full p-4 text-center border-2 border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 aspect-video flex items-center justify-center"
+                >
+                    <p className="text-slate-500 text-sm">Paste image</p>
+                </div>
+            );
+        };
+
+
+        return (
+          <div className="min-h-screen bg-slate-900 text-slate-200 font-sans p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto">
+              <header className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-white tracking-tight">News Clipper Builder</h1>
+                <p className="mt-2 text-lg text-slate-400">Add articles one by one, attach images, reorder, and copy the final result.</p>
+              </header>
+
+              <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Input Panel */}
+                <div className="flex flex-col space-y-4">
+                  <h2 className="text-2xl font-semibold text-slate-300 flex items-center">
+                    <span className="bg-blue-500 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 font-bold text-lg">1</span>
+                    Add New Article
+                  </h2>
+                  <div className="bg-slate-800 p-4 rounded-lg shadow-lg flex-grow flex flex-col space-y-4">
+                    <textarea
+                      value={newArticleText}
+                      onChange={(e) => setNewArticleText(e.target.value)}
+                      placeholder={placeholderText}
+                      rows="10"
+                      className="w-full bg-slate-900/50 border border-slate-700 rounded-md p-4 text-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-y"
+                    />
+                     <div className="grid grid-cols-2 gap-4">
+                        {newArticleImages.map((image, index) => (
+                            <ImagePaster 
+                                key={index} 
+                                image={image} 
+                                onPaste={(e) => handleImagePaste(e, handleNewArticleImageUpdate, null, index)} 
+                                onRemove={() => handleNewArticleImageUpdate(index, null)}
+                            />
+                        ))}
+                    </div>
+                  </div>
+                  <div className="bg-slate-800 p-2 rounded-lg space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <button
+                              onClick={() => handleAddArticle('top')}
+                              disabled={!newArticleText.trim()}
+                              className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-blue-500 transition-colors duration-200"
+                          >
+                              Add to Top
+                          </button>
+                          <button
+                              onClick={() => handleAddArticle('afterSelected')}
+                              disabled={!newArticleText.trim() || selectedArticleIndex === null}
+                              className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 transition-colors duration-200"
+                          >
+                              Add After Selected
+                          </button>
+                          <button
+                              onClick={() => handleAddArticle('bottom')}
+                              disabled={!newArticleText.trim()}
+                              className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-blue-500 transition-colors duration-200"
+                          >
+                              Add to Bottom
+                          </button>
+                      </div>
+                      <p className="text-center text-xs text-slate-500 pt-1">
+                        {selectedArticleIndex === null 
+                          ? 'Click an article in the output panel to select it for insertion.' 
+                          : `Selected article ${selectedArticleIndex + 1}. The new article will be inserted after it.`}
+                      </p>
+                  </div>
+                </div>
+
+                {/* Output Panel */}
+                <div className="flex flex-col space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-semibold text-slate-300 flex items-center">
+                      <span className="bg-green-500 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 font-bold text-lg">2</span>
+                      Build & Finalize Output
+                    </h2>
+                    <button
+                      onClick={handleCopy}
+                      disabled={articles.length === 0}
+                      className="flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-green-500 transition-colors duration-200"
+                    >
+                      {copyStatus === 'copied' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                      )}
+                      {copyStatus === 'copied' ? 'Copied!' : 'Copy for Outlook'}
+                    </button>
+                  </div>
+                  <div className="bg-slate-800 p-4 rounded-lg shadow-lg flex-grow min-h-[70vh] max-h-[70vh] overflow-y-auto">
+                    {articles.length > 0 ? (
+                      <div className="space-y-6">
+                        {articles.map((article, articleIndex) => (
+                          <div 
+                            key={articleIndex} 
+                            onClick={() => setSelectedArticleIndex(articleIndex)}
+                            className={`bg-slate-800/50 p-4 rounded-md border relative transition-all duration-200 cursor-pointer ${articleIndex === selectedArticleIndex ? 'border-blue-500 ring-2 ring-blue-500' : 'border-slate-700 hover:border-slate-500'}`}
+                           >
+                            <div className="absolute top-3 right-3 flex items-center space-x-2">
+                                <div className="flex items-center space-x-1 bg-slate-900/50 rounded-full p-0.5">
+                                    <button onClick={(e) => { e.stopPropagation(); handleMoveArticleToExtreme(articleIndex, 'top'); }} disabled={articleIndex === 0} className="p-1 rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Move to top">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                                            <path fillRule="evenodd" d="M10.207 7.207a1 1 0 00-1.414 0L5.293 10.707a1 1 0 001.414 1.414L10 8.414l3.293 3.293a1 1 0 001.414-1.414l-4-4z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M10.207 4.207a1 1 0 00-1.414 0l-4 4a1 1 0 101.414 1.414L10 5.414l3.293 3.293a1 1 0 001.414-1.414l-4-4z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleMoveArticle(articleIndex, 'up'); }} disabled={articleIndex === 0} className="p-1 rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Move up">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleMoveArticle(articleIndex, 'down'); }} disabled={articleIndex === articles.length - 1} className="p-1 rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Move down">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleMoveArticleToExtreme(articleIndex, 'bottom'); }} disabled={articleIndex === articles.length - 1} className="p-1 rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed" aria-label="Move to bottom">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                                            <path fillRule="evenodd" d="M9.793 12.793a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L10 10.586 6.707 7.293a1 1 0 00-1.414 1.414l4 4z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M9.793 15.793a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L10 13.586 6.707 10.293a1 1 0 00-1.414 1.414l4 4z" clipRule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); handleRemoveArticle(articleIndex); }} className="p-1.5 rounded-full bg-red-800/50 text-red-300 hover:bg-red-700/50" aria-label="Remove article">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-blue-400 pr-40">{article.heading}</h3>
+                            <p className="text-sm italic text-slate-400 mt-1">{article.source}</p>
+                            <p className="text-sm text-slate-500 mt-1 mb-4">{article.date}</p>
+                            
+                            <div className="text-slate-300 space-y-3 prose prose-invert prose-p:text-slate-300 max-w-none">
+                              {article.content.split('\n').filter(p => p.trim()).map((p, i) => <p key={i}>{p}</p>)}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                {article.images.map((image, imageIndex) => (
+                                    <ImagePaster 
+                                        key={imageIndex} 
+                                        image={image} 
+                                        onPaste={(e) => handleImagePaste(e, handleImageUpdate, articleIndex, imageIndex)} 
+                                        onRemove={() => handleImageUpdate(articleIndex, imageIndex, null)}
+                                    />
+                                ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-slate-500">
+                        <p>Added articles will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        );
+      };
+
+      // --- Logic from index.tsx ---
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
+
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "name": "News Clipper Builder (new buttons)",
+  "description": "An application to build a list of formatted news clippings one by one, with support for adding images, reordering, and removing articles before final export.",
+  "requestFramePermissions": []
+}
