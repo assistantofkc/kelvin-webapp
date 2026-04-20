@@ -556,7 +556,16 @@
                     body: JSON.stringify({ vocabularies: currentBatchVocab.join(' ') })
                 });
 
+                console.log('Response status:', response.status);
                 const data = await response.json();
+                console.log('API response:', data);
+
+                if (!response.ok) {
+                    showError('伺服器錯誤: ' + response.status);
+                    hideLoading();
+                    document.getElementById('startBtn').disabled = false;
+                    return;
+                }
 
                 if (data.success) {
                     quizData = shuffleArray(data.data);  // Shuffle questions for random order
