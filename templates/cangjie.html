@@ -543,6 +543,7 @@
             }
             const q = questions[currentIndex];
             userInput = '';
+            clearInput(); // Physically clear the input display area
             
             // Show character
             document.getElementById('questionChar').textContent = q.char;
