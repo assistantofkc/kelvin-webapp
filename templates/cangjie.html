@@ -105,7 +105,66 @@
             z-index: 1001;
         }
         .theme-switch:hover { background: var(--accent); color: #fff; }
-        .toast {
+        .ref-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 6px 14px;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+        }
+        .ref-btn:hover { opacity: 0.85; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            width: 95%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--card-border);
+            background: var(--accent);
+            color: #fff;
+        }
+        .modal-header h2 { font-size: 1.1rem; margin: 0; }
+        .modal-close { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }
+        .modal-body { padding: 12px; overflow-y: auto; }
+        .ref-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .ref-table th, .ref-table td { padding: 7px 8px; border: 1px solid var(--card-border); text-align: left; }
+        .ref-table th { background: var(--card-border); font-weight: 600; }
+        .key-badge {
+            display: inline-block; width: 26px; height: 26px; line-height: 26px;
+            background: var(--accent); color: #fff; border-radius: 6px; text-align: center; font-weight: 700;
+        }
+        .category-philosophy td { background: rgba(59, 130, 246, 0.08); }
+        .category-stroke td { background: rgba(34, 197, 94, 0.08); }
+        .category-body td { background: rgba(239, 68, 68, 0.08); }
+        .category-shape td { background: rgba(249, 115, 22, 0.08); }
+
+.toast {
             position: fixed;
             top: 80px;
             left: 50%;
@@ -294,10 +353,59 @@
         <a href="https://gemini.google.com/share/97151a39e237" target="_blank"><span>🎭</span> Slide Translator (Gemini)</a>
     </nav>
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-    <div id="toast" class="toast"></div>
+    
+    <!-- Cangjie Reference Modal -->
+    <div id="referenceModal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>倉頡鍵位對照表</h2>
+                <button class="modal-close" onclick="toggleReference()">✕</button>
+            </div>
+            <div class="modal-body">
+                <table class="ref-table">
+                    <thead>
+                        <tr>
+                            <th>類別</th>
+                            <th>鍵位</th>
+                            <th>基本字根</th>
+                            <th>字根變體 / 範例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="category-philosophy"><td rowspan="2">哲學類</td><td><span class="key-badge">A</span></td><td>日</td><td>曰、日之變體</td></tr>
+                        <tr class="category-philosophy"><td><span class="key-badge">B</span></td><td>月</td><td>目、冂、爫、肉(月)</td></tr>
+                        <tr class="category-philosophy"><td><span class="key-badge">C</span></td><td>金</td><td>八、兒之上部</td></tr>
+                        <tr class="category-philosophy"><td><span class="key-badge">D</span></td><td>木</td><td>木之變體</td></tr>
+                        <tr class="category-philosophy"><td><span class="key-badge">E</span></td><td>水</td><td>氵、氺</td></tr>
+                        <tr class="category-philosophy"><td><span class="key-badge">F</span></td><td>火</td><td>灬、小(於字底)</td></tr>
+                        <tr class="category-philosophy"><td><span class="key-badge">G</span></td><td>土</td><td>土之變體</td></tr>
+                        <tr class="category-stroke"><td rowspan="2">筆劃類</td><td><span class="key-badge">H</span></td><td>竹</td><td>撇 (丿)、斜</td></tr>
+                        <tr class="category-stroke"><td><span class="key-badge">I</span></td><td>戈</td><td>點 (、)、礻、衤</td></tr>
+                        <tr class="category-stroke"><td><span class="key-badge">J</span></td><td>十</td><td>宀、宀之變體、刂</td></tr>
+                        <tr class="category-stroke"><td><span class="key-badge">K</span></td><td>大</td><td>乂、左下撇</td></tr>
+                        <tr class="category-stroke"><td><span class="key-badge">L</span></td><td>中</td><td>豎 (丨)、衣之下部</td></tr>
+                        <tr class="category-stroke"><td><span class="key-badge">M</span></td><td>一</td><td>橫 (一)、厂、工</td></tr>
+                        <tr class="category-stroke"><td><span class="key-badge">Y</span></td><td>卜</td><td>點、辶、宀之上部</td></tr>
+                        <tr class="category-body"><td rowspan="4">人身類</td><td><span class="key-badge">O</span></td><td>人</td><td>亻、彳、入</td></tr>
+                        <tr class="category-body"><td><span class="key-badge">P</span></td><td>心</td><td>忄、恭之下部 (㣺)、勹</td></tr>
+                        <tr class="category-body"><td><span class="key-badge">Q</span></td><td>手</td><td>扌、龵</td></tr>
+                        <tr class="category-body"><td><span class="key-badge">R</span></td><td>口</td><td>口、方框</td></tr>
+                        <tr class="category-shape"><td rowspan="5">字型類</td><td><span class="key-badge">S</span></td><td>尸</td><td>刀、力、乙、弓之變體</td></tr>
+                        <tr class="category-shape"><td><span class="key-badge">T</span></td><td>廿</td><td>艹、龷、共之上部</td></tr>
+                        <tr class="category-shape"><td><span class="key-badge">U</span></td><td>山</td><td>凵、屮、框(向上開口)</td></tr>
+                        <tr class="category-shape"><td><span class="key-badge">V</span></td><td>女</td><td>ㄑ、糸、良之右下</td></tr>
+                        <tr class="category-shape"><td><span class="key-badge">W</span></td><td>田</td><td>囗(大框)、毋之內部分</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<div id="toast" class="toast"></div>
 
     <div class="container mx-auto px-2 pt-16 pb-4 max-w-2xl">
-        <header class="text-center mb-3">
+        <header class="text-center mb-3 relative">
+            <button class="ref-btn" onclick="toggleReference()">對照表</button>
             <h1 class="text-2xl font-bold mb-1">倉頡學堂</h1>
             <p class="text-xs opacity-60">學習拆字：每個中文字都由基本字根組成</p>
         </header>
@@ -448,7 +556,17 @@
             ]
         ];
 
-        function initKeyboard() {
+        function toggleReference() {
+            const modal = document.getElementById('referenceModal');
+            modal.classList.toggle('show');
+        }
+        function closeModal(e) {
+            if (e.target.id === 'referenceModal') {
+                document.getElementById('referenceModal').classList.remove('show');
+            }
+        }
+
+function initKeyboard() {
             const kb = document.getElementById('keyboardArea');
             kb.innerHTML = '';
             KEYBOARD.forEach(row => {
