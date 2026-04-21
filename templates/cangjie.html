@@ -683,7 +683,17 @@ function initKeyboard() {
                 document.getElementById('hintText').textContent = q.code;
                 
                 // Build individual key parts
-                const parts = Array.isArray(q.parts) ? q.parts : (typeof q.parts === "string" ? q.parts.split("") : [q.code]);
+                let parts = [];
+                try {
+                    if (Array.isArray(q.parts)) {
+                        parts = q.parts;
+                    } else if (typeof q.parts === "string" && q.parts.length > 0) {
+                        parts = q.parts.split("");
+                    } else if (typeof q.code === "string" && q.code.length > 0) {
+                        parts = q.code.split("");
+                    }
+                } catch(e) { parts = []; }
+                if (parts.length === 0) parts = [q.code || "?"];
                 parts.forEach((p, idx) => {
                     const div = document.createElement('div');
                     div.className = 'breakdown-char';
