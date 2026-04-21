@@ -368,6 +368,11 @@ MASTER_BANK = {
 }
 
 
+@app.route('/cangjie')
+def cangjie():
+    return render_template('cangjie.html', version=APP_VERSION)
+
+
 def get_cangjie_questions(level):
     if level not in MASTER_BANK:
         return jsonify({'error': 'Invalid level'}), 400
