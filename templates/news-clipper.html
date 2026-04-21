@@ -130,11 +130,18 @@
         }
         
         body.light-mode #root {
-            background: var(--bg-primary);
+            background: var(--bg-primary) !important;
         }
         
         body.light-mode {
             background: var(--bg-primary) !important;
+            background-color: #f5f7fa !important;
+        }
+        
+        @media (prefers-color-scheme: light) {
+            body {
+                --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            }
         }
     </style>
 </head>
