@@ -220,9 +220,8 @@
             align-items: center;
             justify-content: center;
             flex: 1;
-            min-width: 0;
-            aspect-ratio: 1 / 0.9;
-            max-width: 48px;
+            min-width: 44px;
+            aspect-ratio: 1 / 0.85;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 6px;
@@ -231,6 +230,7 @@
             transition: all 0.1s;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
         }
         .kb-key:active {
             background: var(--accent);
@@ -327,6 +327,7 @@
         
         @media (max-width: 400px) {
             .kb-key {
+                min-width: 32px;
                 aspect-ratio: 1 / 0.8;
             }
             .keyboard-row {
