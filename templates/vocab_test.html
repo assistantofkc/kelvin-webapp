@@ -212,7 +212,44 @@
             color: var(--text-primary);
         }
 
-        .overlay {
+        body.light-mode .btn {
+            color: #fff;
+        }
+        
+        body.light-mode .spinner {
+            border-color: rgba(0, 0, 0, 0.1);
+            border-top-color: #667eea;
+        }
+        
+        body.light-mode .error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid #ef4444;
+            color: #991111;
+        }
+        
+        body.light-mode .question-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        body.light-mode .question-vocab {
+            color: #4a5fd6;
+        }
+        
+        body.light-mode .question-text {
+            color: #1a1a2e;
+        }
+        
+        body.light-mode .option {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(0, 0, 0, 0.15);
+            color: #1a1a2e;
+        }
+        
+        body.light-mode .option:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.15);
+        }
             position: fixed;
             top: 0;
             left: 0;
