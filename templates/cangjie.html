@@ -580,7 +580,7 @@ function initKeyboard() {
                     const btn = document.createElement('button');
                     btn.className = 'kb-key';
                     btn.innerHTML = `<span class="letter">${k.key}</span><span class="radical">${k.radical}</span>`;
-                    btn.onclick = () => addChar(k.key);
+                    btn.onclick = (e) => { e.stopPropagation(); addChar(k.key); };
                     rowDiv.appendChild(btn);
                 });
                 kb.appendChild(rowDiv);
