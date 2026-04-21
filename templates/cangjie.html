@@ -29,7 +29,6 @@
             color: var(--text-primary);
             transition: background 0.3s, color 0.3s;
             min-height: 100vh;
-            overflow-x: hidden;
         }
         .hamburger {
             position: fixed;
@@ -41,7 +40,6 @@
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 8px;
-            transition: background 0.3s;
         }
         .hamburger:hover { background: var(--card-border); }
         .hamburger-icon {
@@ -90,7 +88,7 @@
         }
         .overlay.active { opacity: 1; visibility: visible; }
         body.light-mode .hamburger {
-            background: #ffffff !important;
+            background: #fff !important;
             border: 1px solid #ddd !important;
         }
         body.light-mode .hamburger-icon {
@@ -107,7 +105,6 @@
             border-radius: 20px;
             font-size: 0.9rem;
             color: var(--text-primary);
-            transition: all 0.3s;
             z-index: 1001;
         }
         .theme-switch:hover { background: var(--accent); color: #fff; }
@@ -144,18 +141,18 @@
         .star.empty { color: #555; }
         .hint-text { color: var(--accent); font-size: 0.9rem; }
         
-        /* Responsive keyboard */
+        /* Keyboard */
         .keyboard-container {
             width: 100%;
-            max-width: 600px;
+            max-width: 500px;
             margin: 0 auto;
             padding: 0 4px;
         }
         .keyboard-row {
             display: flex;
             justify-content: center;
-            gap: 4px;
-            margin-bottom: 4px;
+            gap: 3px;
+            margin-bottom: 3px;
         }
         .kb-key {
             display: flex;
@@ -165,12 +162,11 @@
             flex: 1;
             min-width: 0;
             aspect-ratio: 1 / 0.9;
-            max-width: 50px;
+            max-width: 48px;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 6px;
             cursor: pointer;
-            font-size: clamp(0.7rem, 2.5vw, 1rem);
             color: var(--text-primary);
             transition: all 0.1s;
             user-select: none;
@@ -182,34 +178,69 @@
         }
         .kb-key .letter {
             font-weight: bold;
-            font-size: clamp(0.9rem, 3vw, 1.2rem);
+            font-size: clamp(0.8rem, 3vw, 1.1rem);
         }
         .kb-key .radical {
-            font-size: clamp(0.5rem, 1.8vw, 0.7rem);
+            font-size: clamp(0.45rem, 1.6vw, 0.65rem);
             opacity: 0.7;
-            margin-top: 2px;
-        }
-        .kb-key.wide {
-            flex: 1.5;
-            max-width: 80px;
-        }
-        .kb-key.wider {
-            flex: 2;
-            max-width: 100px;
+            margin-top: 1px;
         }
         
-        /* Answer display */
-        .answer-display {
+        /* Answer display - breakdown style */
+        .breakdown-display {
             display: flex;
             justify-content: center;
-            gap: 4px;
+            gap: 6px;
+            min-height: 60px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .breakdown-char {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: clamp(36px, 10vw, 56px);
+            height: clamp(50px, 14vw, 72px);
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .breakdown-char.highlight {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .breakdown-char .the-char {
+            font-size: clamp(1.2rem, 4vw, 1.8rem);
+            font-weight: bold;
+        }
+        .breakdown-char .the-code {
+            font-size: clamp(0.5rem, 1.8vw, 0.7rem);
+            color: var(--text-secondary);
+        }
+        .breakdown-char.highlight .the-code {
+            color: rgba(255,255,255,0.8);
+        }
+        .breakdown-char .the-name {
+            font-size: clamp(0.35rem, 1.2vw, 0.5rem);
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        
+        /* User input area */
+        .input-area {
+            display: flex;
+            justify-content: center;
+            gap: 3px;
             min-height: 48px;
             align-items: center;
-            font-size: clamp(1.5rem, 5vw, 2rem);
-            font-weight: bold;
-            letter-spacing: 4px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
         }
-        .answer-char {
+        .input-char {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -218,31 +249,34 @@
             background: var(--accent);
             color: white;
             border-radius: 6px;
+            font-weight: bold;
+            font-size: clamp(1rem, 3.5vw, 1.4rem);
             animation: popIn 0.2s ease;
         }
-        @keyframes popIn {
-            from { transform: scale(0); }
-            to { transform: scale(1); }
-        }
-        .answer-placeholder {
+        .input-placeholder {
             width: clamp(32px, 8vw, 48px);
             height: clamp(40px, 10vw, 56px);
             border: 2px dashed var(--card-border);
             border-radius: 6px;
         }
         
-        @media (max-width: 480px) {
+        @keyframes popIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+        
+        @media (max-width: 400px) {
             .kb-key {
-                aspect-ratio: 1 / 0.85;
+                aspect-ratio: 1 / 0.8;
             }
             .keyboard-row {
-                gap: 3px;
+                gap: 2px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Hamburger Menu -->
+    <!-- Hamburger -->
     <div class="hamburger" onclick="toggleSidebar()">
         <span class="hamburger-icon"></span>
         <span class="hamburger-icon"></span>
@@ -262,18 +296,13 @@
         <a href="https://g.co/gemini/share/2668b53344d5" target="_blank"><span>🔣</span> 倉頡學堂 (Gemini)</a>
         <a href="https://gemini.google.com/share/97151a39e237" target="_blank"><span>🎭</span> Slide Translator (Gemini)</a>
     </nav>
-
-    <!-- Overlay -->
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-    <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
     <div class="container mx-auto px-2 pt-16 pb-4 max-w-2xl">
-        <!-- Header -->
         <header class="text-center mb-3">
             <h1 class="text-2xl font-bold mb-1">倉頡學堂</h1>
-            <p class="text-xs opacity-60">學習中文輸入法基礎</p>
+            <p class="text-xs opacity-60">學習拆字：每個中文字都由基本字根組成</p>
         </header>
 
         <!-- Level Selection -->
@@ -295,7 +324,7 @@
             </div>
         </div>
 
-        <!-- Game Mode Selection -->
+        <!-- Mode Selection -->
         <div id="modeSelection" class="card p-4 rounded-xl hidden" style="background: var(--card-bg); border: 1px solid var(--card-border);">
             <h2 class="text-lg font-semibold mb-3 text-center">選擇模式</h2>
             <div class="grid grid-cols-2 gap-3">
@@ -313,7 +342,6 @@
 
         <!-- Game Area -->
         <div id="gameArea" class="hidden">
-            <!-- Progress Bar -->
             <div class="mb-3">
                 <div class="flex justify-between text-xs mb-1">
                     <span id="progressText">進度 1/10</span>
@@ -324,24 +352,32 @@
                 </div>
             </div>
 
-            <!-- Score Stars -->
             <div class="text-center mb-3">
                 <span id="stars" class="text-xl">
                     <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
                 </span>
             </div>
 
-            <!-- Question Card -->
             <div class="card p-4 rounded-xl mb-3" style="background: var(--card-bg); border: 1px solid var(--card-border);">
-                <div class="text-center mb-3">
-                    <div class="text-5xl font-bold mb-2" id="questionChar">好</div>
-                    <div id="hintArea" class="hint-text hidden text-xs">
-                        提示：<span id="hintText">日月</span>
-                    </div>
+                <!-- The character to learn -->
+                <div class="text-center mb-4">
+                    <div class="text-6xl font-bold" id="questionChar">好</div>
+                    <div class="text-xs opacity-60 mt-1">這是哪個字？</div>
                 </div>
                 
-                <!-- Answer Display -->
-                <div id="answerDisplay" class="answer-display mb-3"></div>
+                <!-- Breakdown display (for learning) -->
+                <div id="breakdownArea" class="mb-4 hidden">
+                    <div class="text-center text-sm mb-2 opacity-70">字根拆解</div>
+                    <div id="breakdownDisplay" class="breakdown-display"></div>
+                </div>
+                
+                <!-- Hint (learning mode only) -->
+                <div id="hintArea" class="text-center mb-3 hidden">
+                    <span class="hint-text">完整編碼：<span id="hintText">日月 (BAA)</span></span>
+                </div>
+                
+                <!-- User input area -->
+                <div id="inputArea" class="input-area"></div>
                 
                 <!-- Keyboard -->
                 <div class="keyboard-container">
@@ -371,64 +407,56 @@
     </div>
 
     <script>
-        // State
         let currentLevel = 1;
         let currentMode = 'practice';
         let questions = [];
         let currentIndex = 0;
         let score = 0;
         let answered = 0;
+        let userInput = '';
 
-        // Cangjie keyboard with letters and radicals
+        // Cangjie keyboard
         const KEYBOARD = [
-            // Row 1: A-S
             [
-                {key: 'Q', radical: '手', code: 'Q'},
-                {key: 'W', radical: '田', code: 'W'},
-                {key: 'E', radical: '水', code: 'E'},
-                {key: 'R', radical: '口', code: 'R'},
-                {key: 'T', radical: '卜', code: 'T'},
-                {key: 'Y', radical: '卜', code: 'Y'},
-                {key: 'U', radical: '山', code: 'U'},
-                {key: 'I', radical: '人', code: 'I'},
-                {key: 'O', radical: '心', code: 'O'},
-                {key: 'P', radical: '十', code: 'P'}
+                {key: 'Q', radical: '手'},
+                {key: 'W', radical: '田'},
+                {key: 'E', radical: '水'},
+                {key: 'R', radical: '口'},
+                {key: 'T', radical: '卜'},
+                {key: 'Y', radical: '卜'},
+                {key: 'U', radical: '山'},
+                {key: 'I', radical: '人'},
+                {key: 'O', radical: '心'},
+                {key: 'P', radical: '十'}
             ],
-            // Row 2: A-L
             [
-                {key: 'A', radical: '日', code: 'A'},
-                {key: 'S', radical: '木', code: 'S'},
-                {key: 'D', radical: '土', code: 'D'},
-                {key: 'F', radical: '火', code: 'F'},
-                {key: 'G', radical: '金', code: 'G'},
-                {key: 'H', radical: '竹', code: 'H'},
-                {key: 'J', radical: '中', code: 'J'},
-                {key: 'K', radical: '大', code: 'K'},
-                {key: 'L', radical: '月', code: 'L'}
+                {key: 'A', radical: '日'},
+                {key: 'S', radical: '木'},
+                {key: 'D', radical: '土'},
+                {key: 'F', radical: '火'},
+                {key: 'G', radical: '金'},
+                {key: 'H', radical: '竹'},
+                {key: 'J', radical: '中'},
+                {key: 'K', radical: '大'},
+                {key: 'L', radical: '月'}
             ],
-            // Row 3: Z-M
             [
-                {key: 'Z', radical: '戈', code: 'Z'},
-                {key: 'X', radical: '女', code: 'X'},
-                {key: 'C', radical: '難', code: 'C'},
-                {key: 'V', radical: '竹', code: 'V'},
-                {key: 'B', radical: '難', code: 'B'},
-                {key: 'N', radical: '弓', code: 'N'},
-                {key: 'M', radical: '山', code: 'M'}
+                {key: 'Z', radical: '戈'},
+                {key: 'X', radical: '女'},
+                {key: 'C', radical: '難'},
+                {key: 'V', radical: '竹'},
+                {key: 'B', radical: '難'},
+                {key: 'N', radical: '弓'},
+                {key: 'M', radical: '山'}
             ]
         ];
 
-        // Generate keyboard HTML
         function initKeyboard() {
-            const keyboardArea = document.getElementById('keyboardArea');
-            keyboardArea.innerHTML = '';
-            
-            KEYBOARD.forEach((row, rowIdx) => {
+            const kb = document.getElementById('keyboardArea');
+            kb.innerHTML = '';
+            KEYBOARD.forEach(row => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'keyboard-row';
-                
-                if (rowIdx === 0) rowDiv.innerHTML = '<div style="width:20px"></div>';
-                
                 row.forEach(k => {
                     const btn = document.createElement('button');
                     btn.className = 'kb-key';
@@ -436,10 +464,7 @@
                     btn.onclick = () => addChar(k.key);
                     rowDiv.appendChild(btn);
                 });
-                
-                if (rowIdx === 0) rowDiv.innerHTML += '<div style="width:20px"></div>';
-                
-                keyboardArea.appendChild(rowDiv);
+                kb.appendChild(rowDiv);
             });
         }
 
@@ -447,11 +472,11 @@
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('overlay').classList.toggle('active');
         }
-        document.addEventListener('click', function(e) {
-            const sidebar = document.getElementById('sidebar');
-            const hamburger = document.querySelector('.hamburger');
-            if (!sidebar.contains(e.target) && !hamburger.contains(e.target) && sidebar.classList.contains('active')) {
-                sidebar.classList.remove('active');
+        document.addEventListener('click', e => {
+            const sb = document.getElementById('sidebar');
+            const hb = document.querySelector('.hamburger');
+            if (!sb.contains(e.target) && !hb.contains(e.target) && sb.classList.contains('active')) {
+                sb.classList.remove('active');
                 document.getElementById('overlay').classList.remove('active');
             }
         });
@@ -469,11 +494,11 @@
             document.getElementById('theme-text').textContent = 'Light Mode';
         }
 
-        function showToast(message, type) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast show ' + (type === 'correct' ? 'toast-correct' : 'toast-wrong');
-            setTimeout(() => toast.classList.remove('show'), 1500);
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show ' + (type === 'correct' ? 'toast-correct' : 'toast-wrong');
+            setTimeout(() => t.classList.remove('show'), 2000);
         }
 
         function startGame(level) {
@@ -511,8 +536,6 @@
                 });
         }
 
-        let userInput = '';
-
         function showQuestion() {
             if (currentIndex >= questions.length) {
                 showResults();
@@ -520,77 +543,100 @@
             }
             const q = questions[currentIndex];
             userInput = '';
+            
+            // Show character
             document.getElementById('questionChar').textContent = q.char;
-            document.getElementById('hintArea').classList.toggle('hidden', currentMode === 'test');
+            
+            // Show breakdown in practice mode
             if (currentMode === 'practice') {
-                document.getElementById('hintText').textContent = q.hint || q.code;
+                document.getElementById('breakdownArea').classList.remove('hidden');
+                document.getElementById('hintArea').classList.remove('hidden');
+                
+                // Build breakdown display
+                const bd = document.getElementById('breakdownDisplay');
+                bd.innerHTML = '';
+                
+                // Show the full code at top as hint
+                document.getElementById('hintText').textContent = q.code;
+                
+                // Build individual key parts
+                const parts = q.parts || [q.code];
+                parts.forEach((p, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'breakdown-char';
+                    div.innerHTML = `
+                        <div class="the-code">${p}</div>
+                        <div class="the-char">${q.char[idx] || ''}</div>
+                    `;
+                    bd.appendChild(div);
+                });
+            } else {
+                document.getElementById('breakdownArea').classList.add('hidden');
+                document.getElementById('hintArea').classList.add('hidden');
             }
-            updateAnswerDisplay();
+            
+            updateInputDisplay();
             updateProgress();
         }
 
         function addChar(c) {
             userInput += c;
-            updateAnswerDisplay();
+            updateInputDisplay();
         }
 
         function clearInput() {
             userInput = '';
-            updateAnswerDisplay();
+            updateInputDisplay();
         }
 
         function backspace() {
             userInput = userInput.slice(0, -1);
-            updateAnswerDisplay();
+            updateInputDisplay();
         }
 
-        function updateAnswerDisplay() {
-            const display = document.getElementById('answerDisplay');
+        function updateInputDisplay() {
+            const area = document.getElementById('inputArea');
             const q = questions[currentIndex];
-            const correctLen = q.code.length;
+            if (!q) return;
             
+            const codeLen = q.code.length;
             let html = '';
-            for (let i = 0; i < correctLen; i++) {
+            for (let i = 0; i < codeLen; i++) {
                 if (i < userInput.length) {
-                    html += `<div class="answer-char">${userInput[i].toUpperCase()}</div>`;
+                    html += `<div class="input-char">${userInput[i].toUpperCase()}</div>`;
                 } else {
-                    html += `<div class="answer-placeholder"></div>`;
+                    html += `<div class="input-placeholder"></div>`;
                 }
             }
-            display.innerHTML = html;
+            area.innerHTML = html;
         }
 
         function submitAnswer() {
             if (!userInput) return;
 
             const q = questions[currentIndex];
-            const userAnswer = userInput.toUpperCase().trim();
-            const correctCode = q.code.toUpperCase();
-            const isCorrect = userAnswer === correctCode;
+            const isCorrect = userInput.toUpperCase() === q.code.toUpperCase();
 
             answered++;
             if (isCorrect) {
                 score += 10;
-                showToast('正確！', 'correct');
+                showToast('答啱啦！', 'correct');
             } else {
-                showToast(`正確答案：${correctCode}`, 'wrong');
+                showToast(`答案：${q.code}`, 'wrong');
             }
 
-            // Brief pause then next question
             setTimeout(() => {
                 currentIndex++;
                 showQuestion();
-            }, 1500);
+            }, isCorrect ? 1000 : 2000);
         }
 
         function updateProgress() {
-            const total = questions.length;
-            const pct = ((currentIndex + 1) / total) * 100;
+            const pct = ((currentIndex + 1) / questions.length) * 100;
             document.getElementById('progressFill').style.width = pct + '%';
-            document.getElementById('progressText').textContent = `進度 ${currentIndex + 1}/${total}`;
+            document.getElementById('progressText').textContent = `進度 ${currentIndex + 1}/${questions.length}`;
             document.getElementById('scoreText').textContent = `得分: ${score}`;
             
-            // Update stars
             const starsNeeded = [0, 50, 70, 90, 100];
             const starsHtml = [0, 1, 2, 3, 4].map(i => 
                 `<span class="star ${score >= starsNeeded[i] ? '' : 'empty'}">${score >= starsNeeded[i] ? '⭐' : '☆'}</span>`
@@ -606,25 +652,11 @@
             document.getElementById('finalScore').textContent = score;
             document.getElementById('accuracy').textContent = accuracy;
             
-            let stars = 0;
-            if (accuracy >= 90) stars = 5;
-            else if (accuracy >= 70) stars = 4;
-            else if (accuracy >= 50) stars = 3;
-            else if (accuracy >= 30) stars = 2;
-            else stars = 1;
-            
+            let stars = accuracy >= 90 ? 5 : accuracy >= 70 ? 4 : accuracy >= 50 ? 3 : accuracy >= 30 ? 2 : 1;
             document.getElementById('resultStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
-            
-            // Save to localStorage
-            const key = `cangjie_level${currentLevel}`;
-            const prev = JSON.parse(localStorage.getItem(key) || '{"best": 0}');
-            if (score > prev.best) {
-                localStorage.setItem(key, JSON.stringify({best: score, stars: Math.max(stars, prev.stars)}));
-            }
         }
 
         function backToLevel() {
-            userInput = '';
             document.getElementById('levelSelection').classList.remove('hidden');
             document.getElementById('modeSelection').classList.add('hidden');
             document.getElementById('gameArea').classList.add('hidden');
@@ -632,7 +664,6 @@
         }
 
         function backToMode() {
-            userInput = '';
             document.getElementById('gameArea').classList.add('hidden');
             document.getElementById('modeSelection').classList.remove('hidden');
         }
@@ -641,15 +672,13 @@
             fetchQuestions();
         }
 
-        // Handle physical keyboard
+        // Physical keyboard support
         document.addEventListener('keydown', e => {
             const gameArea = document.getElementById('gameArea');
             if (gameArea.classList.contains('hidden')) return;
             
             const key = e.key.toUpperCase();
-            const validKeys = 'QWERTYUIOPASDFGHJKLZXCVBNM';
-            
-            if (validKeys.includes(key)) {
+            if ('QWERTYUIOPASDFGHJKLZXCVBNM'.includes(key)) {
                 addChar(key);
             } else if (e.key === 'Backspace') {
                 backspace();
@@ -660,7 +689,6 @@
             }
         });
 
-        // Initialize
         initKeyboard();
     </script>
 </body>
