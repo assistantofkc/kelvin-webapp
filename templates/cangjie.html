@@ -683,7 +683,7 @@ function initKeyboard() {
                 document.getElementById('hintText').textContent = q.code;
                 
                 // Build individual key parts
-                const parts = q.parts || [q.code];
+                const parts = Array.isArray(q.parts) ? q.parts : (typeof q.parts === "string" ? q.parts.split("") : [q.code]);
                 parts.forEach((p, idx) => {
                     const div = document.createElement('div');
                     div.className = 'breakdown-char';
