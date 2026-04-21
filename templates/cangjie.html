@@ -638,9 +638,12 @@ function initKeyboard() {
 
         function fetchQuestions() {
             fetch(`/cangjie/get_questions/${currentLevel}`)
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
                 .then(data => {
-                    questions = data.questions;
+                    questions = data.questions || [];
                     currentIndex = 0;
                     score = 0;
                     answered = 0;
@@ -650,8 +653,8 @@ function initKeyboard() {
                     showQuestion();
                 })
                 .catch(err => {
-                    showToast('載入失敗', 'wrong');
-                    console.error(err);
+                    showToast('載入失敗: ' + err.message, 'wrong');
+                    console.error('Fetch error:', err);
                 });
         }
 
