@@ -65,7 +65,8 @@
             z-index: 1000;
             cursor: pointer;
             padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 8px;
             transition: background 0.3s;
         }
@@ -145,13 +146,13 @@
             color: var(--text-primary);
         }
         
-        body.light-mode .hamburger-icon {
-            background: var(--text-primary);
+        body.light-mode .hamburger {
+            background: #ffffff;
+            border: 1px solid #ddd;
         }
         
-        body.light-mode .hamburger {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(0, 0, 0, 0.2);
+        body.light-mode .hamburger-icon {
+            background: #1a1a2e;
         }
         
         body.light-mode .sidebar a {
