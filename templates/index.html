@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelvin C</title>
-    
+
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/icon-192.png">
-    
+
     <style>
         :root {
             --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -27,7 +27,7 @@
             --input-bg: rgba(255, 255, 255, 0.1);
             --input-border: rgba(255, 255, 255, 0.3);
         }
-        
+
         body.light-mode {
             --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 50%, #d0d5dc 100%);
             --bg-sidebar: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
@@ -39,7 +39,7 @@
             --input-bg: #fff;
             --input-border: #ccc;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
@@ -121,7 +121,7 @@
         .sidebar a span {
             margin-right: 10px;
         }
-        
+
         /* Theme Switch */
         .theme-switch {
             position: absolute;
@@ -135,35 +135,35 @@
             font-size: 0.9rem;
             transition: all 0.3s;
         }
-        
+
         .theme-switch:hover {
             background: var(--accent);
             color: #fff;
         }
-        
+
         body.light-mode .theme-switch {
             background: var(--card-bg);
             color: var(--text-primary);
         }
-        
+
         body.light-mode .hamburger {
             background: #ffffff;
             border: 1px solid #ddd;
         }
-        
+
         body.light-mode .hamburger-icon {
             background: #1a1a2e;
         }
-        
+
         body.light-mode .sidebar a {
             color: var(--text-primary);
             border-bottom: 1px solid var(--card-border);
         }
-        
+
         body.light-mode .sidebar a:hover {
             color: var(--accent);
         }
-        
+
         body.light-mode .overlay {
             background: rgba(0, 0, 0, 0.3);
         }
@@ -215,55 +215,58 @@
 
         .subtitle {
             font-size: 1.2rem;
-            color: #a0a0a0;
+            color: var(--text-secondary);
             margin-bottom: 30px;
         }
-
+        
         .bio {
             font-size: 1rem;
             line-height: 1.8;
-            color: #ccc;
+            color: var(--text-secondary);
             margin-bottom: 40px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 15px;
         }
-
+        
         .links {
             display: flex;
             gap: 15px;
             justify-content: center;
             flex-wrap: wrap;
         }
-
+        
         .link {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 50px;
-            color: #fff;
+            color: var(--text-primary);
             text-decoration: none;
             transition: all 0.3s ease;
             font-size: 0.9rem;
         }
-
+        
         .link:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--accent);
+            color: #fff;
             transform: translateY(-2px);
         }
-
+        
         .link.github:hover { background: #333; }
         .link.linkedin:hover { background: #0077b5; }
         .link.email:hover { background: #ea4335; }
-
+        
         .footer {
             margin-top: 50px;
             font-size: 0.8rem;
-            color: #666;
+            color: var(--text-secondary);
         }
-
+        
         .status {
             display: inline-block;
             width: 10px;
@@ -306,16 +309,16 @@
     <!-- Main Content -->
     <div class="container">
         <div class="avatar">👨‍💻</div>
-        
+
         <h1>Kelvin C</h1>
         <p class="subtitle">Vibe Coder | AI Enthusiast</p>
-        
+
         <div class="bio">
             <p>Hello! I'm based in Hong Kong and I love building things with AI and automation.</p>
-            <p>I write programs through vibe coding — using AI to bring ideas to life.</p>
+            <p>I write programs through vibe coding - using AI to bring ideas to life.</p>
             <p>Currently working on some hobby projects.</p>
         </div>
-        
+
         <div class="links">
             <a href="https://github.com/assistantofkc/kelvin-webapp" class="link github" target="_blank">
                 <span>🐙</span> GitHub
@@ -327,7 +330,7 @@
                 <span>✉️</span> Email
             </a>
         </div>
-        
+
         <div class="footer">
             <span class="status"></span> All systems operational | {{ version }}
         </div>
@@ -344,15 +347,15 @@
             const sidebar = document.getElementById('sidebar');
             const hamburger = document.querySelector('.hamburger');
             const overlay = document.getElementById('overlay');
-            
-            if (!sidebar.contains(event.target) && 
-                !hamburger.contains(event.target) && 
+
+            if (!sidebar.contains(event.target) &&
+                !hamburger.contains(event.target) &&
                 sidebar.classList.contains('active')) {
                 sidebar.classList.remove('active');
                 overlay.classList.remove('active');
             }
         });
-        
+
         // Theme toggle
         function toggleTheme() {
             document.body.classList.toggle('light-mode');
@@ -361,7 +364,7 @@
             document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
         }
-        
+
         // Load saved theme
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
