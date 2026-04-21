@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>倉頡學堂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            --bg-sidebar: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            --text-primary: #fff;
+            --text-secondary: #b0b0b0;
+            --accent: #667eea;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --card-border: rgba(255, 255, 255, 0.2);
+        }
+        body.light-mode {
+            --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            --bg-sidebar: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+            --text-primary: #1a1a2e;
+            --text-secondary: #555;
+            --accent: #4a5fd6;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.1);
+        }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+        .hamburger {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .hamburger:hover { background: var(--card-border); }
+        .hamburger-icon {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: var(--text-primary);
+            margin: 5px 0;
+            border-radius: 2px;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-sidebar);
+            padding-top: 80px;
+            padding-left: 30px;
+            transition: left 0.3s ease;
+            z-index: 999;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .sidebar.active { left: 0; }
+        .sidebar a {
+            display: block;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 15px 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sidebar a:hover { color: var(--accent); }
+        .sidebar a span { margin-right: 10px; }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 998;
+        }
+        .overlay.active { opacity: 1; visibility: visible; }
+        body.light-mode .hamburger {
+            background: #ffffff !important;
+            border: 1px solid #ddd !important;
+        }
+        body.light-mode .hamburger-icon {
+            background: #1a1a2e !important;
+        }
+        .theme-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: all 0.3s;
+            z-index: 1001;
+        }
+        .theme-switch:hover { background: var(--accent); color: #fff; }
+        .keyboard-key {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+            height: 48px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .keyboard-key:hover { background: var(--accent); transform: translateY(-2px); }
+        .keyboard-key:active { transform: translateY(0); background: var(--accent); }
+        .keyboard-key.disabled { opacity: 0.4; pointer-events: none; }
+        .toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast-correct { background: #22c55e; color: white; }
+        .toast-wrong { background: #ef4444; color: white; }
+        .progress-bar {
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        .star { color: #fbbf24; }
+        .star.empty { color: #555; }
+        .hint-text { color: var(--accent); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <!-- Hamburger Menu -->
+    <div class="hamburger" onclick="toggleSidebar()">
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+    </div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="theme-switch" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-text">Dark Mode</span>
+        </div>
+        <a href="/"><span>🏠</span> Home</a>
+        <a href="/news-clipper"><span>📰</span> News Clipper</a>
+        <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
+        <a href="https://gemini.google.com/share/b200771ce08e" target="_blank"><span>🧩</span> 中文詞彙測試 (Gemini)</a>
+        <a href="https://g.co/gemini/share/2668b53344d5" target="_blank"><span>🔣</span> 倉頡學堂 (Gemini)</a>
+        <a href="https://gemini.google.com/share/97151a39e237" target="_blank"><span>🎭</span> Slide Translator (Gemini)</a>
+    </nav>
+
+    <!-- Overlay -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <div class="container mx-auto px-4 pt-20 pb-8 max-w-2xl">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold mb-2">倉頡學堂</h1>
+            <p class="text-sm opacity-70">學習中文輸入法基礎</p>
+        </header>
+
+        <!-- Level Selection -->
+        <div id="levelSelection" class="card p-6 rounded-xl" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+            <h2 class="text-xl font-semibold mb-4 text-center">選擇難度</h2>
+            <div class="grid grid-cols-3 gap-4">
+                <button onclick="startGame(1)" class="p-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition">
+                    <div class="text-2xl mb-1">一</div>
+                    <div class="text-sm">Level 1</div>
+                    <div class="text-xs opacity-70">24基礎字根</div>
+                </button>
+                <button onclick="startGame(2)" class="p-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold transition">
+                    <div class="text-2xl mb-1">二</div>
+                    <div class="text-sm">Level 2</div>
+                    <div class="text-xs opacity-70">部首變化</div>
+                </button>
+                <button onclick="startGame(3)" class="p-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold transition">
+                    <div class="text-2xl mb-1">三</div>
+                    <div class="text-sm">Level 3</div>
+                    <div class="text-xs opacity-70">100+常用字</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Mode Selection -->
+        <div id="modeSelection" class="card p-6 rounded-xl hidden" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+            <h2 class="text-xl font-semibold mb-4 text-center">選擇模式</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="startPractice()" class="p-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold transition">
+                    <div class="text-2xl mb-1">📖</div>
+                    <div class="text-sm">學習模式</div>
+                    <div class="text-xs opacity-70">有提示</div>
+                </button>
+                <button onclick="startTest()" class="p-4 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold transition">
+                    <div class="text-2xl mb-1">✍️</div>
+                    <div class="text-sm">測試模式</div>
+                    <div class="text-xs opacity-70">無提示</div>
+                </button>
+            </div>
+            <button onclick="backToLevel()" class="mt-4 w-full py-2 rounded-lg bg-gray-600 hover:bg-gray-700 text-white">返回</button>
+        </div>
+
+        <!-- Game Area -->
+        <div id="gameArea" class="hidden">
+            <!-- Progress Bar -->
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                    <span id="progressText">進度 1/10</span>
+                    <span id="scoreText">得分: 0</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 10%"></div>
+                </div>
+            </div>
+
+            <!-- Score Stars -->
+            <div class="text-center mb-4">
+                <span id="stars" class="text-2xl">
+                    <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+                </span>
+            </div>
+
+            <!-- Question Card -->
+            <div class="card p-6 rounded-xl mb-4" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                <div class="text-center mb-4">
+                    <div class="text-6xl font-bold mb-2" id="questionChar">好</div>
+                    <div id="hintArea" class="hint-text hidden">
+                        提示：<span id="hintText">日月</span>
+                    </div>
+                </div>
+                <div id="answerDisplay" class="text-center text-2xl mb-4 min-h-[48px] flex items-center justify-center gap-2">
+                    <span class="text-gray-400">_</span>
+                </div>
+                <input type="text" id="answerInput" placeholder="輸入倉頡碼..." 
+                    class="w-full p-3 rounded-lg text-center text-xl"
+                    style="background: var(--card-bg); border: 2px solid var(--card-border); color: var(--text-primary);"
+                    autocomplete="off" />
+            </div>
+
+            <!-- Cangjie Keyboard -->
+            <div id="keyboard" class="mb-4">
+                <div class="text-center text-sm mb-2 opacity-70">虛擬鍵盤</div>
+                <div id="keyboardArea" class="grid grid-cols-10 gap-1">
+                    <!-- Keys will be generated by JS -->
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="clearInput()" class="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">清除</button>
+                    <button onclick="backspace()" class="flex-1 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 text-white">刪除</button>
+                    <button onclick="submitAnswer()" class="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white">送出</button>
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <button onclick="backToMode()" class="w-full py-2 rounded-lg bg-gray-600 hover:bg-gray-700 text-white">返回模式選擇</button>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="card p-6 rounded-xl text-center hidden" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+            <h2 class="text-2xl font-bold mb-4">完成！</h2>
+            <div class="text-6xl mb-4" id="resultStars">⭐⭐⭐</div>
+            <div class="text-xl mb-2">得分: <span id="finalScore">0</span>/100</div>
+            <div class="text-lg mb-4">正確率: <span id="accuracy">0</span>%</div>
+            <div class="flex gap-2">
+                <button onclick="restartGame()" class="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">再玩一次</button>
+                <button onclick="backToLevel()" class="flex-1 py-3 rounded-lg bg-gray-600 hover:bg-gray-700 text-white">返回主頁</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentLevel = 1;
+        let currentMode = 'practice';
+        let questions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let answered = 0;
+
+        // Cangjie keyboard layout
+        const KEYBOARD_ROWS = [
+            ['A', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+            ['S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+            ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+        ];
+
+        // Initialize keyboard
+        function initKeyboard() {
+            const keyboardArea = document.getElementById('keyboardArea');
+            keyboardArea.innerHTML = '';
+            KEYBOARD_ROWS.forEach(row => {
+                row.forEach(key => {
+                    const btn = document.createElement('button');
+                    btn.className = 'keyboard-key';
+                    btn.textContent = key;
+                    btn.onclick = () => addChar(key);
+                    keyboardArea.appendChild(btn);
+                });
+            });
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const hamburger = document.querySelector('.hamburger');
+            if (!sidebar.contains(e.target) && !hamburger.contains(e.target) && sidebar.classList.contains('active')) {
+                sidebar.classList.remove('active');
+                document.getElementById('overlay').classList.remove('active');
+            }
+        });
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+            document.getElementById('theme-icon').textContent = '☀️';
+            document.getElementById('theme-text').textContent = 'Light Mode';
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show ' + (type === 'correct' ? 'toast-correct' : 'toast-wrong');
+            setTimeout(() => toast.classList.remove('show'), 1500);
+        }
+
+        function startGame(level) {
+            currentLevel = level;
+            document.getElementById('levelSelection').classList.add('hidden');
+            document.getElementById('modeSelection').classList.remove('hidden');
+        }
+
+        function startPractice() {
+            currentMode = 'practice';
+            fetchQuestions();
+        }
+
+        function startTest() {
+            currentMode = 'test';
+            fetchQuestions();
+        }
+
+        function fetchQuestions() {
+            fetch(`/cangjie/get_questions/${currentLevel}`)
+                .then(r => r.json())
+                .then(data => {
+                    questions = data.questions;
+                    currentIndex = 0;
+                    score = 0;
+                    answered = 0;
+                    document.getElementById('modeSelection').classList.add('hidden');
+                    document.getElementById('gameArea').classList.remove('hidden');
+                    document.getElementById('results').classList.add('hidden');
+                    showQuestion();
+                })
+                .catch(err => {
+                    showToast('載入失敗', 'wrong');
+                    console.error(err);
+                });
+        }
+
+        function showQuestion() {
+            if (currentIndex >= questions.length) {
+                showResults();
+                return;
+            }
+            const q = questions[currentIndex];
+            document.getElementById('questionChar').textContent = q.char;
+            document.getElementById('hintArea').classList.toggle('hidden', currentMode === 'test');
+            if (currentMode === 'practice') {
+                document.getElementById('hintText').textContent = q.hint || q.code;
+            }
+            document.getElementById('answerDisplay').innerHTML = '<span class="text-gray-400">_</span>';
+            document.getElementById('answerInput').value = '';
+            document.getElementById('answerInput').focus();
+            updateProgress();
+        }
+
+        function addChar(c) {
+            const input = document.getElementById('answerInput');
+            input.value += c;
+            updateAnswerDisplay();
+            input.focus();
+        }
+
+        function clearInput() {
+            document.getElementById('answerInput').value = '';
+            updateAnswerDisplay();
+        }
+
+        function backspace() {
+            const input = document.getElementById('answerInput');
+            input.value = input.value.slice(0, -1);
+            updateAnswerDisplay();
+        }
+
+        function updateAnswerDisplay() {
+            const input = document.getElementById('answerInput');
+            const display = document.getElementById('answerDisplay');
+            const val = input.value.toUpperCase();
+            if (!val) {
+                display.innerHTML = '<span class="text-gray-400">_</span>';
+            } else {
+                display.innerHTML = val.split('').map(c => `<span class="inline-block px-1">${c}</span>`).join('');
+            }
+        }
+
+        function submitAnswer() {
+            const input = document.getElementById('answerInput');
+            const userAnswer = input.value.toUpperCase().trim();
+            if (!userAnswer) return;
+
+            const q = questions[currentIndex];
+            const correctCode = q.code.toUpperCase();
+            const isCorrect = userAnswer === correctCode;
+
+            answered++;
+            if (isCorrect) {
+                score += 10;
+                showToast('正確！', 'correct');
+            } else {
+                showToast(`正確答案：${correctCode}`, 'wrong');
+            }
+
+            // Disable input briefly
+            document.getElementById('answerInput').disabled = true;
+            setTimeout(() => {
+                document.getElementById('answerInput').disabled = false;
+                currentIndex++;
+                showQuestion();
+            }, 1500);
+        }
+
+        function updateProgress() {
+            const total = questions.length;
+            const pct = ((currentIndex + 1) / total) * 100;
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressText').textContent = `進度 ${currentIndex + 1}/${total}`;
+            document.getElementById('scoreText').textContent = `得分: ${score}`;
+            
+            // Update stars
+            const starsNeeded = [0, 50, 70, 90, 100];
+            const starsHtml = [0, 1, 2, 3, 4].map(i => 
+                `<span class="star ${score >= starsNeeded[i] ? '' : 'empty'}">${score >= starsNeeded[i] ? '⭐' : '☆'}</span>`
+            ).join('');
+            document.getElementById('stars').innerHTML = starsHtml;
+        }
+
+        function showResults() {
+            document.getElementById('gameArea').classList.add('hidden');
+            document.getElementById('results').classList.remove('hidden');
+            
+            const accuracy = Math.round((score / (questions.length * 10)) * 100);
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('accuracy').textContent = accuracy;
+            
+            let stars = 0;
+            if (accuracy >= 90) stars = 5;
+            else if (accuracy >= 70) stars = 4;
+            else if (accuracy >= 50) stars = 3;
+            else if (accuracy >= 30) stars = 2;
+            else stars = 1;
+            
+            document.getElementById('resultStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(5 - stars);
+            
+            // Save to localStorage
+            const key = `cangjie_level${currentLevel}`;
+            const prev = JSON.parse(localStorage.getItem(key) || '{"best": 0}');
+            if (score > prev.best) {
+                localStorage.setItem(key, JSON.stringify({best: score, stars: Math.max(stars, prev.stars)}));
+            }
+        }
+
+        function backToLevel() {
+            document.getElementById('levelSelection').classList.remove('hidden');
+            document.getElementById('modeSelection').classList.add('hidden');
+            document.getElementById('gameArea').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+        }
+
+        function backToMode() {
+            document.getElementById('gameArea').classList.add('hidden');
+            document.getElementById('modeSelection').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            fetchQuestions();
+        }
+
+        // Handle Enter key
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                const gameArea = document.getElementById('gameArea');
+                if (!gameArea.classList.contains('hidden')) {
+                    submitAnswer();
+                }
+            }
+        });
+
+        // Initialize
+        initKeyboard();
+    </script>
+</body>
+</html>
