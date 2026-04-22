@@ -803,10 +803,8 @@ function initKeyboard() {
                 addChar(key);
             } else if (e.key === 'Backspace') {
                 backspace();
-            } else if (e.key === ' ') {
+            } else if (e.key === ' ' || e.key === 'Enter') {
                 submitAnswer();
-            } else if (e.key === 'Enter') {
-                clearInput();
             } else if (e.key === 'Escape') {
                 clearInput();
             }
