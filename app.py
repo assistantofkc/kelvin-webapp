@@ -16,7 +16,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 app = Flask(__name__)
 
 # App version
-APP_VERSION = 'v6.10'
+APP_VERSION = 'v6.09'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -196,9 +196,9 @@ def api_generate_quiz():
         }), 500
 
 
-# MASTER_BANK for Cangjie Practice - 2026 專業校對版
+# MASTER_BANK for Cangjie Practice - 已校正並去掉加號
 MASTER_BANK = {
-    # Level 1: 24 基本字根 (1鍵1字)
+    # Level 1: 24 基本字根
     1: [
         {'char': '日', 'code': 'A', 'parts': '日'}, {'char': '月', 'code': 'B', 'parts': '月'},
         {'char': '金', 'code': 'C', 'parts': '金'}, {'char': '木', 'code': 'D', 'parts': '木'},
@@ -214,7 +214,7 @@ MASTER_BANK = {
         {'char': '田', 'code': 'W', 'parts': '田'}, {'char': '卜', 'code': 'Y', 'parts': '卜'}
     ],
     
-    # Level 2: 字根變體 (正確歸類)
+    # Level 2: 字根變體
     2: [
         {'char': '目', 'code': 'B', 'parts': '月家族'}, {'char': '氵', 'code': 'E', 'parts': '水家族'},
         {'char': '艹', 'code': 'T', 'parts': '廿家族'}, {'char': '宀', 'code': 'J', 'parts': '十家族'},
@@ -231,58 +231,57 @@ MASTER_BANK = {
         {'char': '阝', 'code': 'N', 'parts': '弓家族'}, {'char': '刂', 'code': 'J', 'parts': '十家族'}
     ],
     
-    # Level 3: 常用漢字 (正確組合拆碼 - 修正大量錯誤)
+    # Level 3: 常用漢字
     3: [
-        {'char': '男', 'code': 'WLS', 'parts': '田+中+力'},
-        {'char': '明', 'code': 'AB', 'parts': '日+月'},
-        {'char': '林', 'code': 'DD', 'parts': '木+木'},
-        {'char': '和', 'code': 'HDR', 'parts': '竹木+口'},
-        {'char': '花', 'code': 'TOP', 'parts': '廿+人+心'},
-        {'char': '想', 'code': 'DBP', 'parts': '木+目+心'},
-        {'char': '看', 'code': 'HQU', 'parts': '竹+手+山(目變體)'},
-        {'char': '國', 'code': 'WIRM', 'parts': '囗+戈口一'},
-        {'char': '電', 'code': 'MBWU', 'parts': '一月+田+山'},
-        {'char': '語', 'code': 'YRMIR', 'parts': '卜口+一+一口'},
-        {'char': '聽', 'code': 'SJYP', 'parts': '耳+十+卜+心'},
-        {'char': '問', 'code': 'ANR', 'parts': '門+口'},
-        {'char': '開', 'code': 'ANMJ', 'parts': '門+一十'},
-        {'char': '地', 'code': 'GPD', 'parts': '土+心+木'},
-        {'char': '天', 'code': 'MK', 'parts': '一+大'},
-        {'char': '王', 'code': 'MG', 'parts': '一+土'},
-        {'char': '星', 'code': 'AHM', 'parts': '日+竹一'},
-        {'char': '信', 'code': 'OYRR', 'parts': '人+卜口口'},
-        {'char': '你', 'code': 'ONF', 'parts': '人+弓+火'},
-        {'char': '伯', 'code': 'OHA', 'parts': '人+竹日'},
-        {'char': '家', 'code': 'JJSO', 'parts': '十+十+尸+人'},
-        {'char': '鬧', 'code': 'ANYL', 'parts': '門+卜中'},
-        {'char': '閉', 'code': 'AND', 'parts': '門+木'},
-        {'char': '閒', 'code': 'ANB', 'parts': '門+月'},
-        {'char': '圖', 'code': 'WWRY', 'parts': '囗+田口卜'},
-        {'char': '跑', 'code': 'RMPU', 'parts': '口一+心山'},
-        {'char': '路', 'code': 'RMHR', 'parts': '口一+竹口'},
-        {'char': '這', 'code': 'YYRR', 'parts': '卜+卜口口'},
-        {'char': '都', 'code': 'JAN', 'parts': '十日+弓'},
-        {'char': '進', 'code': 'YOG', 'parts': '卜+人土'},
-        {'char': '退', 'code': 'YAV', 'parts': '卜+日女'},
-        {'char': '起', 'code': 'GOSO', 'parts': '土+人+尸+人'},
-        {'char': '眼', 'code': 'BAV', 'parts': '月+日女'},
-        {'char': '說', 'code': 'YRRU', 'parts': '言+金口山'},
-        {'char': '話', 'code': 'YRHR', 'parts': '言+竹口'},
-        {'char': '讀', 'code': 'YRGWC', 'parts': '言+土田金'},
-        {'char': '書', 'code': 'LGA', 'parts': '中+土+日'},
-        {'char': '筆', 'code': 'HLS', 'parts': '竹+中+尸'},
-        {'char': '畫', 'code': 'LWG', 'parts': '中+田+土'},
-        {'char': '腳', 'code': 'BCIL', 'parts': '月+金戈中'},
-        {'char': '頭', 'code': 'MNC', 'parts': '一+弓+金'},
-        {'char': '命', 'code': 'OML', 'parts': '人+一+中'},
-        {'char': '愛', 'code': 'BBXP', 'parts': '月+月+難+心'},
-        {'char': '情', 'code': 'PQB', 'parts': '心+手+月'},
-        {'char': '分', 'code': 'CS', 'parts': '金+尸'},
-        {'char': '局', 'code': 'SWR', 'parts': '尸+田+口'},
-        {'char': '尼', 'code': 'SP', 'parts': '尸+心'}
+        {'char': '男', 'code': 'WLS', 'parts': '田中力'},
+        {'char': '明', 'code': 'AB', 'parts': '日月'},
+        {'char': '林', 'code': 'DD', 'parts': '木木'},
+        {'char': '和', 'code': 'HDR', 'parts': '竹木口'},
+        {'char': '花', 'code': 'TOP', 'parts': '廿人心'},
+        {'char': '想', 'code': 'DBP', 'parts': '木目心'},
+        {'char': '看', 'code': 'HQU', 'parts': '竹手山'},
+        {'char': '國', 'code': 'WIRM', 'parts': '囗戈口一'},
+        {'char': '電', 'code': 'MBWU', 'parts': '一月田山'},
+        {'char': '語', 'code': 'YRMIR', 'parts': '卜口一一口'},
+        {'char': '聽', 'code': 'SJYP', 'parts': '耳十卜心'},
+        {'char': '問', 'code': 'ANR', 'parts': '門口'},
+        {'char': '開', 'code': 'ANMJ', 'parts': '門一十'},
+        {'char': '地', 'code': 'GPD', 'parts': '土心木'},
+        {'char': '天', 'code': 'MK', 'parts': '一大'},
+        {'char': '王', 'code': 'MG', 'parts': '一土'},
+        {'char': '星', 'code': 'AHM', 'parts': '日竹一'},
+        {'char': '信', 'code': 'OYRR', 'parts': '人卜口口'},
+        {'char': '你', 'code': 'ONF', 'parts': '人弓火'},
+        {'char': '伯', 'code': 'OHA', 'parts': '人竹日'},
+        {'char': '家', 'code': 'JJSO', 'parts': '十十尸人'},
+        {'char': '鬧', 'code': 'ANYL', 'parts': '門卜中'},
+        {'char': '閉', 'code': 'AND', 'parts': '門木'},
+        {'char': '閒', 'code': 'ANB', 'parts': '門月'},
+        {'char': '圖', 'code': 'WWRY', 'parts': '囗田口卜'},
+        {'char': '跑', 'code': 'RMPU', 'parts': '口一心山'},
+        {'char': '路', 'code': 'RMHR', 'parts': '口一竹口'},
+        {'char': '這', 'code': 'YYRR', 'parts': '卜卜口口'},
+        {'char': '都', 'code': 'JAN', 'parts': '十日弓'},
+        {'char': '進', 'code': 'YOG', 'parts': '卜人土'},
+        {'char': '退', 'code': 'YAV', 'parts': '卜日女'},
+        {'char': '起', 'code': 'GOSO', 'parts': '土人尸人'},
+        {'char': '眼', 'code': 'BAV', 'parts': '月日女'},
+        {'char': '說', 'code': 'YRRU', 'parts': '言金口山'},
+        {'char': '話', 'code': 'YRHR', 'parts': '言竹口'},
+        {'char': '讀', 'code': 'YRGWC', 'parts': '言土田金'},
+        {'char': '書', 'code': 'LGA', 'parts': '中土日'},
+        {'char': '筆', 'code': 'HLS', 'parts': '竹中尸'},
+        {'char': '畫', 'code': 'LWG', 'parts': '中田土'},
+        {'char': '腳', 'code': 'BCIL', 'parts': '月金戈中'},
+        {'char': '頭', 'code': 'MNC', 'parts': '一弓金'},
+        {'char': '命', 'code': 'OML', 'parts': '人一中'},
+        {'char': '愛', 'code': 'BBXP', 'parts': '月月難心'},
+        {'char': '情', 'code': 'PQB', 'parts': '心手月'},
+        {'char': '分', 'code': 'CS', 'parts': '金尸'},
+        {'char': '局', 'code': 'SWR', 'parts': '尸田口'},
+        {'char': '尼', 'code': 'SP', 'parts': '尸心'}
     ]
 }
-
 
 @app.route('/cangjie')
 def cangjie():
