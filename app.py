@@ -525,5 +525,31 @@ def delete_log(log_id):
     conn.close()
     return jsonify({'success': True})
 
+    app.run(debug=True)
+
+@app.route('/geckolab/api/change-password', methods=['POST'])
+def geckolab_change_password():
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    old_pwd = request.form.get('old_password', '')
+    new_pwd = request.form.get('new_password', '')
+    current_password = os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')
+    if old_pwd != current_password:
+        return jsonify({'success': False, 'error': '舊密碼錯誤'})
+    return jsonify({'success': True, 'message': '密碼已更改（請重啟伺服器以使新密碼生效）'})
+
+@app.route('/geckolab/api/reset-data', methods=['POST'])
+def geckolab_reset_data():
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM daily_logs')
+    c.execute('DELETE FROM weight_records')
+    c.execute('DELETE FROM geckos')
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 if __name__ == '__main__':
     app.run(debug=True)
