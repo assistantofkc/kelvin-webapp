@@ -312,7 +312,7 @@ def geckolab():
     """Geckolab - Gecko Care Management App Landing Page"""
     return render_template('geckolab.html', version=APP_VERSION)
 
-@app.route('/geckolab/login', methods=['POST'])
+@app.route('/geckolab/api/login', methods=['POST'])
 def geckolab_login():
     password = request.form.get('password', '')
     env_password = os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')
