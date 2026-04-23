@@ -2,28 +2,21 @@
 Personal Homepage with Chinese Vocabulary Test
 Flask Web App for PythonAnywhere
 """
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from datetime import datetime, date
-from werkzeug.utils import secure_filename
-
-# Import Geckolab routes
-import geckolab_routes
+from flask import Flask, render_template, request, jsonify
 import requests
 import random
 import json
 import os
 import re
-import sqlite3
 from dotenv import load_dotenv
 
 # Load .env file
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.22'
+APP_VERSION = 'v6.21'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -308,13 +301,4 @@ def get_cangjie_questions(level):
     return jsonify({'questions': questions})
 
 
-
-@app.route('/geckolab')
-def geckolab():
-    """Geckolab - Gecko Care Management App Landing Page"""
-    return render_template('geckolab.html', version=APP_VERSION)
-
-
-
-if __name__ == "__main__":
     app.run(debug=True)

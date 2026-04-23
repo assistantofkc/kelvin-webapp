@@ -6,3 +6,7 @@ __pycache__/
 *.pyc
 .env
 render.yaml
+
+# Geckolab
+uploads/
+*.db

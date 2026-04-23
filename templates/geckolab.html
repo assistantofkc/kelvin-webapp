@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Geckolab 守宮照護管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            --bg-sidebar: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            --text-primary: #fff;
+            --text-secondary: #b0b0b0;
+            --accent: #667eea;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --card-border: rgba(255, 255, 255, 0.2);
+        }
+        body.light-mode {
+            --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            --bg-sidebar: linear-gradient(180deg, #ffffff 0%, #f0f0f0 100%);
+            --text-primary: #1a1a2e;
+            --text-secondary: #555;
+            --accent: #4a5fd6;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(0, 0, 0, 0.1);
+        }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+        .hamburger {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+        }
+        .hamburger:hover { background: var(--card-border); }
+        .hamburger-icon {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: var(--text-primary);
+            margin: 5px 0;
+            border-radius: 2px;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-sidebar);
+            padding-top: 80px;
+            padding-left: 30px;
+            transition: left 0.3s ease;
+            z-index: 999;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .sidebar.active { left: 0; }
+        .sidebar a {
+            display: block;
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 15px 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sidebar a:hover { color: var(--accent); }
+        .sidebar a span { margin-right: 10px; }
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 998;
+        }
+        .overlay.active { opacity: 1; visibility: visible; }
+        body.light-mode .hamburger {
+            background: #fff !important;
+            border: 1px solid #ddd !important;
+        }
+        body.light-mode .hamburger-icon {
+            background: #1a1a2e !important;
+        }
+        .theme-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: all 0.3s;
+            z-index: 1001;
+        }
+        .theme-switch:hover { background: var(--accent); color: #fff; }
+        .gecko-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--gecko-color, #FF6B6B);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .gecko-avatar-lg {
+            width: 150px;
+            height: 150px;
+            border-width: 6px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            width: 95%;
+            max-width: 500px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover { opacity: 0.85; transform: scale(0.98); }
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+        }
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"], textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        input:focus, textarea:focus {
+            outline: 2px solid var(--accent);
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 4px;
+        }
+        .calendar-day:hover { background: var(--accent); }
+        .calendar-day.other-month { opacity: 0.4; }
+        .calendar-day.today { border: 2px solid var(--accent); }
+        .log-emoji { font-size: 1.2rem; }
+        .toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 3000;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast-success { background: #22c55e; color: white; }
+        .toast-error { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+    <!-- Hamburger -->
+    <div class="hamburger" id="hamburger" onclick="toggleSidebar()">
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+    </div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="theme-switch" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-text">Dark Mode</span>
+        </div>
+        <a href="/"><span>🏠</span> Home</a>
+        <a href="/news-clipper"><span>📰</span> News Clipper</a>
+        <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
+        <a href="/cangjie"><span>🔣</span> 倉頡學堂</a>
+        <a href="/geckolab"><span>🦎</span> Geckolab</a>
+    </nav>
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 pt-20 pb-8 max-w-4xl">
+        <!-- Login View -->
+        <div id="login-view" class="text-center">
+            <h1 class="text-3xl font-bold mb-6">🦎 Geckolab</h1>
+            <p class="mb-8 opacity-70">守宮照護管理</p>
+            <div id="gecko-list-login" class="flex flex-wrap justify-center gap-6 mb-8">
+                <!-- Geckos shown for login -->
+            </div>
+            <button onclick="showLoginModal()" class="btn btn-primary px-8 py-3 text-lg">登入</button>
+        </div>
+
+        <!-- Main View (logged in) -->
+        <div id="main-view" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold">🦎 守宮列表</h1>
+                <div class="flex gap-2">
+                    <button onclick="showAddGeckoModal()" class="btn btn-primary">➕ 新增守宮</button>
+                    <button onclick="logout()" class="btn btn-secondary">登出</button>
+                </div>
+            </div>
+            <div id="gecko-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Geckos will be loaded here -->
+            </div>
+            
+            <!-- Calendar Section -->
+            <div class="mt-8">
+                <h2 class="text-xl font-bold mb-4">📅 日曆</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
+                    <span id="calendar-title" class="text-lg font-semibold"></span>
+                    <button onclick="changeMonth(1)" class="btn btn-secondary">▶</button>
+                </div>
+                <div class="calendar-grid mb-2">
+                    <div class="text-center font-bold text-red-500">日</div>
+                    <div class="text-center font-bold">一</div>
+                    <div class="text-center font-bold">二</div>
+                    <div class="text-center font-bold">三</div>
+                    <div class="text-center font-bold">四</div>
+                    <div class="text-center font-bold">五</div>
+                    <div class="text-center font-bold text-red-500">六</div>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- Calendar days will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Gecko Profile View -->
+        <div id="profile-view" class="hidden">
+            <button onclick="showMainView()" class="btn btn-secondary mb-4">← 返回列表</button>
+            <div class="text-center">
+                <img id="profile-avatar" src="" class="gecko-avatar gecko-avatar-lg mb-4">
+                <h2 id="profile-name" class="text-2xl font-bold mb-2"></h2>
+                <p id="profile-species" class="opacity-70 mb-2"></p>
+                <p id="profile-age" class="text-sm opacity-60 mb-4"></p>
+                <p id="profile-weight" class="text-lg mb-4"></p>
+                <div class="flex justify-center gap-2 flex-wrap">
+                    <button onclick="showEditGeckoModal()" class="btn btn-secondary">編輯資料</button>
+                    <button onclick="showWeightModal()" class="btn btn-primary">體重管理</button>
+                    <button onclick="showAddLogModal()" class="btn btn-secondary">➕ 新增紀錄</button>
+                </div>
+            </div>
+            
+            <!-- Gecko Logs -->
+            <div class="mt-6">
+                <h3 class="text-lg font-bold mb-3">📋 近期紀錄</h3>
+                <div id="profile-logs" class="space-y-2">
+                    <!-- Logs will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold">🔐 登入</h2>
+                <button class="modal-close" onclick="hideLoginModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="password" id="login-password" placeholder="請輸入密碼" class="w-full">
+                <button onclick="login()" class="btn btn-primary w-full mt-2">確認</button>
+                <p id="login-error" class="text-red-500 mt-2 hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Gecko Modal -->
+    <div id="gecko-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 id="gecko-modal-title" class="text-xl font-bold">新增守宮</h2>
+                <button class="modal-close" onclick="hideGeckoModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="gecko-id">
+                <div class="text-center mb-4">
+                    <label class="block mb-2">頭像</label>
+                    <img id="gecko-avatar-preview" src="/static/geckolab/default_gecko.png" class="w-24 h-24 rounded-full object-cover mx-auto border-4" style="border-color: var(--gecko-color, #FF6B6B)">
+                    <input type="file" id="gecko-avatar-input" accept="image/*" class="mt-2 text-sm">
+                </div>
+                <input type="text" id="gecko-name" placeholder="名稱 *">
+                <input type="text" id="gecko-species" placeholder="品種">
+                <label class="block text-sm mb-1">出生日期</label>
+                <input type="date" id="gecko-dob">
+                <label class="block text-sm mb-1">領養日期</label>
+                <input type="date" id="gecko-adopted">
+                <label class="block text-sm mb-1">顏色</label>
+                <input type="color" id="gecko-color" value="#FF6B6B" class="w-full h-10 rounded cursor-pointer">
+                <button onclick="saveGecko()" class="btn btn-primary w-full mt-4">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weight Modal -->
+    <div id="weight-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold">⚖️ 體重管理</h2>
+                <button class="modal-close" onclick="hideWeightModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <label class="block text-sm mb-1">新增體重紀錄</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="weight-input" step="0.1" placeholder="體重 (g)" class="flex-1">
+                        <input type="date" id="weight-date" class="flex-1">
+                        <button onclick="addWeight()" class="btn btn-primary">新增</button>
+                    </div>
+                </div>
+                <div id="weight-history" class="max-h-60 overflow-y-auto">
+                    <!-- Weight history will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Modal -->
+    <div id="log-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold">📝 新增紀錄</h2>
+                <button class="modal-close" onclick="hideLogModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="log-gecko-id">
+                <label class="block text-sm mb-1">日期</label>
+                <input type="date" id="log-date">
+                <label class="block text-sm mb-2 mt-2">類型</label>
+                <div class="flex gap-2 flex-wrap mb-2">
+                    <button type="button" onclick="selectLogType('feeding')" class="btn btn-secondary" data-log-type="feeding">🦗 餵食</button>
+                    <button type="button" onclick="selectLogType('poo')" class="btn btn-secondary" data-log-type="poo">💩 大便</button>
+                    <button type="button" onclick="selectLogType('pee')" class="btn btn-secondary" data-log-type="pee">💧 小便</button>
+                </div>
+                <input type="hidden" id="log-type">
+                <input type="text" id="log-quantity" placeholder="數量 (e.g., 2隻蟋蟀)">
+                <textarea id="log-notes" rows="2" placeholder="備註"></textarea>
+                <button onclick="addLog()" class="btn btn-primary w-full mt-2">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Detail Modal -->
+    <div id="day-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold" id="day-modal-title">日誌</h2>
+                <button class="modal-close" onclick="hideDayModal()">✕</button>
+            </div>
+            <div class="modal-body" id="day-modal-body">
+                <!-- Day logs will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/geckolab/api';
+        let isLoggedIn = false;
+        let geckos = [];
+        let currentGeckoId = null;
+        let currentMonth = new Date();
+        let selectedLogType = null;
+
+        // Theme
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light') {
+                document.body.classList.add('light-mode');
+                document.getElementById('theme-icon').textContent = '☀️';
+                document.getElementById('theme-text').textContent = 'Light Mode';
+            }
+        }
+
+        // Sidebar
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type}`;
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Modal helpers
+        function closeModal(e) {
+            if (e.target.classList.contains('modal')) {
+                document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+            }
+        }
+        function hideLoginModal() { document.getElementById('login-modal').classList.remove('show'); }
+        function hideGeckoModal() { document.getElementById('gecko-modal').classList.remove('show'); }
+        function hideWeightModal() { document.getElementById('weight-modal').classList.remove('show'); }
+        function hideLogModal() { document.getElementById('log-modal').classList.remove('show'); }
+        function hideDayModal() { document.getElementById('day-modal').classList.remove('show'); }
+
+        // Login
+        function showLoginModal() { document.getElementById('login-modal').classList.add('show'); }
+        async function login() {
+            const password = document.getElementById('login-password').value;
+            const res = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `password=${encodeURIComponent(password)}`
+            });
+            const data = await res.json();
+            if (data.success) {
+                isLoggedIn = true;
+                hideLoginModal();
+                showMainView();
+                loadGeckos();
+            } else {
+                document.getElementById('login-error').textContent = data.error || '登入失敗';
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+        function logout() {
+            isLoggedIn = false;
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('profile-view').classList.add('hidden');
+            fetch('/geckolab/logout');
+        }
+
+        // Views
+        function showMainView() {
+            document.getElementById('main-view').classList.remove('hidden');
+            document.getElementById('profile-view').classList.add('hidden');
+            currentGeckoId = null;
+        }
+        function showProfileView(geckoId) {
+            currentGeckoId = geckoId;
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('profile-view').classList.remove('hidden');
+            loadGeckoProfile(geckoId);
+        }
+
+        // Load geckos
+        async function loadGeckos() {
+            const res = await fetch(`${API_BASE}/geckos`);
+            const data = await res.json();
+            geckos = data.geckos || [];
+            renderGeckoList();
+            if (isLoggedIn) {
+                renderGeckoGrid();
+                renderCalendar();
+            }
+        }
+
+        function renderGeckoList() {
+            const container = document.getElementById('gecko-list-login');
+            container.innerHTML = geckos.map(g => `
+                <div class="text-center">
+                    <img src="${g.avatar_path || '/static/geckolab/default_gecko.png'}" 
+                         class="gecko-avatar" style="--gecko-color: ${g.color}">
+                    <p class="mt-2 font-semibold">${g.name}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderGeckoGrid() {
+            const container = document.getElementById('gecko-grid');
+            container.innerHTML = geckos.map(g => `
+                <div class="text-center cursor-pointer" onclick="showProfileView(${g.id})">
+                    <img src="${g.avatar_path || '/static/geckolab/default_gecko.png'}" 
+                         class="gecko-avatar mx-auto" style="--gecko-color: ${g.color}">
+                    <p class="mt-2 font-semibold">${g.name}</p>
+                    <p class="text-xs opacity-60">${g.species || ''}</p>
+                </div>
+            `).join('');
+        }
+
+        // Gecko Profile
+        async function loadGeckoProfile(geckoId) {
+            const res = await fetch(`${API_BASE}/geckos/${geckoId}`);
+            const data = await res.json();
+            if (!data.success) return;
+            const g = data.gecko;
+            
+            document.getElementById('profile-avatar').src = g.avatar_path || '/static/geckolab/default_gecko.png';
+            document.getElementById('profile-avatar').style.setProperty('--gecko-color', g.color);
+            document.getElementById('profile-name').textContent = g.name;
+            document.getElementById('profile-species').textContent = g.species || '';
+            
+            let ageText = '';
+            if (g.age_years !== undefined) {
+                ageText = `${g.age_years}歲 ${g.age_months}個月 ${g.age_days}日`;
+            }
+            document.getElementById('profile-age').textContent = ageText;
+            document.getElementById('profile-weight').textContent = g.latest_weight ? `體重: ${g.latest_weight}g` : '尚未記錄體重';
+            
+            // Store for editing
+            window.currentGecko = g;
+            
+            loadGeckoLogs(geckoId);
+        }
+
+        async function loadGeckoLogs(geckoId) {
+            const res = await fetch(`${API_BASE}/geckos/${geckoId}/logs`);
+            const data = await res.json();
+            const logs = data.logs || [];
+            
+            const container = document.getElementById('profile-logs');
+            if (logs.length === 0) {
+                container.innerHTML = '<p class="opacity-60">暫時未有紀錄</p>';
+            } else {
+                container.innerHTML = logs.slice(0, 10).map(log => {
+                    const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'poo' ? '💩' : '💧';
+                    return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
+                        <span>${emoji} ${log.log_date} ${log.quantity || ''}</span>
+                        <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        async function deleteLog(logId) {
+            if (!confirm('確定刪除？')) return;
+            await fetch(`${API_BASE}/logs/${logId}`, { method: 'DELETE' });
+            if (currentGeckoId) loadGeckoLogs(currentGeckoId);
+        }
+
+        // Add/Edit Gecko
+        function showAddGeckoModal() {
+            document.getElementById('gecko-modal-title').textContent = '新增守宮';
+            document.getElementById('gecko-id').value = '';
+            document.getElementById('gecko-name').value = '';
+            document.getElementById('gecko-species').value = '';
+            document.getElementById('gecko-dob').value = '';
+            document.getElementById('gecko-adopted').value = '';
+            document.getElementById('gecko-color').value = '#FF6B6B';
+            document.getElementById('gecko-avatar-preview').src = '/static/geckolab/default_gecko.png';
+            document.getElementById('gecko-modal').classList.add('show');
+        }
+
+        function showEditGeckoModal() {
+            const g = window.currentGecko;
+            if (!g) return;
+            document.getElementById('gecko-modal-title').textContent = '編輯守宮';
+            document.getElementById('gecko-id').value = g.id;
+            document.getElementById('gecko-name').value = g.name;
+            document.getElementById('gecko-species').value = g.species || '';
+            document.getElementById('gecko-dob').value = g.dob || '';
+            document.getElementById('gecko-adopted').value = g.adopted_date || '';
+            document.getElementById('gecko-color').value = g.color || '#FF6B6B';
+            document.getElementById('gecko-avatar-preview').src = g.avatar_path || '/static/geckolab/default_gecko.png';
+            document.getElementById('gecko-modal').classList.add('show');
+        }
+
+        async function saveGecko() {
+            const id = document.getElementById('gecko-id').value;
+            const formData = new FormData();
+            formData.append('name', document.getElementById('gecko-name').value);
+            formData.append('species', document.getElementById('gecko-species').value);
+            formData.append('dob', document.getElementById('gecko-dob').value);
+            formData.append('adopted_date', document.getElementById('gecko-adopted').value);
+            formData.append('color', document.getElementById('gecko-color').value);
+            
+            const avatarInput = document.getElementById('gecko-avatar-input');
+            if (avatarInput.files[0]) {
+                formData.append('avatar', avatarInput.files[0]);
+            }
+            
+            const url = id ? `${API_BASE}/geckos/${id}` : `${API_BASE}/geckos`;
+            const method = id ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, { method, body: formData });
+            const data = await res.json();
+            
+            if (data.success) {
+                hideGeckoModal();
+                showToast(id ? '已更新' : '已新增');
+                loadGeckos();
+                if (id) showProfileView(parseInt(id));
+            }
+        }
+
+        // Weight
+        function showWeightModal() {
+            if (!currentGeckoId) return;
+            document.getElementById('weight-modal').classList.add('show');
+            document.getElementById('weight-date').value = new Date().toISOString().split('T')[0];
+            loadWeightHistory();
+        }
+
+        async function loadWeightHistory() {
+            const res = await fetch(`${API_BASE}/geckos/${currentGeckoId}/weights`);
+            const data = await res.json();
+            const weights = data.weights || [];
+            
+            document.getElementById('weight-history').innerHTML = weights.length === 0 
+                ? '<p class="opacity-60 text-center">暫時未有體重紀錄</p>'
+                : weights.map(w => `<div class="flex justify-between p-2 border-b" style="border-color: var(--card-border)">
+                    <span>${w.record_date}</span>
+                    <span class="font-bold">${w.weight}g</span>
+                </div>`).join('');
+        }
+
+        async function addWeight() {
+            const weight = document.getElementById('weight-input').value;
+            const date = document.getElementById('weight-date').value;
+            if (!weight) return;
+            
+            const formData = new FormData();
+            formData.append('weight', weight);
+            formData.append('record_date', date);
+            
+            await fetch(`${API_BASE}/geckos/${currentGeckoId}/weights`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            document.getElementById('weight-input').value = '';
+            loadWeightHistory();
+            showToast('已新增體重');
+        }
+
+        // Logs
+        function showAddLogModal() {
+            if (!currentGeckoId) return;
+            document.getElementById('log-modal').classList.add('show');
+            document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('log-type').value = '';
+            document.getElementById('log-quantity').value = '';
+            document.getElementById('log-notes').value = '';
+            selectedLogType = null;
+            document.querySelectorAll('[data-log-type]').forEach(b => b.classList.remove('btn-primary'));
+            document.querySelectorAll('[data-log-type]').forEach(b => b.classList.add('btn-secondary'));
+        }
+
+        function selectLogType(type) {
+            selectedLogType = type;
+            document.getElementById('log-type').value = type;
+            document.querySelectorAll('[data-log-type]').forEach(b => {
+                if (b.dataset.logType === type) {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-primary');
+                } else {
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-secondary');
+                }
+            });
+        }
+
+        async function addLog() {
+            if (!selectedLogType) {
+                showToast('請選擇類型', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('log_type', selectedLogType);
+            formData.append('log_date', document.getElementById('log-date').value);
+            formData.append('quantity', document.getElementById('log-quantity').value);
+            formData.append('notes', document.getElementById('log-notes').value);
+            
+            await fetch(`${API_BASE}/geckos/${currentGeckoId}/logs`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            hideLogModal();
+            showToast('已新增紀錄');
+            loadGeckoLogs(currentGeckoId);
+        }
+
+        // Calendar
+        function changeMonth(delta) {
+            currentMonth.setMonth(currentMonth.getMonth() + delta);
+            renderCalendar();
+        }
+
+        async function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth() + 1;
+            document.getElementById('calendar-title').textContent = `${year}年 ${month}月`;
+            
+            // Get logs for this month
+            const res = await fetch(`${API_BASE}/logs/month?month=${month}&year=${year}`);
+            const data = await res.json();
+            const logs = data.logs || [];
+            
+            // Build log map
+            const logMap = {};
+            logs.forEach(log => {
+                if (!logMap[log.log_date]) logMap[log.log_date] = [];
+                logMap[log.log_date].push(log);
+            });
+            
+            // Calendar calculation
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const startDay = firstDay.getDay();
+            const totalDays = lastDay.getDate();
+            
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month - 1;
+            
+            let html = '';
+            for (let i = 0; i < startDay; i++) {
+                html += '<div class="calendar-day other-month"></div>';
+            }
+            for (let d = 1; d <= totalDays; d++) {
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = isCurrentMonth && d === today.getDate();
+                const dayLogs = logMap[dateStr] || [];
+                
+                html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="showDayDetail('${dateStr}')">
+                    <span>${d}</span>
+                    <div class="flex gap-1 flex-wrap justify-center">
+                        ${dayLogs.slice(0, 3).map(l => {
+                            const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'poo' ? '💩' : '💧';
+                            return `<span class="log-emoji" style="color: ${l.color}">${emoji}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
+            document.getElementById('calendar-grid').innerHTML = html;
+        }
+
+        async function showDayDetail(date) {
+            const res = await fetch(`${API_BASE}/logs?date=${date}`);
+            const data = await res.json();
+            const logs = data.logs || [];
+            
+            document.getElementById('day-modal-title').textContent = date;
+            document.getElementById('day-modal-body').innerHTML = logs.length === 0
+                ? '<p class="text-center opacity-60">暫時未有紀錄</p>'
+                : logs.map(l => {
+                    const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'poo' ? '💩' : '💧';
+                    return `<div class="flex justify-between items-center p-2 rounded mb-2" style="background: var(--card-bg)">
+                        <span>
+                            <span style="color: ${l.color}">${emoji}</span>
+                            ${l.name} ${l.quantity || ''}
+                        </span>
+                    </div>`;
+                }).join('');
+            
+            document.getElementById('day-modal').classList.add('show');
+        }
+
+        // Avatar preview
+        document.getElementById('gecko-avatar-input').addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    document.getElementById('gecko-avatar-preview').src = ev.target.result;
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('gecko-color').addEventListener('input', function(e) {
+            document.getElementById('gecko-avatar-preview').style.borderColor = e.target.value;
+        });
+
+        // Init
+        initTheme();
+        loadGeckos();
+    </script>
+</body>
+</html>
