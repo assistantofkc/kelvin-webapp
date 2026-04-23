@@ -787,6 +787,7 @@
             
             document.getElementById('weight-input').value = '';
             loadWeightHistory();
+            renderCalendar();
             showToast('已新增體重');
         }
 
@@ -837,6 +838,7 @@
             hideLogModal();
             showToast('已新增紀錄');
             loadGeckoLogs(currentGeckoId);
+            renderCalendar();
         }
 
         // Calendar
