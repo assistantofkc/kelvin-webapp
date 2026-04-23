@@ -10,3 +10,4 @@ render.yaml
 # Geckolab
 uploads/
 *.db
+geckolab/password.json

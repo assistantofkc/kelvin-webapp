@@ -324,7 +324,7 @@ def geckolab():
 @app.route('/geckolab/api/login', methods=['POST'])
 def geckolab_login():
     password = request.form.get('password', '')
-    env_password = os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')
+    env_password = get_geckolab_password()
     if password == env_password:
         session['geckolab_logged_in'] = True
         return jsonify({'success': True})
@@ -339,7 +339,7 @@ def geckolab_logout():
 
 # ==================== GECKOLAB CONSTANTS ====================
 GECKOLAB_DIR = os.path.join(os.path.dirname(__file__), 'geckolab')
-UPLOAD_FOLDER = os.path.join(GECKOLAB_DIR, 'static', 'uploads')
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'geckolab', 'uploads')
 DB_PATH = os.path.join(GECKOLAB_DIR, 'geckolab.db')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -557,10 +557,11 @@ def geckolab_change_password():
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
     old_pwd = request.form.get('old_password', '')
     new_pwd = request.form.get('new_password', '')
-    current_password = os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')
+    current_password = get_geckolab_password()
     if old_pwd != current_password:
         return jsonify({'success': False, 'error': '舊密碼錯誤'})
-    return jsonify({'success': True, 'message': '密碼已更改（請重啟伺服器以使新密碼生效）'})
+    save_geckolab_password(new_pwd)
+    return jsonify({'success': True, 'message': '密碼已更改'})
 
 @app.route('/geckolab/api/reset-data', methods=['POST'])
 def geckolab_reset_data():
@@ -577,3 +578,21 @@ def geckolab_reset_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+# Password file for Geckolab
+GECKOLAB_PASS_FILE = os.path.join(os.path.dirname(__file__), 'geckolab', 'password.json')
+
+def get_geckolab_password():
+    try:
+        if os.path.exists(GECKOLAB_PASS_FILE):
+            import json as _json
+            with open(GECKOLAB_PASS_FILE, 'r') as f:
+                data = _json.load(f)
+                return data.get('password', os.environ.get('GECKOLAB_PASSWORD', 'geckolab123'))
+    except: pass
+    return os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')
+
+def save_geckolab_password(new_password):
+    import json as _json
+    with open(GECKOLAB_PASS_FILE, 'w') as f:
+        _json.dump({'password': new_password}, f)
