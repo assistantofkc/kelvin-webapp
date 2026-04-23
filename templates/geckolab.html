@@ -315,7 +315,7 @@
                     <button onclick="showEditGeckoModal()" class="btn btn-secondary">編輯資料</button>
                     <button onclick="showWeightModal()" class="btn btn-primary">體重管理</button>
                     <button onclick="showAddLogModal()" class="btn btn-secondary">➕ 新增紀錄</button>
-                    <button onclick="confirmRemoveAvatar()" class="btn btn-danger">🗑️ 移除頭像</button>
+                    <button onclick="confirmRemoveGecko()" class="btn btn-danger">🗑️ 移除守宮</button>
                 </div>
             </div>
             
@@ -388,8 +388,8 @@
                     <button onclick="changePassword()" class="btn btn-primary w-full">更改密碼</button>
                 </div>
                 <hr class="my-4 opacity-30">
-                <button onclick="confirmResetData()" class="btn btn-danger w-full">🗑️ 重置所有資料</button>
-                <p class="text-xs opacity-50 mt-2">⚠️ 這會刪除所有守宮和記錄，無法恢復</p>
+                <button onclick="confirmResetData()" class="btn btn-danger w-full">🔄 重置所有資料</button>
+                <p class="text-xs opacity-50 mt-2">⚠️ 刪除所有守宮及記錄，無法恢復</p>
             </div>
         </div>
     </div>
@@ -693,17 +693,18 @@
             document.getElementById('gecko-modal').classList.add('show');
         }
 
-        async function confirmRemoveAvatar() {
-            if (!confirm('確定要移除頭像嗎？\n呢個操作無法恢復！')) return;
-            const id = window.currentGecko.id;
-            const res = await fetch(`${API_BASE}/geckos/${id}/avatar`, {
+        async function confirmRemoveGecko() {
+            const g = window.currentGecko;
+            if (!confirm(`確定要刪除「${g.name}」嗎？\n所有記錄會被一併刪除，無法恢復！`)) return;
+            const res = await fetch(`${API_BASE}/geckos/${g.id}`, {
                 method: 'DELETE',
                 credentials: 'same-origin'
             });
             const data = await res.json();
             if (data.success) {
-                showToast('頭像已移除');
-                loadGeckoProfile(id);
+                showToast('已刪除');
+                showMainView();
+                loadGeckos();
             }
         }
 
