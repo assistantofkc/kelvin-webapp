@@ -244,6 +244,8 @@
         <a href="/news-clipper"><span>📰</span> News Clipper</a>
         <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
         <a href="/cangjie"><span>🔣</span> 倉頡學堂</a>
+        <a href="https://gemini.google.com/share/b200771ce08e" target="_blank"><span>🧩</span> 詞彙測驗 (Gemini)</a>
+        <a href="https://gemini.google.com/share/97151a39e237" target="_blank"><span>🎭</span> Slide Translator</a>
         <a href="/geckolab"><span>🦎</span> Geckolab</a>
     </nav>
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
@@ -313,6 +315,7 @@
                     <button onclick="showEditGeckoModal()" class="btn btn-secondary">編輯資料</button>
                     <button onclick="showWeightModal()" class="btn btn-primary">體重管理</button>
                     <button onclick="showAddLogModal()" class="btn btn-secondary">➕ 新增紀錄</button>
+                    <button onclick="confirmRemoveAvatar()" class="btn btn-danger">🗑️ 移除頭像</button>
                 </div>
             </div>
             
@@ -688,6 +691,20 @@
             document.getElementById('gecko-color').value = '#FF6B6B';
             document.getElementById('gecko-avatar-preview').src = '/static/geckolab/default_gecko.png';
             document.getElementById('gecko-modal').classList.add('show');
+        }
+
+        async function confirmRemoveAvatar() {
+            if (!confirm('確定要移除頭像嗎？\n呢個操作無法恢復！')) return;
+            const id = window.currentGecko.id;
+            const res = await fetch(`${API_BASE}/geckos/${id}/avatar`, {
+                method: 'DELETE',
+                credentials: 'same-origin'
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast('頭像已移除');
+                loadGeckoProfile(id);
+            }
         }
 
         function showEditGeckoModal() {

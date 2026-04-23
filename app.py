@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.26'
+APP_VERSION = 'v6.27'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -443,6 +443,18 @@ def update_gecko(gecko_id):
     conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+
+@app.route('/geckolab/api/geckos/<int:gecko_id>/avatar', methods=['DELETE'])
+def remove_gecko_avatar(gecko_id):
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('UPDATE geckos SET avatar_path=NULL WHERE id=? ' , (gecko_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({ 'success': True})
 
 @app.route('/geckolab/api/geckos/<int:gecko_id>/weights', methods=['GET'])
 def get_weight_history(gecko_id):
