@@ -487,6 +487,7 @@
             const password = document.getElementById('login-password').value;
             const res = await fetch(`${API_BASE}/login`, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `password=${encodeURIComponent(password)}`
             });
