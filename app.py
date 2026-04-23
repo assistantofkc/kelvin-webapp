@@ -383,7 +383,7 @@ def add_gecko():
             ext = file.filename.rsplit('.', 1)[1].lower()
             filename = f"gecko_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
             file.save(os.path.join(UPLOAD_FOLDER, filename))
-            avatar_path = f'/geckolab/static/uploads/{filename}'
+            avatar_path = f'/static/geckolab/uploads/{filename}'
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('INSERT INTO geckos (name, species, dob, adopted_date, color, avatar_path) VALUES (?,?,?,?,?,?)', (name, species, dob, adopted_date, color, avatar_path))
@@ -433,7 +433,7 @@ def update_gecko(gecko_id):
             ext = file.filename.rsplit('.', 1)[1].lower()
             filename = f"gecko_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
             file.save(os.path.join(UPLOAD_FOLDER, filename))
-            avatar_path = f'/geckolab/static/uploads/{filename}'
+            avatar_path = f'/static/geckolab/uploads/{filename}'
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     if avatar_path:
