@@ -6,6 +6,8 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from datetime import datetime, date
 from werkzeug.utils import secure_filename
 
+# Import Geckolab routes
+import geckolab_routes
 import requests
 import random
 import json
@@ -311,8 +313,3 @@ def get_cangjie_questions(level):
 def geckolab():
     """Geckolab - Gecko Care Management App Landing Page"""
     return render_template('geckolab.html', version=APP_VERSION)
-
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
