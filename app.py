@@ -7,6 +7,15 @@ from datetime import datetime, date
 from werkzeug.utils import secure_filename
 
 import requests
+import os
+import subprocess
+# Auto-pull latest code on startup
+try:
+    result = subprocess.run(['git', 'pull', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=30)
+    if result.returncode == 0 and result.stdout.strip():
+        print(f"[Git Pull] {result.stdout.strip()}")
+except: pass
+
 import random
 import json
 import os
@@ -21,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.25'
+APP_VERSION = 'v6.26'
 
 
 def generate_sentences(vocabularies, max_retries=2):
