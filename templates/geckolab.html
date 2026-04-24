@@ -183,6 +183,11 @@
             border: 1px solid var(--card-border);
         }
         .btn-secondary:hover { opacity: 0.85; transform: scale(0.98); }
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+        }
+        .btn-danger:hover { opacity: 0.85; transform: scale(0.98); }
         input[type="text"], input[type="password"], input[type="date"], input[type="number"], textarea {
             width: 100%;
             padding: 10px;
@@ -429,7 +434,7 @@
                 <button onclick="confirmResetData()" class="btn btn-danger w-full">🔄 重置所有資料</button>
                 <p class="text-xs opacity-50 mt-2">⚠️ 刪除所有守宮及記錄，無法恢復</p>
                 <hr class="my-4 opacity-30">
-                <button onclick="logout()" class="btn btn-secondary w-full">登出</button>
+                <button onclick="logout()" class="btn btn-danger w-full">登出</button>
             </div>
         </div>
     </div>
