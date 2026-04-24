@@ -57,6 +57,20 @@
             margin: 5px 0;
             border-radius: 2px;
         }
+        .profile-back-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+        }
+        .profile-back-btn:hover { background: var(--card-border); }
         .sidebar {
             position: fixed;
             top: 0;
@@ -249,6 +263,8 @@
         <span class="hamburger-icon"></span>
         <span class="hamburger-icon"></span>
     </div>
+    <!-- Profile Back Button (shown only in profile view) -->
+    <button class="profile-back-btn hidden" id="profile-back-btn" onclick="showMainView()">←</button>
 
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
@@ -320,8 +336,7 @@
         </div>
 
         <!-- Gecko Profile View -->
-        <div id="profile-view" class="hidden">
-            <button onclick="showMainView()" class="btn btn-secondary mb-4">← 返回列表</button>
+        <div id="profile-view" class="hidden mt-4">
             <div class="text-center">
                 <img id="profile-avatar" src="" class="gecko-avatar gecko-avatar-lg mb-4 mx-auto">
                 <h2 id="profile-name" class="text-2xl font-bold mb-2"></h2>
@@ -778,12 +793,16 @@
             document.getElementById('login-view').classList.add('hidden');
             document.getElementById('main-view').classList.remove('hidden');
             document.getElementById('profile-view').classList.add('hidden');
+            document.getElementById('profile-back-btn').classList.add('hidden');
+            document.getElementById('hamburger').classList.remove('hidden');
             currentGeckoId = null;
         }
         function showProfileView(geckoId) {
             currentGeckoId = geckoId;
             document.getElementById('main-view').classList.add('hidden');
             document.getElementById('profile-view').classList.remove('hidden');
+            document.getElementById('profile-back-btn').classList.remove('hidden');
+            document.getElementById('hamburger').classList.add('hidden');
             loadGeckoProfile(geckoId);
         }
 
