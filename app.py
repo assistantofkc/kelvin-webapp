@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.62'
+APP_VERSION = 'v6.63'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -348,7 +348,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def init_geckolab_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS geckos (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, species TEXT, dob TEXT, adopted_date TEXT, color TEXT DEFAULT '#FF6B6B', avatar_path TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)''')
     c.execute('''CREATE TABLE IF NOT EXISTS weight_records (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, weight REAL NOT NULL, record_date TEXT NOT NULL, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
@@ -359,7 +359,7 @@ init_geckolab_db()
 
 @app.route('/geckolab/api/geckos', methods=['GET'])
 def get_geckos():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute('''SELECT g.*, (SELECT weight FROM weight_records WHERE gecko_id=g.id ORDER BY record_date DESC LIMIT 1) as latest_weight FROM geckos g ORDER BY g.name''')
@@ -384,7 +384,7 @@ def add_gecko():
             filename = f"gecko_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             avatar_path = f'/static/geckolab/uploads/{filename}'
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('INSERT INTO geckos (name, species, dob, adopted_date, color, avatar_path) VALUES (?,?,?,?,?,?)', (name, species, dob, adopted_date, color, avatar_path))
     gecko_id = c.lastrowid
@@ -394,7 +394,7 @@ def add_gecko():
 
 @app.route('/geckolab/api/geckos/<int:gecko_id>', methods=['GET'])
 def get_gecko(gecko_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute('SELECT * FROM geckos WHERE id=?', (gecko_id,))
@@ -434,7 +434,7 @@ def update_gecko(gecko_id):
             filename = f"gecko_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
             file.save(os.path.join(UPLOAD_FOLDER, filename))
             avatar_path = f'/static/geckolab/uploads/{filename}'
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     if avatar_path:
         c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, avatar_path=? WHERE id=?', (name, species, dob, adopted_date, color, avatar_path, gecko_id))
@@ -450,7 +450,7 @@ def update_gecko(gecko_id):
 def delete_gecko(gecko_id):
     if not session.get('geckolab_logged_in'):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('DELETE FROM daily_logs WHERE gecko_id=?', (gecko_id,))
     c.execute('DELETE FROM weight_records WHERE gecko_id=?', (gecko_id,))
@@ -461,7 +461,7 @@ def delete_gecko(gecko_id):
 
 @app.route('/geckolab/api/geckos/<int:gecko_id>/weights', methods=['GET'])
 def get_weight_history(gecko_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute('SELECT * FROM weight_records WHERE gecko_id=? ORDER BY record_date DESC', (gecko_id,))
@@ -476,7 +476,7 @@ def add_weight(gecko_id):
     weight = float(request.form.get('weight', 0))
     record_date = request.form.get('record_date', datetime.now().strftime('%Y-%m-%d'))
     notes = request.form.get('notes', '').strip()
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('INSERT INTO weight_records (gecko_id, weight, record_date, notes) VALUES (?,?,?,?)', (gecko_id, weight, record_date, notes))
     conn.commit()
@@ -489,7 +489,7 @@ def update_weight(gecko_id, weight_id):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
     weight = float(request.form.get('weight', 0))
     record_date = request.form.get('record_date', datetime.now().strftime('%Y-%m-%d'))
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('UPDATE weight_records SET weight=?, record_date=? WHERE id=? AND gecko_id=?', (weight, record_date, weight_id, gecko_id))
     conn.commit()
@@ -500,7 +500,7 @@ def update_weight(gecko_id, weight_id):
 def delete_weight(gecko_id, weight_id):
     if not session.get('geckolab_logged_in'):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('DELETE FROM weight_records WHERE id=? AND gecko_id=?', (weight_id, gecko_id))
     conn.commit()
@@ -509,7 +509,7 @@ def delete_weight(gecko_id, weight_id):
 
 @app.route('/geckolab/api/geckos/<int:gecko_id>/logs', methods=['GET'])
 def get_gecko_logs(gecko_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute('SELECT * FROM daily_logs WHERE gecko_id=? ORDER BY log_date DESC', (gecko_id,))
@@ -522,7 +522,7 @@ def get_logs_by_date():
     log_date = request.args.get('date')
     if not log_date:
         return jsonify({'success': False, 'error': 'Date required'})
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute('SELECT l.*, g.name, g.color FROM daily_logs l JOIN geckos g ON l.gecko_id=g.id WHERE l.log_date=?', (log_date,))
@@ -536,7 +536,7 @@ def get_logs_by_month():
     year = request.args.get('year')
     if not month or not year:
         return jsonify({'success': False, 'error': 'Month and year required'})
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute("SELECT l.*, g.name, g.color FROM daily_logs l JOIN geckos g ON l.gecko_id=g.id WHERE strftime('%Y', l.log_date)=? AND strftime('%m', l.log_date)=?", (year, month.zfill(2)))
@@ -554,7 +554,7 @@ def add_daily_log(gecko_id):
     notes = request.form.get('notes', '').strip()
     if log_type not in ('feeding', 'peeling', 'poo', 'pee'):
         return jsonify({'success': False, 'error': 'Invalid log type'})
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('INSERT INTO daily_logs (gecko_id, log_date, log_type, quantity, notes) VALUES (?,?,?,?,?)', (gecko_id, log_date, log_type, quantity, notes))
     log_id = c.lastrowid
@@ -566,7 +566,7 @@ def add_daily_log(gecko_id):
 def delete_log(log_id):
     if not session.get('geckolab_logged_in'):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('DELETE FROM daily_logs WHERE id=?', (log_id,))
     conn.commit()
@@ -591,7 +591,7 @@ def geckolab_change_password():
 def geckolab_reset_data():
     if not session.get('geckolab_logged_in'):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     c.execute('DELETE FROM daily_logs')
     c.execute('DELETE FROM weight_records')
@@ -604,7 +604,7 @@ def geckolab_reset_data():
 def geckolab_export():
     if not session.get('geckolab_logged_in'):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
@@ -644,7 +644,7 @@ def geckolab_import():
         return jsonify({'success': False, 'error': 'No CSV content'})
     
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
         c = conn.cursor()
         
         lines = csv_content.strip().split('\n')
