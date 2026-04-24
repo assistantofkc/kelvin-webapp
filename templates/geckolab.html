@@ -354,7 +354,13 @@
             
             <!-- Gecko Logs -->
             <div class="mt-6">
-                <h3 class="text-lg font-bold mb-3">📋 近期紀錄</h3>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold">📋 近期紀錄</h3>
+                    <select id="log-period-filter" onchange="loadGeckoLogs(currentGeckoId)" class="text-sm p-1 rounded bg-gray-700 text-white">
+                        <option value="7">過去7天</option>
+                        <option value="30">過去30天</option>
+                    </select>
+                </div>
                 <div id="profile-logs" class="space-y-2">
                     <!-- Logs will be loaded here -->
                 </div>
@@ -871,33 +877,43 @@
             const data = await res.json();
             const logs = data.logs || [];
             
+            // Filter by selected period
+            const periodDays = parseInt(document.getElementById('log-period-filter').value);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - periodDays);
+            const cutoffStr = cutoffDate.toISOString().split('T')[0];
+            
             const container = document.getElementById('profile-logs');
             if (logs.length === 0) {
                 container.innerHTML = '<p class="opacity-60">暫時未有紀錄</p>';
             } else {
                 // Sort by date descending (new to old)
-                const sortedLogs = [...logs].sort((a, b) => {
-                    if (a.log_date !== b.log_date) return b.log_date.localeCompare(a.log_date);
-                    return b.id - a.id;  // Same date, use id desc
-                });
-                container.innerHTML = sortedLogs.slice(0, 10).map(log => {
-                    const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'peeling' ? '🦎' : log.log_type === 'poo' ? '💩' : '💧';
-                    const typeName = log.log_type === 'feeding' ? '餵食' : log.log_type === 'peeling' ? '脫皮' : log.log_type === 'poo' ? '大便' : '小便';
-                    const d = new Date(log.log_date);
-                    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
-                    const dayName = dayNames[d.getDay()];
-                    const periodDisplay = log.period ? ` ${log.period}` : '';
-                    return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
-                        <span>
-                            <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
-                            ${typeName} ${log.log_date}${periodDisplay} (週${dayName}) ${log.quantity || ''}
-                        </span>
-                        <div class="flex gap-2">
-                            <button onclick="editLog(${log.id}, '${log.log_type}', '${log.log_date}', '${log.quantity || ''}', '${log.period || ''}')" class="text-blue-500">✏️</button>
-                            <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
-                        </div>
-                    </div>`;
-                }).join('');
+                const sortedLogs = [...logs]
+                    .filter(log => log.log_date >= cutoffStr)
+                    .sort((a, b) => {
+                        if (a.log_date !== b.log_date) return b.log_date.localeCompare(a.log_date);
+                        return b.id - a.id;  // Same date, use id desc
+                    });
+                container.innerHTML = sortedLogs.length === 0 
+                    ? '<p class="opacity-60">期內暫無紀錄</p>'
+                    : sortedLogs.map(log => {
+                        const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'peeling' ? '🦎' : log.log_type === 'poo' ? '💩' : '💧';
+                        const typeName = log.log_type === 'feeding' ? '餵食' : log.log_type === 'peeling' ? '脫皮' : log.log_type === 'poo' ? '大便' : '小便';
+                        const d = new Date(log.log_date);
+                        const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+                        const dayName = dayNames[d.getDay()];
+                        const periodDisplay = log.period ? ` ${log.period}` : '';
+                        return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
+                            <span>
+                                <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
+                                ${typeName} ${log.log_date}${periodDisplay} (週${dayName}) ${log.quantity || ''}
+                            </span>
+                            <div class="flex gap-2">
+                                <button onclick="editLog(${log.id}, '${log.log_type}', '${log.log_date}', '${log.quantity || ''}', '${log.period || ''}')" class="text-blue-500">✏️</button>
+                                <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
+                            </div>
+                        </div>`;
+                    }).join('');
             }
         }
 
