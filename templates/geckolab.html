@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Geckolab 守宮照護管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -411,6 +412,9 @@
                         <button onclick="addWeight()" class="btn btn-primary">新增</button>
                     </div>
                 </div>
+                <div id="weight-chart-container" class="mb-4">
+                    <canvas id="weight-chart"></canvas>
+                </div>
                 <div id="weight-history" class="max-h-60 overflow-y-auto">
                     <!-- Weight history will be loaded here -->
                 </div>
@@ -767,10 +771,48 @@
             
             document.getElementById('weight-history').innerHTML = weights.length === 0 
                 ? '<p class="opacity-60 text-center">暫時未有體重紀錄</p>'
-                : weights.map(w => `<div class="flex justify-between p-2 border-b" style="border-color: var(--card-border)">
+                : weights.map(w => `<div class="flex justify-between items-center p-2 border-b" style="border-color: var(--card-border)">
                     <span>${w.record_date}</span>
                     <span class="font-bold">${w.weight}g</span>
+                    <button onclick="deleteWeight(${w.id})" class="text-red-500 text-sm">✕</button>
                 </div>`).join('');
+            
+            // Draw chart
+            drawWeightChart(weights);
+        }
+
+        function drawWeightChart(weights) {
+            const ctx = document.getElementById('weight-chart');
+            if (!ctx) return;
+            if (window.weightChartInstance) window.weightChartInstance.destroy();
+            const sorted = [...weights].sort((a,b) => a.record_date.localeCompare(b.record_date));
+            window.weightChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sorted.map(w => w.record_date),
+                    datasets: [{
+                        label: '體重 (g)',
+                        data: sorted.map(w => w.weight),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102,126,234,0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        async function deleteWeight(weightId) {
+            if (!confirm('確定要刪除呢個體重記錄？')) return;
+            await fetch(`${API_BASE}/geckos/${currentGeckoId}/weights/${weightId}`, { method: 'DELETE', credentials: 'same-origin' });
+            loadWeightHistory();
+            showToast('已刪除');
         }
 
         async function addWeight() {

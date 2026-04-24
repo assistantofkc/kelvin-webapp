@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.39'
+APP_VERSION = 'v6.40'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -479,6 +479,17 @@ def add_weight(gecko_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('INSERT INTO weight_records (gecko_id, weight, record_date, notes) VALUES (?,?,?,?)', (gecko_id, weight, record_date, notes))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/geckolab/api/geckos/<int:gecko_id>/weights/<int:weight_id>', methods=['DELETE'])
+def delete_weight(gecko_id, weight_id):
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM weight_records WHERE id=? AND gecko_id=?', (weight_id, gecko_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
