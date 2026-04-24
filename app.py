@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.69'
+APP_VERSION = 'v6.70'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -616,9 +616,9 @@ def geckolab_export():
     
     csv_lines = []
     csv_lines.append('# Geckos')
-    csv_lines.append('id,name,species,dob,adopted_date,color,avatar_path,created_at')
+    csv_lines.append('id,name,species,dob,adopted_date,color,avatar_path,personality,created_at')
     for g in geckos:
-        csv_lines.append(f'{g["id"]},{g["name"]},{g["species"]},{g["dob"]},{g["adopted_date"]},{g["color"]},{g["avatar_path"]},{g["created_at"]}')
+        csv_lines.append(f'{g["id"]},{g["name"]},{g["species"]},{g["dob"]},{g["adopted_date"]},{g["color"]},{g["avatar_path"]},{g["personality"]},{g["created_at"]}')
     
     csv_lines.append('')
     csv_lines.append('# Weight Records')
@@ -668,7 +668,7 @@ def geckolab_import():
                 header_skipped[section] = True
                 continue
             try:
-                if section == 'Geckos' and len(parts) >= 8:
+                if section == 'Geckos' and len(parts) >= 9:
                     if not parts[1]:  # name is REQUIRED
                         errors.append('Gecko name required')
                         continue
