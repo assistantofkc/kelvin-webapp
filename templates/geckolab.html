@@ -286,7 +286,7 @@
             <!-- Calendar Section -->
             <div class="mt-8">
                 <h2 class="text-xl font-bold mb-4">📅 日曆</h2>
-                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-blue-100 dark:bg-blue-900 text-sm"></div>
+                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-sm text-gray-800 dark:text-gray-200"></div>
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
                     <span id="calendar-title" class="text-lg font-semibold"></span>
@@ -567,7 +567,7 @@
                 <div class="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-2 rounded">
                     <div class="flex items-center gap-2">
                         <span style="color:${g.color}">${g.name}</span>
-                        <select id="interval-${g.id}" class="text-sm p-1 rounded bg-gray-700 text-white" onchange="saveFeedingReminder(${g.id}, this.value)">
+                        <select id="interval-${g.id}" class="text-sm p-1 rounded bg-gray-700 text-white">
                             <option value="1" ${interval == 1 ? 'selected' : ''}>每1天</option>
                             <option value="2" ${interval == 2 ? 'selected' : ''}>每2天</option>
                             <option value="3" ${interval == 3 ? 'selected' : ''}>每3天</option>

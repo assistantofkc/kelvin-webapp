@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.74'
+APP_VERSION = 'v6.75'
 
 
 def generate_sentences(vocabularies, max_retries=2):
