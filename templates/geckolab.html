@@ -311,7 +311,8 @@
             <div class="text-center">
                 <img id="profile-avatar" src="" class="gecko-avatar gecko-avatar-lg mb-4">
                 <h2 id="profile-name" class="text-2xl font-bold mb-2"></h2>
-                <p id="profile-species" class="opacity-70 mb-2"></p>
+                <p id="profile-species" class="opacity-70 mb-1"></p>
+                <p id="profile-personality" class="opacity-70 mb-2"></p>
                 <p id="profile-age" class="text-sm opacity-60 mb-4"></p>
                 <p id="profile-weight" class="text-lg mb-4"></p>
                 <div class="flex justify-center gap-2 flex-wrap">
@@ -363,6 +364,7 @@
                 </div>
                 <input type="text" id="gecko-name" placeholder="名稱 *">
                 <input type="text" id="gecko-species" placeholder="品種">
+                <input type="text" id="gecko-personality" placeholder="性格">
                 <label class="block text-sm mb-1">出生日期</label>
                 <input type="date" id="gecko-dob">
                 <label class="block text-sm mb-1">領養日期</label>
@@ -704,7 +706,7 @@
             document.getElementById('profile-avatar').style.setProperty('--gecko-color', g.color);
             document.getElementById('profile-name').textContent = g.name;
             document.getElementById('profile-species').textContent = g.species || '';
-            
+            document.getElementById('profile-personality').textContent = g.personality || '';
             let ageText = '';
             if (g.age_years !== undefined) {
                 ageText = `${g.age_years}歲 ${g.age_months}個月 ${g.age_days}日`;
@@ -785,6 +787,7 @@
             document.getElementById('gecko-id').value = g.id;
             document.getElementById('gecko-name').value = g.name;
             document.getElementById('gecko-species').value = g.species || '';
+            document.getElementById('gecko-personality').value = g.personality || '';
             document.getElementById('gecko-dob').value = g.dob || '';
             document.getElementById('gecko-adopted').value = g.adopted_date || '';
             document.getElementById('gecko-color').value = g.color || '#FF6B6B';
@@ -797,6 +800,7 @@
             const formData = new FormData();
             formData.append('name', document.getElementById('gecko-name').value);
             formData.append('species', document.getElementById('gecko-species').value);
+            formData.append('personality', document.getElementById('gecko-personality').value);
             formData.append('dob', document.getElementById('gecko-dob').value);
             formData.append('adopted_date', document.getElementById('gecko-adopted').value);
             formData.append('color', document.getElementById('gecko-color').value);

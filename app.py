@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.68'
+APP_VERSION = 'v6.69'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -350,7 +350,7 @@ def allowed_file(filename):
 def init_geckolab_db():
     conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS geckos (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, species TEXT, dob TEXT, adopted_date TEXT, color TEXT DEFAULT '#FF6B6B', avatar_path TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS geckos (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, species TEXT, dob TEXT, adopted_date TEXT, color TEXT DEFAULT '#FF6B6B', avatar_path TEXT, personality TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)''')
     c.execute('''CREATE TABLE IF NOT EXISTS weight_records (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, weight REAL NOT NULL, record_date TEXT NOT NULL, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
     c.execute('''CREATE TABLE IF NOT EXISTS daily_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, log_date TEXT NOT NULL, log_type TEXT NOT NULL, quantity TEXT, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
     conn.commit()
@@ -386,7 +386,7 @@ def add_gecko():
             avatar_path = f'/static/geckolab/uploads/{filename}'
     conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
-    c.execute('INSERT INTO geckos (name, species, dob, adopted_date, color, avatar_path) VALUES (?,?,?,?,?,?)', (name, species, dob, adopted_date, color, avatar_path))
+    c.execute('INSERT INTO geckos (name, species, dob, adopted_date, color, avatar_path, personality) VALUES (?,?,?,?,?,?,?)', (name, species, dob, adopted_date, color, avatar_path, request.form.get('personality', '').strip()))
     gecko_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -437,9 +437,9 @@ def update_gecko(gecko_id):
     conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
     if avatar_path:
-        c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, avatar_path=? WHERE id=?', (name, species, dob, adopted_date, color, avatar_path, gecko_id))
+        c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, avatar_path=?, personality=? WHERE id=?', (name, species, dob, adopted_date, color, avatar_path, request.form.get('personality', '').strip(), gecko_id))
     else:
-        c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=? WHERE id=?', (name, species, dob, adopted_date, color, gecko_id))
+        c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, personality=? WHERE id=?', (name, species, dob, adopted_date, color, request.form.get('personality', '').strip(), gecko_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -673,7 +673,7 @@ def geckolab_import():
                         errors.append('Gecko name required')
                         continue
                     gid = int(parts[0]) if parts[0] and parts[0].strip() else None
-                    c.execute('INSERT INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', (gid, parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7]))
+                    c.execute('INSERT INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, personality, created_at) VALUES (?,?,?,?,?,?,?,?,?)', (gid, parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7] if len(parts) > 7 else '', parts[8] if len(parts) > 8 else ''))
                     imported_geckos += 1
                 elif section == 'Weight Records' and len(parts) >= 6:
                     if not parts[1] or not parts[2] or not parts[3]:  # gecko_id, weight, record_date required
