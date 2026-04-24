@@ -828,9 +828,7 @@
         function editWeight(weightId, date, weight) {
             const newWeight = prompt('請輸入新體重 (g):', weight);
             if (newWeight === null || newWeight === '') return;
-            const newDate = prompt('請輸入新日期:', date);
-            if (newDate === null || newDate === '') return;
-            updateWeight(weightId, newWeight, newDate);
+            updateWeight(weightId, newWeight, date);
         }
 
         async function updateWeight(weightId, weight, date) {
