@@ -286,7 +286,7 @@
             <!-- Calendar Section -->
             <div class="mt-8">
                 <h2 class="text-xl font-bold mb-4">📅 日曆</h2>
-                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-sm text-gray-800 dark:text-gray-200"></div>
+                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-sm text-white"></div>
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
                     <span id="calendar-title" class="text-lg font-semibold"></span>
@@ -617,7 +617,7 @@
             let html = '<div class="font-semibold mb-2">🔔 餵食提醒：</div>';
             geckosWithReminder.forEach(g => {
                 const isOverdue = g.next_feeding_date < today;
-                const color = isOverdue ? 'text-red-500' : 'text-blue-600';
+                const color = isOverdue ? 'text-red-400' : 'text-white';
                 html += `<div class="${color}">• ${g.name} - 下次 ${g.next_feeding_date} (每${g.feeding_interval_days}天)</div>`;
             });
             banner.innerHTML = html;
