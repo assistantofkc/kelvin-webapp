@@ -679,8 +679,15 @@
             } else {
                 container.innerHTML = logs.slice(0, 10).map(log => {
                     const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'peeling' ? '🦎' : log.log_type === 'poo' ? '💩' : '💧';
+                    const typeName = log.log_type === 'feeding' ? '餵食' : log.log_type === 'peeling' ? '脫皮' : log.log_type === 'poo' ? '大便' : '小便';
+                    const d = new Date(log.log_date);
+                    const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+                    const dayName = dayNames[d.getDay()];
                     return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
-                        <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span> ${log.log_date} ${log.quantity || ''}</span>
+                        <span>
+                            <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
+                            ${typeName} ${log.log_date} (週${dayName}) ${log.quantity || ''}
+                        </span>
                         <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
                     </div>`;
                 }).join('');
