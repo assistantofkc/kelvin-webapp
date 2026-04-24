@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.72'
+APP_VERSION = 'v6.73'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -356,6 +356,7 @@ def init_geckolab_db():
     except: pass
     c.execute('''CREATE TABLE IF NOT EXISTS weight_records (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, weight REAL NOT NULL, record_date TEXT NOT NULL, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
     c.execute('''CREATE TABLE IF NOT EXISTS daily_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, log_date TEXT NOT NULL, log_type TEXT NOT NULL, quantity TEXT, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS feeding_reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL UNIQUE, interval_days INTEGER NOT NULL DEFAULT 3, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
     conn.commit()
     conn.close()
 init_geckolab_db()
