@@ -30,7 +30,7 @@ def auto_git_pull():
     except: pass
 
 # App version
-APP_VERSION = 'v7.16'
+APP_VERSION = 'v7.17'
 
 
 def generate_sentences(vocabularies, max_retries=2):

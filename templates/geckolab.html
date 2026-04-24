@@ -1214,6 +1214,10 @@
         let geckosCacheTime = 0;
         const GECKOS_CACHE_TTL = 60000; // 1 minute cache
 
+        // Cache for monthly logs
+        const logsCache = {};
+        const LOGS_CACHE_TTL = 30000; // 30 seconds cache
+
         async function getGeckos() {
             const now = Date.now();
             if (geckosCache && (now - geckosCacheTime) < GECKOS_CACHE_TTL) {
@@ -1226,15 +1230,25 @@
             return geckosCache;
         }
 
+        async function getMonthlyLogs(year, month) {
+            const cacheKey = `${year}-${month}`;
+            const now = Date.now();
+            if (logsCache[cacheKey] && (now - logsCache[cacheKey].time) < LOGS_CACHE_TTL) {
+                return logsCache[cacheKey].data;
+            }
+            const res = await fetch(`${API_BASE}/logs/month?month=${month}&year=${year}`);
+            const data = await res.json();
+            logsCache[cacheKey] = { data: data.logs || [], time: now };
+            return logsCache[cacheKey].data;
+        }
+
         async function renderCalendar() {
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth() + 1;
             document.getElementById('calendar-title').textContent = `${year}年 ${month}月`;
             
-            // Get logs for this month
-            const res = await fetch(`${API_BASE}/logs/month?month=${month}&year=${year}`);
-            const data = await res.json();
-            const logs = data.logs || [];
+            // Get logs for this month (with cache)
+            const logs = await getMonthlyLogs(year, month);
             
             // Get adoption anniversaries (use cache)
             const geckos = await getGeckos();
