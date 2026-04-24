@@ -1201,6 +1201,23 @@
             renderCalendar();
         }
 
+        // Cache for geckos data (valid for session)
+        let geckosCache = null;
+        let geckosCacheTime = 0;
+        const GECKOS_CACHE_TTL = 60000; // 1 minute cache
+
+        async function getGeckos() {
+            const now = Date.now();
+            if (geckosCache && (now - geckosCacheTime) < GECKOS_CACHE_TTL) {
+                return geckosCache;
+            }
+            const res = await fetch(`${API_BASE}/geckos`);
+            const data = await res.json();
+            geckosCache = data.geckos || [];
+            geckosCacheTime = now;
+            return geckosCache;
+        }
+
         async function renderCalendar() {
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth() + 1;
@@ -1211,10 +1228,8 @@
             const data = await res.json();
             const logs = data.logs || [];
             
-            // Get adoption anniversaries
-            const geckoRes = await fetch(`${API_BASE}/geckos`);
-            const geckoData = await geckoRes.json();
-            const geckos = geckoData.geckos || [];
+            // Get adoption anniversaries (use cache)
+            const geckos = await getGeckos();
             const anniversaryMap = {};
             geckos.forEach(g => {
                 if (g.adopted_date) {
@@ -1280,10 +1295,8 @@
             const dayName = dayNames[d.getDay()];
             document.getElementById('day-modal-title').textContent = `${date} (週${dayName})`;
             
-            // Get adoption anniversaries for this date
-            const geckoRes = await fetch(`${API_BASE}/geckos`);
-            const geckoData = await geckoRes.json();
-            const geckos = geckoData.geckos || [];
+            // Get adoption anniversaries for this date (use cache)
+            const geckos = await getGeckos();
             const anniversaries = [];
             geckos.forEach(g => {
                 if (g.adopted_date) {
