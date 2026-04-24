@@ -567,7 +567,7 @@
                 <div class="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-2 rounded">
                     <div class="flex items-center gap-2">
                         <span style="color:${g.color}">${g.name}</span>
-                        <select id="interval-${g.id}" class="text-sm p-1 rounded" onchange="saveFeedingReminder(${g.id}, this.value)">
+                        <select id="interval-${g.id}" class="text-sm p-1 rounded bg-gray-700 text-white" onchange="saveFeedingReminder(${g.id}, this.value)">
                             <option value="1" ${interval == 1 ? 'selected' : ''}>每1天</option>
                             <option value="2" ${interval == 2 ? 'selected' : ''}>每2天</option>
                             <option value="3" ${interval == 3 ? 'selected' : ''}>每3天</option>
@@ -575,6 +575,7 @@
                             <option value="5" ${interval == 5 ? 'selected' : ''}>每5天</option>
                             <option value="7" ${interval == 7 ? 'selected' : ''}>每7天</option>
                         </select>
+                        <button type="button" onclick="saveFeedingReminder(${g.id}, document.getElementById('interval-${g.id}').value)" class="btn btn-primary text-sm px-2 py-1">儲存</button>
                     </div>
                     ${reminder ? `<button onclick="deleteFeedingReminder(${g.id})" class="text-red-500">✕</button>` : ''}
                 </div>
