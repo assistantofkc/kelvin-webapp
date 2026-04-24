@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.58'
+APP_VERSION = 'v6.59'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -599,6 +599,71 @@ def geckolab_reset_data():
     conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+@app.route('/geckolab/api/export', methods=['GET'])
+def geckolab_export():
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    
+    # Export geckos
+    geckos = c.execute('SELECT * FROM geckos').fetchall()
+    weights = c.execute('SELECT * FROM weight_records').fetchall()
+    logs = c.execute('SELECT * FROM daily_logs').fetchall()
+    conn.close()
+    
+    csv_lines = []
+    csv_lines.append('# Geckos')
+    csv_lines.append('id,name,species,dob,adopted_date,color,avatar_path,created_at')
+    for g in geckos:
+        csv_lines.append(f'{g["id"]},{g["name"]},{g["species"]},{g["dob"]},{g["adopted_date"]},{g["color"]},{g["avatar_path"]},{g["created_at"]}')
+    
+    csv_lines.append('')
+    csv_lines.append('# Weight Records')
+    csv_lines.append('id,gecko_id,weight,record_date,notes,created_at')
+    for w in weights:
+        csv_lines.append(f'{w["id"]},{w["gecko_id"]},{w["weight"]},{w["record_date"]},{w["notes"]},{w["created_at"]}')
+    
+    csv_lines.append('')
+    csv_lines.append('# Daily Logs')
+    csv_lines.append('id,gecko_id,log_date,log_type,quantity,notes,created_at')
+    for l in logs:
+        csv_lines.append(f'{l["id"]},{l["gecko_id"]},{l["log_date"]},{l["log_type"]},{l["quantity"]},{l["notes"]},{l["created_at"]}')
+    
+    return jsonify({'success': True, 'csv': '\n'.join(csv_lines)})
+
+@app.route('/geckolab/api/import', methods=['POST'])
+def geckolab_import():
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    data = request.get_json()
+    csv_content = data.get('csv', '')
+    if not csv_content:
+        return jsonify({'success': False, 'error': 'No CSV content'})
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    lines = csv_content.strip().split('\n')
+    section = None
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            if line.startswith('#'): section = line.replace('# ', '').replace('#', '').strip()
+            continue
+        parts = line.split(',')
+        if section == 'Geckos' and len(parts) >= 8:
+            c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', parts[:8])
+        elif section == 'Weight Records' and len(parts) >= 6:
+            c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', parts[:6])
+        elif section == 'Daily Logs' and len(parts) >= 7:
+            c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', parts[:7])
+    
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Import completed'})
 
 if __name__ == '__main__':
     app.run(debug=True)
