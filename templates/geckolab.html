@@ -1198,6 +1198,22 @@
             const data = await res.json();
             const logs = data.logs || [];
             
+            // Get adoption anniversaries
+            const geckoRes = await fetch(`${API_BASE}/geckos`);
+            const geckoData = await geckoRes.json();
+            const geckos = geckoData.geckos || [];
+            const anniversaryMap = {};
+            geckos.forEach(g => {
+                if (g.adopted_date) {
+                    const [adoptYear, adoptMonth, adoptDay] = g.adopted_date.split('-').map(Number);
+                    for (let y = adoptYear + 1; y <= year; y++) {
+                        const annivDate = `${y}-${String(adoptMonth).padStart(2, '0')}-${String(adoptDay).padStart(2, '0')}`;
+                        if (!anniversaryMap[annivDate]) anniversaryMap[annivDate] = [];
+                        anniversaryMap[annivDate].push({ name: g.name, color: g.color });
+                    }
+                }
+            });
+            
             // Build log map
             const logMap = {};
             logs.forEach(log => {
@@ -1222,14 +1238,18 @@
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = isCurrentMonth && d === today.getDate();
                 const dayLogs = logMap[dateStr] || [];
+                const dayAnniversaries = anniversaryMap[dateStr] || [];
                 
                 html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="showDayDetail('${dateStr}')">
                     <span>${d}</span>
                     <div class="flex gap-1 flex-wrap justify-center">
-                        ${dayLogs.slice(0, 4).map(l => {
+                        ${dayLogs.slice(0, 3).map(l => {
                             const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
                             return `<span class="log-emoji" style="background:${l.color}44; color:${l.color}; border-radius:4px; padding:0 2px;">${emoji}</span>`;
-                        }).join('')}${dayLogs.length > 4 ? '<span class="log-emoji">...</span>' : ''}
+                        }).join('')}${dayLogs.length > 3 ? '<span class="log-emoji">...</span>' : ''}
+                        ${dayAnniversaries.slice(0, 2).map(a => {
+                            return `<span class="log-emoji" style="background:${a.color}44; color:${a.color}; border-radius:4px; padding:0 2px;">🎉</span>`;
+                        }).join('')}
                     </div>
                 </div>`;
             }
