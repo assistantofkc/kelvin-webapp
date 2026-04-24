@@ -837,9 +837,8 @@
             const formData = new FormData();
             formData.append('weight', weight);
             formData.append('record_date', date);
-            formData.append('_method', 'PUT');
             await fetch(`${API_BASE}/geckos/${currentGeckoId}/weights/${weightId}`, {
-                method: 'POST',
+                method: 'PUT',
                 body: formData,
                 credentials: 'same-origin'
             });
