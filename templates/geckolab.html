@@ -442,8 +442,14 @@
                     <button type="button" onclick="selectLogType('pee')" class="btn btn-secondary" data-log-type="pee">💧 小便</button>
                 </div>
                 <input type="hidden" id="log-type">
-                <input type="text" id="log-quantity" placeholder="數量 (e.g., 2隻蟋蟀)">
-                <textarea id="log-notes" rows="2" placeholder="備註"></textarea>
+                <div id="feeding-quantity-section" class="hidden mb-2">
+                    <label class="block text-sm mb-1">蟋蟀 (隻)</label>
+                    <input type="number" id="log-crickets" min="0" placeholder="0" class="w-full mb-2">
+                    <label class="block text-sm mb-1">蟲泥 (克)</label>
+                    <input type="number" id="log-worms" min="0" placeholder="0" class="w-full">
+                </div>
+                <input type="text" id="log-quantity" placeholder="其他數量" class="mt-2">
+                <textarea id="log-notes" rows="2" placeholder="備註" class="mt-2"></textarea>
                 <button onclick="addLog()" class="btn btn-primary w-full mt-2">儲存</button>
             </div>
         </div>
@@ -896,6 +902,13 @@
                     b.classList.add('btn-secondary');
                 }
             });
+            // Show/hide feeding quantity fields
+            const feedingSection = document.getElementById('feeding-quantity-section');
+            feedingSection.classList.toggle('hidden', type !== 'feeding');
+            if (type !== 'feeding') {
+                document.getElementById('log-crickets').value = '';
+                document.getElementById('log-worms').value = '';
+            }
         }
 
         async function addLog() {
@@ -907,7 +920,19 @@
             const formData = new FormData();
             formData.append('log_type', selectedLogType);
             formData.append('log_date', document.getElementById('log-date').value);
-            formData.append('quantity', document.getElementById('log-quantity').value);
+            
+            if (selectedLogType === 'feeding') {
+                const crickets = document.getElementById('log-crickets').value;
+                const worms = document.getElementById('log-worms').value;
+                let qty = [];
+                if (crickets) qty.push(`${crickets}隻蟋蟀`);
+                if (worms) qty.push(`${worms}g蟲泥`);
+                const otherQty = document.getElementById('log-quantity').value;
+                if (otherQty) qty.push(otherQty);
+                formData.append('quantity', qty.join(' + '));
+            } else {
+                formData.append('quantity', document.getElementById('log-quantity').value);
+            }
             formData.append('notes', document.getElementById('log-notes').value);
             
             await fetch(`${API_BASE}/geckos/${currentGeckoId}/logs`, {
