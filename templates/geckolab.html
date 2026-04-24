@@ -1387,7 +1387,26 @@
 
         // Init
         initTheme();
-        loadGeckos();
+        
+        // Check if user has valid token for auto-login
+        async function checkAuthAndLogin() {
+            try {
+                const res = await fetch(`${API_BASE}/check-auth`);
+                const data = await res.json();
+                if (data.logged_in) {
+                    isLoggedIn = true;
+                    document.getElementById('login-view').classList.add('hidden');
+                    document.getElementById('main-view').classList.remove('hidden');
+                    renderGeckoGrid();
+                    renderCalendar();
+                    updateFeedingReminderBanner();
+                }
+            } catch (e) {
+                console.log('Auth check failed:', e);
+            }
+            loadGeckos();
+        }
+        checkAuthAndLogin();
 
         // Register Service Worker for PWA
 

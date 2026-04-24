@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sqlite3
+import secrets
 from dotenv import load_dotenv
 
 # Load .env file
@@ -30,7 +31,7 @@ def auto_git_pull():
     except: pass
 
 # App version
-APP_VERSION = 'v7.17'
+APP_VERSION = 'v7.18'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -327,13 +328,48 @@ def geckolab_login():
     env_password = get_geckolab_password()
     if password == env_password:
         session['geckolab_logged_in'] = True
-        return jsonify({'success': True})
+        # Create auth token for "remember me" - never expires
+        token = secrets.token_hex(32)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        c = conn.cursor()
+        c.execute('INSERT INTO auth_tokens (token) VALUES (?)', (token,))
+        conn.commit()
+        conn.close()
+        # Set cookie that never expires
+        response = jsonify({'success': True})
+        response.set_cookie('geckolab_token', token, max_age=None, httponly=True)
+        return response
     return jsonify({'success': False, 'error': 'Invalid password'})
+
+@app.route('/geckolab/api/check-auth', methods=['GET'])
+def check_geckolab_auth():
+    token = request.cookies.get('geckolab_token')
+    if not token:
+        return jsonify({'logged_in': False})
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    c = conn.cursor()
+    c.execute('SELECT id FROM auth_tokens WHERE token = ?', (token,))
+    result = c.fetchone()
+    conn.close()
+    if result:
+        session['geckolab_logged_in'] = True
+        return jsonify({'logged_in': True})
+    return jsonify({'logged_in': False})
 
 @app.route('/geckolab/logout')
 def geckolab_logout():
     session.pop('geckolab_logged_in', None)
-    return redirect(url_for('geckolab'))
+    # Remove token from database
+    token = request.cookies.get('geckolab_token')
+    if token:
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        c = conn.cursor()
+        c.execute('DELETE FROM auth_tokens WHERE token = ?', (token,))
+        conn.commit()
+        conn.close()
+    response = redirect(url_for('geckolab'))
+    response.delete_cookie('geckolab_token')
+    return response
 
     app.run(debug=True)
 
@@ -360,6 +396,7 @@ def init_geckolab_db():
         c.execute("ALTER TABLE daily_logs ADD COLUMN period TEXT")
     except: pass
     c.execute('''CREATE TABLE IF NOT EXISTS feeding_reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL UNIQUE, interval_days INTEGER NOT NULL DEFAULT 3, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS auth_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT NOT NULL UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)''')
     conn.commit()
     conn.close()
 init_geckolab_db()
