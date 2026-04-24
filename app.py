@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.61'
+APP_VERSION = 'v6.62'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -643,27 +643,38 @@ def geckolab_import():
     if not csv_content:
         return jsonify({'success': False, 'error': 'No CSV content'})
     
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    lines = csv_content.strip().split('\n')
-    section = None
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            if line.startswith('#'): section = line.replace('# ', '').replace('#', '').strip()
-            continue
-        parts = line.split(',')
-        if section == 'Geckos' and len(parts) >= 8:
-            c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', parts[:8])
-        elif section == 'Weight Records' and len(parts) >= 6:
-            c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', parts[:6])
-        elif section == 'Daily Logs' and len(parts) >= 7:
-            c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', parts[:7])
-    
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True, 'message': 'Import completed'})
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        lines = csv_content.strip().split('\n')
+        section = None
+        imported_geckos = 0
+        imported_weights = 0
+        imported_logs = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                if line.startswith('#'):
+                    section = line.replace('# ', '').replace('#', '').strip()
+                continue
+            parts = line.split(',')
+            if section == 'Geckos' and len(parts) >= 8:
+                c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', parts[:8])
+                imported_geckos += 1
+            elif section == 'Weight Records' and len(parts) >= 6:
+                c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', parts[:6])
+                imported_weights += 1
+            elif section == 'Daily Logs' and len(parts) >= 7:
+                c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', parts[:7])
+                imported_logs += 1
+        
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'已還原：{imported_geckos}守宮 {imported_weights}體重 {imported_logs}紀錄'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
