@@ -314,7 +314,7 @@
             <!-- Calendar Section -->
             <div class="mt-8">
                 <h2 class="text-xl font-bold mb-4">📅 日曆</h2>
-                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-sm text-white relative"><button onclick="document.getElementById('feeding-reminder-banner').classList.add('hidden')" class="absolute top-1 right-2 opacity-70 hover:opacity-100">✕</button><span id="feeding-reminder-text"></span></div>
+                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-sm relative"><button onclick="document.getElementById('feeding-reminder-banner').classList.add('hidden')" class="absolute top-1 right-2 opacity-70 hover:opacity-100">✕</button><span id="feeding-reminder-text"></span></div>
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
                     <span id="calendar-title" class="text-lg font-semibold"></span>
@@ -659,14 +659,18 @@
             }
             // Sort by next feeding date
             geckosWithReminder.sort((a, b) => a.next_feeding_date.localeCompare(b.next_feeding_date));
-            const today = new Date().toISOString().split('T')[0];
+            // Use local date to avoid timezone issues (toISOString() returns UTC which is 8hrs behind HK)
+            const today = new Date().toLocaleDateString('en-CA');
             let html = '<div class="font-semibold mb-2 text-white">🔔 餵食提醒：</div>';
             geckosWithReminder.forEach(g => {
                 const isOverdue = g.next_feeding_date < today;
                 const color = isOverdue ? 'text-red-400' : 'text-white';
                 if (isOverdue) {
                     const overdueDate = new Date(g.next_feeding_date);
-                    const todayDate = new Date(today);
+                    const todayDate = new Date();
+                    // Use local midnight to avoid timezone offset issues
+                    todayDate.setHours(0, 0, 0, 0);
+                    overdueDate.setHours(0, 0, 0, 0);
                     const daysPassed = Math.floor((todayDate - overdueDate) / (1000 * 60 * 60 * 24));
                     html += `<div class="${color}">• ${g.name} - 已過${daysPassed}天，請盡快餵食！</div>`;
                 } else {
