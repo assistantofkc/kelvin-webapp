@@ -674,7 +674,7 @@
                 container.innerHTML = logs.slice(0, 10).map(log => {
                     const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'peeling' ? '🦎' : log.log_type === 'poo' ? '💩' : '💧';
                     return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
-                        <span>${emoji} ${log.log_date} ${log.quantity || ''}</span>
+                        <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span> ${log.log_date} ${log.quantity || ''}</span>
                         <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
                     </div>`;
                 }).join('');
@@ -967,7 +967,7 @@
                     <div class="flex gap-1 flex-wrap justify-center">
                         ${dayLogs.slice(0, 4).map(l => {
                             const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
-                            return `<span class="log-emoji" style="color: ${l.color}">${emoji}</span>`;
+                            return `<span class="log-emoji" style="background:${l.color}44; color:${l.color}; border-radius:4px; padding:0 2px;">${emoji}</span>`;
                         }).join('')}${dayLogs.length > 4 ? '<span class="log-emoji">...</span>' : ''}
                     </div>
                 </div>`;
