@@ -985,10 +985,11 @@
                 ? '<p class="text-center opacity-60">暫時未有紀錄</p>'
                 : logs.map(l => {
                     const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
+                    const typeName = l.log_type === 'feeding' ? '餵食' : l.log_type === 'peeling' ? '脫皮' : l.log_type === 'poo' ? '大便' : '小便';
                     return `<div class="flex justify-between items-center p-2 rounded mb-2" style="background: var(--card-bg); border-left: 4px solid ${l.color}">
                         <span>
                             <span style="background:${l.color}44; color:${l.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
-                            ${l.name} ${l.quantity || ''}
+                            ${typeName} - ${l.name} ${l.quantity || ''}
                         </span>
                     </div>`;
                 }).join('');
