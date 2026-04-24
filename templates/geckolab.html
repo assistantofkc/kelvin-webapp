@@ -618,7 +618,14 @@
             geckosWithReminder.forEach(g => {
                 const isOverdue = g.next_feeding_date < today;
                 const color = isOverdue ? 'text-red-400' : 'text-white';
-                html += `<div class="${color}">• ${g.name} - 下次 ${g.next_feeding_date} (每${g.feeding_interval_days}天)</div>`;
+                if (isOverdue) {
+                    const overdueDate = new Date(g.next_feeding_date);
+                    const todayDate = new Date(today);
+                    const daysPassed = Math.floor((todayDate - overdueDate) / (1000 * 60 * 60 * 24));
+                    html += `<div class="${color}">• ${g.name} - 已過${daysPassed}天，請盡快餵食！</div>`;
+                } else {
+                    html += `<div class="${color}">• ${g.name} - 下次 ${g.next_feeding_date} (每${g.feeding_interval_days}天)</div>`;
+                }
             });
             banner.innerHTML = html;
             banner.style.display = 'block';
