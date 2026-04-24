@@ -672,7 +672,7 @@
                 container.innerHTML = '<p class="opacity-60">暫時未有紀錄</p>';
             } else {
                 container.innerHTML = logs.slice(0, 10).map(log => {
-                    const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'peeling' ? '🩵' : log.log_type === 'poo' ? '💩' : '💧';
+                    const emoji = log.log_type === 'feeding' ? '🦗' : log.log_type === 'peeling' ? '🦎' : log.log_type === 'poo' ? '💩' : '💧';
                     return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
                         <span>${emoji} ${log.log_date} ${log.quantity || ''}</span>
                         <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
