@@ -614,7 +614,7 @@
             // Sort by next feeding date
             geckosWithReminder.sort((a, b) => a.next_feeding_date.localeCompare(b.next_feeding_date));
             const today = new Date().toISOString().split('T')[0];
-            let html = '<div class="font-semibold mb-2">🔔 餵食提醒：</div>';
+            let html = '<div class="font-semibold mb-2 text-white">🔔 餵食提醒：</div>';
             geckosWithReminder.forEach(g => {
                 const isOverdue = g.next_feeding_date < today;
                 const color = isOverdue ? 'text-red-400' : 'text-white';
