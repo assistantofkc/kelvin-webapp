@@ -31,7 +31,7 @@ def auto_git_pull():
     except: pass
 
 # App version
-APP_VERSION = 'v7.18'
+APP_VERSION = 'v7.19'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -663,7 +663,13 @@ def geckolab_change_password():
     if old_pwd != current_password:
         return jsonify({'success': False, 'error': '舊密碼錯誤'})
     save_geckolab_password(new_pwd)
-    return jsonify({'success': True, 'message': '密碼已更改'})
+    # Invalidate all existing tokens - all users must re-login with new password
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    c = conn.cursor()
+    c.execute('DELETE FROM auth_tokens')
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': '密碼已更改，所有用戶需重新登入'})
 
 @app.route('/geckolab/api/reset-data', methods=['POST'])
 def geckolab_reset_data():
