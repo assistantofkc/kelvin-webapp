@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.33'
+APP_VERSION = 'v6.34'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -528,7 +528,7 @@ def add_daily_log(gecko_id):
     log_date = request.form.get('log_date', datetime.now().strftime('%Y-%m-%d'))
     quantity = request.form.get('quantity', '').strip()
     notes = request.form.get('notes', '').strip()
-    if log_type not in ('feeding', 'poo', 'pee'):
+    if log_type not in ('feeding', 'peeling', 'poo', 'pee'):
         return jsonify({'success': False, 'error': 'Invalid log type'})
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
