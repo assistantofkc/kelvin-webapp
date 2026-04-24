@@ -564,7 +564,7 @@
                 const reminder = data.reminders.find(r => r.gecko_id === g.id);
                 const interval = reminder ? reminder.interval_days : 3;
                 return `
-                <div class="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-900 p-2 rounded">
                     <div class="flex items-center gap-2">
                         <span style="color:${g.color}">${g.name}</span>
                         <select id="interval-${g.id}" class="text-sm p-1 rounded bg-gray-700 text-white">
