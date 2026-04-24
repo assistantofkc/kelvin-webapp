@@ -886,10 +886,10 @@
                 html += `<div class="calendar-day ${isToday ? 'today' : ''}" onclick="showDayDetail('${dateStr}')">
                     <span>${d}</span>
                     <div class="flex gap-1 flex-wrap justify-center">
-                        ${dayLogs.map(l => {
+                        ${dayLogs.slice(0, 4).map(l => {
                             const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
                             return `<span class="log-emoji" style="color: ${l.color}">${emoji}</span>`;
-                        }).join('')}
+                        }).join('')}${dayLogs.length > 4 ? '<span class="log-emoji">...</span>' : ''}
                     </div>
                 </div>`;
             }
