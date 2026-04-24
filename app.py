@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.63'
+APP_VERSION = 'v6.64'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -652,6 +652,7 @@ def geckolab_import():
         imported_geckos = 0
         imported_weights = 0
         imported_logs = 0
+        errors = []
         
         for line in lines:
             line = line.strip()
@@ -660,19 +661,28 @@ def geckolab_import():
                     section = line.replace('# ', '').replace('#', '').strip()
                 continue
             parts = line.split(',')
-            if section == 'Geckos' and len(parts) >= 8:
-                c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', parts[:8])
-                imported_geckos += 1
-            elif section == 'Weight Records' and len(parts) >= 6:
-                c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', parts[:6])
-                imported_weights += 1
-            elif section == 'Daily Logs' and len(parts) >= 7:
-                c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', parts[:7])
-                imported_logs += 1
+            try:
+                if section == 'Geckos' and len(parts) >= 8:
+                    c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', parts[:8])
+                    imported_geckos += 1
+                elif section == 'Weight Records' and len(parts) >= 6:
+                    # weight is float, gecko_id is int
+                    wid = int(parts[0]) if parts[0] else 0
+                    gid = int(parts[1]) if parts[1] else 0
+                    wt = float(parts[2]) if parts[2] else 0.0
+                    c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', (wid, gid, wt, parts[3], parts[4] if len(parts) > 4 else '', parts[5] if len(parts) > 5 else ''))
+                    imported_weights += 1
+                elif section == 'Daily Logs' and len(parts) >= 7:
+                    lid = int(parts[0]) if parts[0] else 0
+                    gid = int(parts[1]) if parts[1] else 0
+                    c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', (lid, gid, parts[2], parts[3], parts[4] if len(parts) > 4 else '', parts[5] if len(parts) > 5 else '', parts[6] if len(parts) > 6 else ''))
+                    imported_logs += 1
+            except Exception as e:
+                errors.append(f'Line error: {str(e)[:50]}')
         
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'message': f'已還原：{imported_geckos}守宮 {imported_weights}體重 {imported_logs}紀錄'})
+        return jsonify({'success': True, 'message': f'已還原：{imported_geckos}守宮 {imported_weights}體重 {imported_logs}紀錄', 'errors': errors[:5] if errors else []})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
