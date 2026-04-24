@@ -1079,6 +1079,9 @@
             if (!currentGeckoId) return;
             document.getElementById('log-modal').classList.add('show');
             document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
+            // Auto-detect morning/afternoon based on current hour
+            const hour = new Date().getHours();
+            document.getElementById('log-period').value = hour < 12 ? '上午' : '下午';
             document.getElementById('log-type').value = '';
             document.getElementById('log-quantity').value = '';
             document.getElementById('log-notes').value = '';
@@ -1134,7 +1137,8 @@
                         log_date: document.getElementById('log-date').value,
                         log_type: selectedLogType,
                         quantity: qty.join(' + ') || '',
-                        notes: document.getElementById('log-notes').value
+                        notes: document.getElementById('log-notes').value,
+                        period: document.getElementById('log-period').value
                     })
                 });
                 delete logModal.dataset.editLogId;
