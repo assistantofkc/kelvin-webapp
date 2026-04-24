@@ -980,7 +980,10 @@
             const data = await res.json();
             const logs = data.logs || [];
             
-            document.getElementById('day-modal-title').textContent = date;
+            const d = new Date(date);
+            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            const dayName = dayNames[d.getDay()];
+            document.getElementById('day-modal-title').textContent = `${date} (週${dayName})`;
             document.getElementById('day-modal-body').innerHTML = logs.length === 0
                 ? '<p class="text-center opacity-60">暫時未有紀錄</p>'
                 : logs.map(l => {
