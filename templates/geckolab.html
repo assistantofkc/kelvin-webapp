@@ -470,11 +470,16 @@
                 <label class="block text-sm mb-1">日期</label>
                 <div class="flex gap-2">
                     <input type="date" id="log-date">
-                    <select id="log-period" class="text-sm p-1 rounded bg-gray-700 text-white">
-                        <option value="">時段</option>
-                        <option value="上午">上午</option>
-                        <option value="下午">下午</option>
-                    </select>
+                    <div class="flex gap-4 mt-1">
+                        <label class="flex items-center gap-1">
+                            <input type="radio" name="log-period" value="上午" class="accent-blue-500">
+                            <span>上午</span>
+                        </label>
+                        <label class="flex items-center gap-1">
+                            <input type="radio" name="log-period" value="下午" class="accent-blue-500">
+                            <span>下午</span>
+                        </label>
+                    </div>
                 </div>
                 <label class="block text-sm mb-2 mt-2">類型</label>
                 <div class="flex gap-2 flex-wrap mb-2">
@@ -881,7 +886,7 @@
         function editLog(logId, logType, logDate, quantity, period) {
             showAddLogModal();
             document.getElementById('log-date').value = logDate;
-            if (period) document.getElementById('log-period').value = period;
+            if (period) document.querySelector('input[name="log-period"][value="' + period + '"]').checked = true;
             // Set log type
             document.querySelectorAll('[data-log-type]').forEach(b => {
                 if (b.dataset.logType === logType) {
@@ -1095,7 +1100,8 @@
             document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
             // Auto-detect morning/afternoon based on current hour
             const hour = new Date().getHours();
-            document.getElementById('log-period').value = hour < 12 ? '上午' : '下午';
+            const defaultPeriod = hour < 12 ? '上午' : '下午';
+            document.querySelector('input[name="log-period"][value="' + defaultPeriod + '"]').checked = true;
             document.getElementById('log-type').value = '';
             document.getElementById('log-quantity').value = '';
             document.getElementById('log-notes').value = '';
@@ -1152,7 +1158,7 @@
                         log_type: selectedLogType,
                         quantity: qty.join(' + ') || '',
                         notes: document.getElementById('log-notes').value,
-                        period: document.getElementById('log-period').value
+                        period: document.querySelector('input[name="log-period"]:checked')?.value || ''
                     })
                 });
                 delete logModal.dataset.editLogId;
@@ -1177,7 +1183,7 @@
                     formData.append('quantity', document.getElementById('log-quantity').value);
                 }
                 formData.append('notes', document.getElementById('log-notes').value);
-                formData.append('period', document.getElementById('log-period').value);
+                formData.append('period', document.querySelector('input[name="log-period"]:checked')?.value || '');
                 
                 await fetch(`${API_BASE}/geckos/${currentGeckoId}/logs`, {
                     method: 'POST',
