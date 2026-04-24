@@ -171,6 +171,7 @@
             font-size: 1rem;
             transition: all 0.2s;
         }
+        .btn:active { transform: scale(0.95); opacity: 0.8; }
         .btn-primary {
             background: var(--accent);
             color: #fff;
@@ -181,6 +182,7 @@
             color: var(--text-primary);
             border: 1px solid var(--card-border);
         }
+        .btn-secondary:hover { opacity: 0.85; transform: scale(0.98); }
         input[type="text"], input[type="password"], input[type="date"], input[type="number"], textarea {
             width: 100%;
             padding: 10px;
@@ -680,6 +682,7 @@
             document.getElementById('login-view').classList.remove('hidden');
             document.getElementById('main-view').classList.add('hidden');
             document.getElementById('profile-view').classList.add('hidden');
+            hideSettingsModal();
             fetch('/geckolab/logout');
         }
 
