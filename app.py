@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.80'
+APP_VERSION = 'v6.81'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -584,6 +584,22 @@ def add_daily_log(gecko_id):
     conn.close()
     return jsonify({'success': True, 'log_id': log_id})
 
+@app.route('/geckolab/api/logs/<int:log_id>', methods=['PUT'])
+def update_log(log_id):
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    data = request.get_json()
+    log_date = data.get('log_date', '').strip()
+    log_type = data.get('log_type', '').strip()
+    quantity = data.get('quantity', '')
+    notes = data.get('notes', '')
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    c = conn.cursor()
+    c.execute('UPDATE daily_logs SET log_date=?, log_type=?, quantity=?, notes=? WHERE id=?', (log_date, log_type, quantity, notes, log_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 @app.route('/geckolab/api/logs/<int:log_id>', methods=['DELETE'])
 def delete_log(log_id):
     if not session.get('geckolab_logged_in'):
@@ -594,8 +610,6 @@ def delete_log(log_id):
     conn.commit()
     conn.close()
     return jsonify({'success': True})
-
-    app.run(debug=True)
 
 @app.route('/geckolab/api/change-password', methods=['POST'])
 def geckolab_change_password():

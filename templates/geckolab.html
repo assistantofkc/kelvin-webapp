@@ -842,7 +842,10 @@
                             <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
                             ${typeName} ${log.log_date} (週${dayName}) ${log.quantity || ''}
                         </span>
-                        <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
+                        <div class="flex gap-2">
+                            <button onclick="editLog(${log.id}, '${log.log_type}', '${log.log_date}', '${log.quantity || ''}')" class="text-blue-500">✏️</button>
+                            <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
+                        </div>
                     </div>`;
                 }).join('');
             }
@@ -852,6 +855,28 @@
             if (!confirm('確定刪除？')) return;
             await fetch(`${API_BASE}/logs/${logId}`, { method: 'DELETE' });
             if (currentGeckoId) loadGeckoLogs(currentGeckoId);
+        }
+        
+        function editLog(logId, logType, logDate, quantity) {
+            showAddLogModal();
+            document.getElementById('log-date').value = logDate;
+            // Set log type
+            document.querySelectorAll('[data-log-type]').forEach(b => {
+                if (b.dataset.logType === logType) {
+                    selectLogType(logType);
+                }
+            });
+            if (logType === 'feeding') {
+                // Parse quantity like "2隻蟋蟀 + 3g蟲泥"
+                const cricketsMatch = quantity.match(/(\d+)隻蟋蟀/);
+                const wormsMatch = quantity.match(/(\d+)g蟲泥/);
+                if (cricketsMatch) document.getElementById('log-crickets').value = cricketsMatch[1];
+                if (wormsMatch) document.getElementById('log-worms').value = wormsMatch[1];
+            } else {
+                document.getElementById('log-quantity').value = quantity;
+            }
+            // Store logId for update
+            document.getElementById('log-modal').dataset.editLogId = logId;
         }
 
         // Add/Edit Gecko
@@ -1080,11 +1105,11 @@
                 return;
             }
             
-            const formData = new FormData();
-            formData.append('log_type', selectedLogType);
-            formData.append('log_date', document.getElementById('log-date').value);
+            const logModal = document.getElementById('log-modal');
+            const editLogId = logModal.dataset.editLogId;
             
-            if (selectedLogType === 'feeding') {
+            if (editLogId) {
+                // Update existing log
                 const crickets = document.getElementById('log-crickets').value;
                 const worms = document.getElementById('log-worms').value;
                 let qty = [];
@@ -1092,19 +1117,47 @@
                 if (worms) qty.push(`${worms}g蟲泥`);
                 const otherQty = document.getElementById('log-quantity').value;
                 if (otherQty) qty.push(otherQty);
-                formData.append('quantity', qty.join(' + '));
+                
+                await fetch(`${API_BASE}/logs/${editLogId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        log_date: document.getElementById('log-date').value,
+                        log_type: selectedLogType,
+                        quantity: qty.join(' + ') || '',
+                        notes: document.getElementById('log-notes').value
+                    })
+                });
+                delete logModal.dataset.editLogId;
+                hideLogModal();
+                showToast('已更新紀錄');
             } else {
-                formData.append('quantity', document.getElementById('log-quantity').value);
+                // Create new log
+                const formData = new FormData();
+                formData.append('log_type', selectedLogType);
+                formData.append('log_date', document.getElementById('log-date').value);
+                
+                if (selectedLogType === 'feeding') {
+                    const crickets = document.getElementById('log-crickets').value;
+                    const worms = document.getElementById('log-worms').value;
+                    let qty = [];
+                    if (crickets) qty.push(`${crickets}隻蟋蟀`);
+                    if (worms) qty.push(`${worms}g蟲泥`);
+                    const otherQty = document.getElementById('log-quantity').value;
+                    if (otherQty) qty.push(otherQty);
+                    formData.append('quantity', qty.join(' + '));
+                } else {
+                    formData.append('quantity', document.getElementById('log-quantity').value);
+                }
+                formData.append('notes', document.getElementById('log-notes').value);
+                
+                await fetch(`${API_BASE}/geckos/${currentGeckoId}/logs`, {
+                    method: 'POST',
+                    body: formData
+                });
+                hideLogModal();
+                showToast('已新增紀錄');
             }
-            formData.append('notes', document.getElementById('log-notes').value);
-            
-            await fetch(`${API_BASE}/geckos/${currentGeckoId}/logs`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            hideLogModal();
-            showToast('已新增紀錄');
             loadGeckoLogs(currentGeckoId);
             loadGeckos();  // Refresh feeding reminder banner
             renderCalendar();
