@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.71'
+APP_VERSION = 'v6.72'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -367,6 +367,24 @@ def get_geckos():
     c = conn.cursor()
     c.execute('''SELECT g.*, (SELECT weight FROM weight_records WHERE gecko_id=g.id ORDER BY record_date DESC LIMIT 1) as latest_weight FROM geckos g ORDER BY g.name''')
     geckos = [dict(row) for row in c.fetchall()]
+    
+    # Get feeding reminders and calculate next feeding dates
+    for g in geckos:
+        reminder = c.execute('SELECT interval_days FROM feeding_reminders WHERE gecko_id=?', (g['id'],)).fetchone()
+        g['feeding_interval_days'] = reminder['interval_days'] if reminder else None
+        # Calculate next feeding date based on last feeding
+        if g['feeding_interval_days']:
+            last_feeding = c.execute("SELECT log_date FROM daily_logs WHERE gecko_id=? AND log_type='feeding' ORDER BY log_date DESC LIMIT 1", (g['id'],)).fetchone()
+            if last_feeding:
+                from datetime import datetime, timedelta
+                last_date = datetime.strptime(last_feeding['log_date'], '%Y-%m-%d').date()
+                next_date = last_date + timedelta(days=g['feeding_interval_days'])
+                g['next_feeding_date'] = next_date.isoformat()
+            else:
+                g['next_feeding_date'] = None
+        else:
+            g['next_feeding_date'] = None
+    
     conn.close()
     return jsonify({'success': True, 'geckos': geckos})
 
@@ -599,6 +617,42 @@ def geckolab_reset_data():
     c.execute('DELETE FROM daily_logs')
     c.execute('DELETE FROM weight_records')
     c.execute('DELETE FROM geckos')
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+# Feeding Reminder endpoints
+@app.route('/geckolab/api/feeding-reminders', methods=['GET'])
+def get_feeding_reminders():
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    reminders = c.execute('SELECT * FROM feeding_reminders').fetchall()
+    conn.close()
+    return jsonify({'success': True, 'reminders': [dict(r) for r in reminders]})
+
+@app.route('/geckolab/api/feeding-reminders/<int:gecko_id>', methods=['POST'])
+def set_feeding_reminder(gecko_id):
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    data = request.get_json()
+    interval_days = data.get('interval_days', 3)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    c = conn.cursor()
+    c.execute('INSERT OR REPLACE INTO feeding_reminders (gecko_id, interval_days) VALUES (?, ?)', (gecko_id, interval_days))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/geckolab/api/feeding-reminders/<int:gecko_id>', methods=['DELETE'])
+def delete_feeding_reminder(gecko_id):
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    c = conn.cursor()
+    c.execute('DELETE FROM feeding_reminders WHERE gecko_id=?', (gecko_id,))
     conn.commit()
     conn.close()
     return jsonify({'success': True})

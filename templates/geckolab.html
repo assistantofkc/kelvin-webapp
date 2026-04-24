@@ -274,6 +274,7 @@
                 <p class="text-lg opacity-70 mb-4">☘ 守宮列表</p>
                 <div class="flex flex-wrap gap-2">
                     <button onclick="showAddGeckoModal()" class="btn btn-secondary">➕ 新增守宮</button>
+                    <button onclick="showFeedingReminderModal()" class="btn btn-secondary">🔔 餵食提醒</button>
                     <button onclick="showSettingsModal()" class="btn btn-secondary">⚙️ 設定</button>
                     <button onclick="logout()" class="btn btn-secondary">登出</button>
                 </div>
@@ -285,6 +286,7 @@
             <!-- Calendar Section -->
             <div class="mt-8">
                 <h2 class="text-xl font-bold mb-4">📅 日曆</h2>
+                <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-blue-100 dark:bg-blue-900 text-sm"></div>
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
                     <span id="calendar-title" class="text-lg font-semibold"></span>
@@ -372,6 +374,20 @@
                 <label class="block text-sm mb-1">顏色</label>
                 <input type="color" id="gecko-color" value="#FF6B6B" class="w-full h-10 rounded cursor-pointer">
                 <button onclick="saveGecko()" class="btn btn-primary w-full mt-4">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feeding Reminder Modal -->
+    <div id="feeding-reminder-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold">🔔 餵食提醒設定</h2>
+                <button class="modal-close" onclick="hideFeedingReminderModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-sm mb-4 opacity-70">選擇守宮並設定餵食間隔</p>
+                <div id="feeding-reminder-list" class="space-y-3 mb-4"></div>
             </div>
         </div>
     </div>
@@ -530,6 +546,83 @@
         function hideLoginModal() { document.getElementById('login-modal').classList.remove('show'); }
         function hideGeckoModal() { document.getElementById('gecko-modal').classList.remove('show'); }
         function hideWeightModal() { document.getElementById('weight-modal').classList.remove('show'); }
+        function showFeedingReminderModal() {
+            loadFeedingReminders();
+            document.getElementById('feeding-reminder-modal').classList.add('show');
+        }
+        function hideFeedingReminderModal() { document.getElementById('feeding-reminder-modal').classList.remove('show'); }
+        
+        async function loadFeedingReminders() {
+            const res = await fetch(`${API_BASE}/feeding-reminders`);
+            const data = await res.json();
+            const list = document.getElementById('feeding-reminder-list');
+            if (!data.success || geckos.length === 0) {
+                list.innerHTML = '<p class="text-sm opacity-50">尚未有任何守宮</p>';
+                return;
+            }
+            list.innerHTML = geckos.map(g => {
+                const reminder = data.reminders.find(r => r.gecko_id === g.id);
+                const interval = reminder ? reminder.interval_days : 3;
+                return `
+                <div class="flex items-center justify-between bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                    <div class="flex items-center gap-2">
+                        <span style="color:${g.color}">${g.name}</span>
+                        <select id="interval-${g.id}" class="text-sm p-1 rounded" onchange="saveFeedingReminder(${g.id}, this.value)">
+                            <option value="1" ${interval == 1 ? 'selected' : ''}>每1天</option>
+                            <option value="2" ${interval == 2 ? 'selected' : ''}>每2天</option>
+                            <option value="3" ${interval == 3 ? 'selected' : ''}>每3天</option>
+                            <option value="4" ${interval == 4 ? 'selected' : ''}>每4天</option>
+                            <option value="5" ${interval == 5 ? 'selected' : ''}>每5天</option>
+                            <option value="7" ${interval == 7 ? 'selected' : ''}>每7天</option>
+                        </select>
+                    </div>
+                    ${reminder ? `<button onclick="deleteFeedingReminder(${g.id})" class="text-red-500">✕</button>` : ''}
+                </div>
+            `}).join('');
+        }
+        
+        async function saveFeedingReminder(geckoId, interval) {
+            await fetch(`${API_BASE}/feeding-reminders/${geckoId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ interval_days: interval })
+            });
+            loadFeedingReminders();
+            loadGeckos();
+            updateFeedingReminderBanner();
+            showToast('已設定提醒');
+        }
+        
+        async function deleteFeedingReminder(geckoId) {
+            if (!confirm('刪除此提醒？')) return;
+            await fetch(`${API_BASE}/feeding-reminders/${geckoId}`, { method: 'DELETE' });
+            loadFeedingReminders();
+            loadGeckos();
+            updateFeedingReminderBanner();
+            showToast('已刪除提醒');
+        }
+        
+        function updateFeedingReminderBanner() {
+            const banner = document.getElementById('feeding-reminder-banner');
+            const geckosWithReminder = geckos.filter(g => g.feeding_interval_days && g.next_feeding_date);
+            if (geckosWithReminder.length === 0) {
+                banner.innerHTML = '';
+                banner.style.display = 'none';
+                return;
+            }
+            // Sort by next feeding date
+            geckosWithReminder.sort((a, b) => a.next_feeding_date.localeCompare(b.next_feeding_date));
+            const today = new Date().toISOString().split('T')[0];
+            let html = '<div class="font-semibold mb-2">🔔 餵食提醒：</div>';
+            geckosWithReminder.forEach(g => {
+                const isOverdue = g.next_feeding_date < today;
+                const color = isOverdue ? 'text-red-500' : 'text-blue-600';
+                html += `<div class="${color}">• ${g.name} - 下次 ${g.next_feeding_date} (每${g.feeding_interval_days}天)</div>`;
+            });
+            banner.innerHTML = html;
+            banner.style.display = 'block';
+        }
+        
         function showSettingsModal() { document.getElementById('settings-modal').classList.add('show'); }
         function hideSettingsModal() { document.getElementById('settings-modal').classList.remove('show'); }
         function hideLogModal() { document.getElementById('log-modal').classList.remove('show'); }
@@ -669,6 +762,7 @@
             if (isLoggedIn) {
                 renderGeckoGrid();
                 renderCalendar();
+                updateFeedingReminderBanner();
             }
         }
 
