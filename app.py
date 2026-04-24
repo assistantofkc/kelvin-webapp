@@ -663,19 +663,19 @@ def geckolab_import():
             parts = line.split(',')
             try:
                 if section == 'Geckos' and len(parts) >= 8:
-                    c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', parts[:8])
+                    gid = int(parts[0]) if parts[0] and parts[0].strip() else None
+                    c.execute('INSERT OR REPLACE INTO geckos (id, name, species, dob, adopted_date, color, avatar_path, created_at) VALUES (?,?,?,?,?,?,?,?)', (gid, parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7]))
                     imported_geckos += 1
                 elif section == 'Weight Records' and len(parts) >= 6:
-                    # weight is float, gecko_id is int
-                    wid = int(parts[0]) if parts[0] else 0
-                    gid = int(parts[1]) if parts[1] else 0
-                    wt = float(parts[2]) if parts[2] else 0.0
-                    c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', (wid, gid, wt, parts[3], parts[4] if len(parts) > 4 else '', parts[5] if len(parts) > 5 else ''))
+                    wid = int(parts[0]) if parts[0] and parts[0].strip() else None
+                    gid = int(parts[1]) if parts[1] and parts[1].strip() else None
+                    wt = float(parts[2]) if parts[2] and parts[2].strip() else None
+                    c.execute('INSERT OR REPLACE INTO weight_records (id, gecko_id, weight, record_date, notes, created_at) VALUES (?,?,?,?,?,?)', (wid, gid, wt, parts[3], parts[4] if len(parts) > 4 else None, parts[5] if len(parts) > 5 else None))
                     imported_weights += 1
                 elif section == 'Daily Logs' and len(parts) >= 7:
-                    lid = int(parts[0]) if parts[0] else 0
-                    gid = int(parts[1]) if parts[1] else 0
-                    c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', (lid, gid, parts[2], parts[3], parts[4] if len(parts) > 4 else '', parts[5] if len(parts) > 5 else '', parts[6] if len(parts) > 6 else ''))
+                    lid = int(parts[0]) if parts[0] and parts[0].strip() else None
+                    gid = int(parts[1]) if parts[1] and parts[1].strip() else None
+                    c.execute('INSERT OR REPLACE INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', (lid, gid, parts[2], parts[3], parts[4] if len(parts) > 4 else None, parts[5] if len(parts) > 5 else None, parts[6] if len(parts) > 6 else None))
                     imported_logs += 1
             except Exception as e:
                 errors.append(f'Line error: {str(e)[:50]}')
