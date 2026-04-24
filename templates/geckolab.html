@@ -431,7 +431,7 @@
                 <label class="block text-sm mb-2 mt-2">類型</label>
                 <div class="flex gap-2 flex-wrap mb-2">
                     <button type="button" onclick="selectLogType('feeding')" class="btn btn-secondary" data-log-type="feeding">🦗 餵食</button>
-                    <button type="button" onclick="selectLogType('peeling')" class="btn btn-secondary" data-log-type="peeling">🩵 脫皮</button>
+                    <button type="button" onclick="selectLogType('peeling')" class="btn btn-secondary" data-log-type="peeling">🦎 脫皮</button>
                     <button type="button" onclick="selectLogType('poo')" class="btn btn-secondary" data-log-type="poo">💩 大便</button>
                     <button type="button" onclick="selectLogType('pee')" class="btn btn-secondary" data-log-type="pee">💧 小便</button>
                 </div>
@@ -887,7 +887,7 @@
                     <span>${d}</span>
                     <div class="flex gap-1 flex-wrap justify-center">
                         ${dayLogs.map(l => {
-                            const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🩵' : l.log_type === 'poo' ? '💩' : '💧';
+                            const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
                             return `<span class="log-emoji" style="color: ${l.color}">${emoji}</span>`;
                         }).join('')}
                     </div>
@@ -905,7 +905,7 @@
             document.getElementById('day-modal-body').innerHTML = logs.length === 0
                 ? '<p class="text-center opacity-60">暫時未有紀錄</p>'
                 : logs.map(l => {
-                    const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🩵' : l.log_type === 'poo' ? '💩' : '💧';
+                    const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
                     return `<div class="flex justify-between items-center p-2 rounded mb-2" style="background: var(--card-bg)">
                         <span>
                             <span style="color: ${l.color}">${emoji}</span>
