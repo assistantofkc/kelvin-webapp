@@ -9,13 +9,6 @@ from werkzeug.utils import secure_filename
 import requests
 import os
 import subprocess
-# Auto-pull latest code on startup
-try:
-    result = subprocess.run(['git', 'pull', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=30)
-    if result.returncode == 0 and result.stdout.strip():
-        print(f"[Git Pull] {result.stdout.strip()}")
-except: pass
-
 import random
 import json
 import os
@@ -29,8 +22,15 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
+# Auto-pull latest code on EVERY request (ensures latest code is always loaded)
+@app.before_request
+def auto_git_pull():
+    try:
+        result = subprocess.run(['git', 'pull', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+    except: pass
+
 # App version
-APP_VERSION = 'v6.81'
+APP_VERSION = 'v6.82'
 
 
 def generate_sentences(vocabularies, max_retries=2):
