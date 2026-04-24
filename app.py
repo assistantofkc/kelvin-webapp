@@ -30,7 +30,7 @@ def auto_git_pull():
     except: pass
 
 # App version
-APP_VERSION = 'v6.82'
+APP_VERSION = 'v6.83'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -355,7 +355,10 @@ def init_geckolab_db():
         c.execute("ALTER TABLE geckos ADD COLUMN personality TEXT")
     except: pass
     c.execute('''CREATE TABLE IF NOT EXISTS weight_records (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, weight REAL NOT NULL, record_date TEXT NOT NULL, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS daily_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, log_date TEXT NOT NULL, log_type TEXT NOT NULL, quantity TEXT, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS daily_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, log_date TEXT NOT NULL, log_type TEXT NOT NULL, quantity TEXT, notes TEXT, period TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
+    try:
+        c.execute("ALTER TABLE daily_logs ADD COLUMN period TEXT")
+    except: pass
     c.execute('''CREATE TABLE IF NOT EXISTS feeding_reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL UNIQUE, interval_days INTEGER NOT NULL DEFAULT 3, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
     conn.commit()
     conn.close()
@@ -578,7 +581,8 @@ def add_daily_log(gecko_id):
         return jsonify({'success': False, 'error': 'Invalid log type'})
     conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
-    c.execute('INSERT INTO daily_logs (gecko_id, log_date, log_type, quantity, notes) VALUES (?,?,?,?,?)', (gecko_id, log_date, log_type, quantity, notes))
+    period = request.form.get('period', '')
+    c.execute('INSERT INTO daily_logs (gecko_id, log_date, log_type, quantity, notes, period) VALUES (?,?,?,?,?,?)', (gecko_id, log_date, log_type, quantity, notes, period))
     log_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -595,7 +599,8 @@ def update_log(log_id):
     notes = data.get('notes', '')
     conn = sqlite3.connect(DB_PATH, timeout=30)
     c = conn.cursor()
-    c.execute('UPDATE daily_logs SET log_date=?, log_type=?, quantity=?, notes=? WHERE id=?', (log_date, log_type, quantity, notes, log_id))
+    period = data.get('period', '')
+    c.execute('UPDATE daily_logs SET log_date=?, log_type=?, quantity=?, notes=?, period=? WHERE id=?', (log_date, log_type, quantity, notes, period, log_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -700,9 +705,9 @@ def geckolab_export():
     
     csv_lines.append('')
     csv_lines.append('# Daily Logs')
-    csv_lines.append('id,gecko_id,log_date,log_type,quantity,notes,created_at')
+    csv_lines.append('id,gecko_id,log_date,log_type,quantity,notes,period,created_at')
     for l in logs:
-        csv_lines.append(f'{l["id"]},{l["gecko_id"]},{l["log_date"]},{l["log_type"]},{l["quantity"]},{l["notes"]},{l["created_at"]}')
+        csv_lines.append(f'{l["id"]},{l["gecko_id"]},{l["log_date"]},{l["log_type"]},{l["quantity"]},{l["notes"]},{l["period"]},{l["created_at"]}')
     
     return jsonify({'success': True, 'csv': '\n'.join(csv_lines)})
 
@@ -760,7 +765,7 @@ def geckolab_import():
                         errors.append('Log needs gecko_id, date, type')
                         continue
                     gid = int(parts[1])
-                    c.execute('INSERT INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, created_at) VALUES (?,?,?,?,?,?,?)', (int(parts[0]) if parts[0] and parts[0].strip() else None, gid, parts[2], parts[3], parts[4] if len(parts) > 4 else '', parts[5] if len(parts) > 5 else '', parts[6] if len(parts) > 6 else ''))
+                    c.execute('INSERT INTO daily_logs (id, gecko_id, log_date, log_type, quantity, notes, period, created_at) VALUES (?,?,?,?,?,?,?,?)', (int(parts[0]) if parts[0] and parts[0].strip() else None, gid, parts[2], parts[3], parts[4] if len(parts) > 4 else '', parts[5] if len(parts) > 5 else '', parts[6] if len(parts) > 6 else '', parts[7] if len(parts) > 7 else ''))
                     imported_logs += 1
             except Exception as e:
                 errors.append(f'Line error: {str(e)[:50]}')

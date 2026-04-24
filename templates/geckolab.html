@@ -461,7 +461,14 @@
             <div class="modal-body">
                 <input type="hidden" id="log-gecko-id">
                 <label class="block text-sm mb-1">日期</label>
-                <input type="date" id="log-date">
+                <div class="flex gap-2">
+                    <input type="date" id="log-date">
+                    <select id="log-period" class="text-sm p-1 rounded bg-gray-700 text-white">
+                        <option value="">時段</option>
+                        <option value="上午">上午</option>
+                        <option value="下午">下午</option>
+                    </select>
+                </div>
                 <label class="block text-sm mb-2 mt-2">類型</label>
                 <div class="flex gap-2 flex-wrap mb-2">
                     <button type="button" onclick="selectLogType('feeding')" class="btn btn-secondary" data-log-type="feeding">🦗 餵食</button>
@@ -837,13 +844,14 @@
                     const d = new Date(log.log_date);
                     const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
                     const dayName = dayNames[d.getDay()];
+                    const periodDisplay = log.period ? ` ${log.period}` : '';
                     return `<div class="flex justify-between items-center p-2 rounded" style="background: var(--card-bg)">
                         <span>
                             <span style="background:${log.color}44; color:${log.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
-                            ${typeName} ${log.log_date} (週${dayName}) ${log.quantity || ''}
+                            ${typeName} ${log.log_date}${periodDisplay} (週${dayName}) ${log.quantity || ''}
                         </span>
                         <div class="flex gap-2">
-                            <button onclick="editLog(${log.id}, '${log.log_type}', '${log.log_date}', '${log.quantity || ''}')" class="text-blue-500">✏️</button>
+                            <button onclick="editLog(${log.id}, '${log.log_type}', '${log.log_date}', '${log.quantity || ''}', '${log.period || ''}')" class="text-blue-500">✏️</button>
                             <button onclick="deleteLog(${log.id})" class="text-red-500">✕</button>
                         </div>
                     </div>`;
@@ -857,9 +865,10 @@
             if (currentGeckoId) loadGeckoLogs(currentGeckoId);
         }
         
-        function editLog(logId, logType, logDate, quantity) {
+        function editLog(logId, logType, logDate, quantity, period) {
             showAddLogModal();
             document.getElementById('log-date').value = logDate;
+            if (period) document.getElementById('log-period').value = period;
             // Set log type
             document.querySelectorAll('[data-log-type]').forEach(b => {
                 if (b.dataset.logType === logType) {
@@ -1150,6 +1159,7 @@
                     formData.append('quantity', document.getElementById('log-quantity').value);
                 }
                 formData.append('notes', document.getElementById('log-notes').value);
+                formData.append('period', document.getElementById('log-period').value);
                 
                 await fetch(`${API_BASE}/geckos/${currentGeckoId}/logs`, {
                     method: 'POST',
@@ -1231,10 +1241,11 @@
                 : logs.map(l => {
                     const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
                     const typeName = l.log_type === 'feeding' ? '餵食' : l.log_type === 'peeling' ? '脫皮' : l.log_type === 'poo' ? '大便' : '小便';
+                    const periodDisplay = l.period ? ` ${l.period}` : '';
                     return `<div class="flex justify-between items-center p-2 rounded mb-2" style="background: var(--card-bg); border-left: 4px solid ${l.color}">
                         <span>
                             <span style="background:${l.color}44; color:${l.color}; border-radius:4px; padding:0 4px;">${emoji}</span>
-                            ${typeName} - ${l.name} ${l.quantity || ''}
+                            ${typeName}${periodDisplay} - ${l.name} ${l.quantity || ''}
                         </span>
                     </div>`;
                 }).join('');
