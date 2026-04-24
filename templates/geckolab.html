@@ -131,6 +131,7 @@
             justify-content: center;
         }
         .modal.show { display: flex; }
+        body.modal-open { overflow: hidden; }
         .modal-content {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -550,14 +551,15 @@
                 document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
             }
         }
-        function hideLoginModal() { document.getElementById('login-modal').classList.remove('show'); }
-        function hideGeckoModal() { document.getElementById('gecko-modal').classList.remove('show'); }
-        function hideWeightModal() { document.getElementById('weight-modal').classList.remove('show'); }
+        function hideLoginModal() { document.getElementById('login-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
+        function hideGeckoModal() { document.getElementById('gecko-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
+        function hideWeightModal() { document.getElementById('weight-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
         function showFeedingReminderModal() {
             loadFeedingReminders();
             document.getElementById('feeding-reminder-modal').classList.add('show');
+            document.body.classList.add('modal-open');
         }
-        function hideFeedingReminderModal() { document.getElementById('feeding-reminder-modal').classList.remove('show'); }
+        function hideFeedingReminderModal() { document.getElementById('feeding-reminder-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
         
         async function loadFeedingReminders() {
             const res = await fetch(`${API_BASE}/feeding-reminders`);
@@ -638,13 +640,13 @@
             banner.style.display = 'block';
         }
         
-        function showSettingsModal() { document.getElementById('settings-modal').classList.add('show'); }
-        function hideSettingsModal() { document.getElementById('settings-modal').classList.remove('show'); }
-        function hideLogModal() { document.getElementById('log-modal').classList.remove('show'); }
-        function hideDayModal() { document.getElementById('day-modal').classList.remove('show'); }
+        function showSettingsModal() { document.getElementById('settings-modal').classList.add('show'); document.body.classList.add('modal-open'); }
+        function hideSettingsModal() { document.getElementById('settings-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
+        function hideLogModal() { document.getElementById('log-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
+        function hideDayModal() { document.getElementById('day-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
 
         // Login
-        function showLoginModal() { document.getElementById('login-modal').classList.add('show'); }
+        function showLoginModal() { document.getElementById('login-modal').classList.add('show'); document.body.classList.add('modal-open'); }
         async function login() {
             const password = document.getElementById('login-password').value;
             const res = await fetch(`${API_BASE}/login`, {
@@ -1083,6 +1085,7 @@
         function showAddLogModal() {
             if (!currentGeckoId) return;
             document.getElementById('log-modal').classList.add('show');
+            document.body.classList.add('modal-open');
             document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
             // Auto-detect morning/afternoon based on current hour
             const hour = new Date().getHours();
@@ -1319,6 +1322,7 @@
             document.getElementById('day-modal-body').innerHTML = html;
             
             document.getElementById('day-modal').classList.add('show');
+            document.body.classList.add('modal-open');
         }
 
         // Avatar preview
