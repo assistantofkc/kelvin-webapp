@@ -1257,6 +1257,7 @@
         }
 
         async function showDayDetail(date) {
+            const [year, month, day] = date.split('-').map(Number);
             const res = await fetch(`${API_BASE}/logs?date=${date}`);
             const data = await res.json();
             const logs = data.logs || [];
@@ -1265,6 +1266,22 @@
             const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
             const dayName = dayNames[d.getDay()];
             document.getElementById('day-modal-title').textContent = `${date} (週${dayName})`;
+            
+            // Get adoption anniversaries for this date
+            const geckoRes = await fetch(`${API_BASE}/geckos`);
+            const geckoData = await geckoRes.json();
+            const geckos = geckoData.geckos || [];
+            const anniversaries = [];
+            geckos.forEach(g => {
+                if (g.adopted_date) {
+                    const [adoptYear, adoptMonth, adoptDay] = g.adopted_date.split('-').map(Number);
+                    if (adoptMonth === month && adoptDay === day) {
+                        const years = year - adoptYear;
+                        if (years > 0) anniversaries.push({ name: g.name, years, color: g.color });
+                    }
+                }
+            });
+            
             // Sort by period: 上午 first, 下午 second, empty last
             const periodOrder = { '上午': 0, '下午': 1, '': 2 };
             const sortedLogs = [...logs].sort((a, b) => {
@@ -1273,9 +1290,21 @@
                 if (pa !== pb) return pa - pb;
                 return a.id - b.id;
             });
-            document.getElementById('day-modal-body').innerHTML = sortedLogs.length === 0
-                ? '<p class="text-center opacity-60">暫時未有紀錄</p>'
-                : sortedLogs.map(l => {
+            
+            let html = '';
+            if (anniversaries.length > 0) {
+                html += anniversaries.map(a => `
+                    <div class="flex justify-between items-center p-2 rounded mb-2" style="background: var(--card-bg); border-left: 4px solid ${a.color}">
+                        <span>
+                            <span style="background:${a.color}44; color:${a.color}; border-radius:4px; padding:0 4px;">🎉</span>
+                            ${a.name} 領養週年 ${a.years}週年
+                        </span>
+                    </div>`).join('');
+            }
+            if (sortedLogs.length === 0 && anniversaries.length === 0) {
+                html = '<p class="text-center opacity-60">暫時未有紀錄</p>';
+            } else if (sortedLogs.length > 0) {
+                html += sortedLogs.map(l => {
                     const emoji = l.log_type === 'feeding' ? '🦗' : l.log_type === 'peeling' ? '🦎' : l.log_type === 'poo' ? '💩' : '💧';
                     const typeName = l.log_type === 'feeding' ? '餵食' : l.log_type === 'peeling' ? '脫皮' : l.log_type === 'poo' ? '大便' : '小便';
                     const periodDisplay = l.period ? ` ${l.period}` : '';
@@ -1286,6 +1315,8 @@
                         </span>
                     </div>`;
                 }).join('');
+            }
+            document.getElementById('day-modal-body').innerHTML = html;
             
             document.getElementById('day-modal').classList.add('show');
         }
