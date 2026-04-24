@@ -773,8 +773,9 @@
             document.getElementById('weight-history').innerHTML = weights.length === 0 
                 ? '<p class="opacity-60 text-center">暫時未有體重紀錄</p>'
                 : weights.map(w => `<div class="flex justify-between items-center p-2 border-b" style="border-color: var(--card-border)">
-                    <span>${w.record_date}</span>
-                    <span class="font-bold">${w.weight}g</span>
+                    <span class="flex-1">${w.record_date}</span>
+                    <span class="font-bold mx-2">${w.weight}g</span>
+                    <button onclick="editWeight(${w.id}, '${w.record_date}', ${w.weight})" class="text-blue-500 text-sm mr-2">✏️</button>
                     <button onclick="deleteWeight(${w.id})" class="text-red-500 text-sm">✕</button>
                 </div>`).join('');
             
@@ -807,6 +808,28 @@
                     scales: { y: { beginAtZero: false } }
                 }
             });
+        }
+
+        function editWeight(weightId, date, weight) {
+            const newWeight = prompt('請輸入新體重 (g):', weight);
+            if (newWeight === null || newWeight === '') return;
+            const newDate = prompt('請輸入新日期:', date);
+            if (newDate === null || newDate === '') return;
+            updateWeight(weightId, newWeight, newDate);
+        }
+
+        async function updateWeight(weightId, weight, date) {
+            const formData = new FormData();
+            formData.append('weight', weight);
+            formData.append('record_date', date);
+            formData.append('_method', 'PUT');
+            await fetch(`${API_BASE}/geckos/${currentGeckoId}/weights/${weightId}`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            loadWeightHistory();
+            showToast('已更新');
         }
 
         async function deleteWeight(weightId) {

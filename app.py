@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.42'
+APP_VERSION = 'v6.43'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -479,6 +479,19 @@ def add_weight(gecko_id):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('INSERT INTO weight_records (gecko_id, weight, record_date, notes) VALUES (?,?,?,?)', (gecko_id, weight, record_date, notes))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/geckolab/api/geckos/<int:gecko_id>/weights/<int:weight_id>', methods=['PUT'])
+def update_weight(gecko_id, weight_id):
+    if not session.get('geckolab_logged_in'):
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    weight = float(request.form.get('weight', 0))
+    record_date = request.form.get('record_date', datetime.now().strftime('%Y-%m-%d'))
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('UPDATE weight_records SET weight=?, record_date=? WHERE id=? AND gecko_id=?', (weight, record_date, weight_id, gecko_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
