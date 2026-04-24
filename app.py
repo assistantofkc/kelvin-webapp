@@ -30,7 +30,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
 # App version
-APP_VERSION = 'v6.67'
+APP_VERSION = 'v6.68'
 
 
 def generate_sentences(vocabularies, max_retries=2):
@@ -654,13 +654,19 @@ def geckolab_import():
         imported_logs = 0
         errors = []
         
+        header_skipped = {'Geckos': False, 'Weight Records': False, 'Daily Logs': False}
         for line in lines:
             line = line.strip()
             if not line or line.startswith('#'):
                 if line.startswith('#'):
                     section = line.replace('# ', '').replace('#', '').strip()
+                    header_skipped[section] = False
                 continue
             parts = line.split(',')
+            # Skip header lines
+            if section in header_skipped and not header_skipped[section]:
+                header_skipped[section] = True
+                continue
             try:
                 if section == 'Geckos' and len(parts) >= 8:
                     if not parts[1]:  # name is REQUIRED
