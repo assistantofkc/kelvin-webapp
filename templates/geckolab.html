@@ -339,7 +339,6 @@
         <div id="profile-view" class="hidden mt-4">
             <div class="text-center">
                 <img id="profile-avatar" src="" class="gecko-avatar gecko-avatar-lg mb-4 mx-auto cursor-pointer" onclick="openAlbumUrl()">
-                <p id="profile-album-btn" class="hidden mb-2"><a id="profile-album-link" href="#" target="_blank" class="text-blue-400 hover:underline">📸 查看相簿</a></p>
                 <h2 id="profile-name" class="text-2xl font-bold mb-2"></h2>
                 <p id="profile-species" class="opacity-70 mb-1"></p>
                 <p id="profile-personality" class="opacity-70 mb-2"></p>
@@ -876,14 +875,10 @@
             // Store for editing
             window.currentGecko = g;
             
-            // Show album link if album_url exists
-            const albumBtn = document.getElementById('profile-album-btn');
+            // Show album link if album_url exists (avatar click handles this)
             const albumLink = document.getElementById('profile-album-link');
-            if (g.album_url) {
-                albumBtn.classList.remove('hidden');
-                albumLink.href = g.album_url;
-            } else {
-                albumBtn.classList.add('hidden');
+            if (albumLink) {
+                albumLink.href = g.album_url || '#';
             }
             
             loadGeckoLogs(geckoId);
