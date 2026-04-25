@@ -1266,47 +1266,49 @@
         // Calendar
         let swipeDirection = 0; // -1 = right swipe (past month), +1 = left swipe (next month)
         function changeMonth(delta, fromSwipe = false) {
-            const wrapper = document.getElementById('calendar-wrapper');
             const content = document.getElementById('calendar-content');
             const grid = document.getElementById('calendar-grid');
-            
-            if (fromSwipe && wrapper && content && grid) {
-                const dir = delta > 0 ? 1 : -1;
-                // Old month slides out in swipe direction
-                const slideOut = dir > 0 ? '-100%' : '100%';
-                // New month slides in from OPPOSITE direction
-                const slideIn = dir > 0 ? '100%' : '-100%';
-                
-                content.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
-                content.style.transform = `translateX(${slideOut})`;
-                content.style.opacity = '0';
-                grid.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
-                grid.style.transform = `translateX(${slideOut})`;
-                grid.style.opacity = '0';
-                
+
+            if (fromSwipe && content && grid) {
+                const isNext = delta > 0;
+                const outX = isNext ? '-100%' : '100%'; // old month slides out direction
+                const inX = isNext ? '100%' : '-100%';    // new month starts from opposite side
+
+                const elements = [content, grid];
+
+                // Phase 1: old month slides out
+                elements.forEach(el => {
+                    el.style.transition = 'transform 0.2s ease-out, opacity 0.2s';
+                    el.style.transform = `translateX(${outX})`;
+                    el.style.opacity = '0';
+                });
+
+
                 setTimeout(() => {
+                    // Phase 2: swap data and reset to "other side"
                     currentMonth.setMonth(currentMonth.getMonth() + delta);
                     renderCalendar();
-                    
-                    content.style.transition = 'none';
-                    content.style.transform = `translateX(${slideIn})`;
-                    content.style.opacity = '0';
-                    grid.style.transition = 'none';
-                    grid.style.transform = `translateX(${slideIn})`;
-                    grid.style.opacity = '0';
-                    
-                    requestAnimationFrame(() => {
-                        content.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
-                        content.style.transform = 'translateX(0)';
-                        content.style.opacity = '1';
-                        grid.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
-                        grid.style.transform = 'translateX(0)';
-                        grid.style.opacity = '1';
+
+
+                    elements.forEach(el => {
+                        el.style.transition = 'none';
+                        el.style.transform = `translateX(${inX})`;
                     });
-                }, 220);
+
+                    // Phase 3: double rAF to ensure none is applied, then slide in
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            elements.forEach(el => {
+                                el.style.transition = 'transform 0.25s ease-out, opacity 0.25s';
+                                el.style.transform = 'translateX(0)';
+                                el.style.opacity = '1';
+                            });
+                        });
+                    });
+                }, 210);
                 return;
             }
-            
+
             currentMonth.setMonth(currentMonth.getMonth() + delta);
             renderCalendar();
         }
