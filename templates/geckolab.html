@@ -320,7 +320,7 @@
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
                     <div class="flex items-center gap-2">
-                        <select id="cal-year" onchange="jumpToCalendar()" class="text-lg font-semibold bg-transparent border border-transparent rounded px-2 py-1 cursor-pointer hover:border-gray-500"></select>
+                        <input type="number" id="cal-year" value="" onchange="jumpToCalendar()" class="text-lg font-semibold bg-transparent border border-transparent rounded px-2 py-1 w-20 cursor-pointer hover:border-gray-500" min="2000" max="2100">
                         <span class="text-lg font-semibold">年</span>
                         <select id="cal-month" onchange="jumpToCalendar()" class="text-lg font-semibold bg-transparent border border-transparent rounded px-2 py-1 cursor-pointer hover:border-gray-500"></select>
                         <span class="text-lg font-semibold">月</span>
@@ -1273,6 +1273,7 @@
         function jumpToCalendar() {
             const year = parseInt(document.getElementById('cal-year').value);
             const month = parseInt(document.getElementById('cal-month').value);
+            if (!year || !month) return;
             currentMonth = new Date(year, month - 1, 1);
             renderCalendar();
         }
@@ -1385,21 +1386,14 @@
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth() + 1;
             
-            // Update dropdowns
-            const yearSel = document.getElementById('cal-year');
+            // Update year input and month select
+            const yearInput = document.getElementById('cal-year');
             const monthSel = document.getElementById('cal-month');
             
-            // Populate year dropdown (current year -5 to +5)
-            const curYear = new Date().getFullYear();
-            if (!yearSel.options.length) {
-                for (let y = curYear - 5; y <= curYear + 5; y++) {
-                    const opt = document.createElement('option');
-                    opt.value = y;
-                    opt.textContent = y;
-                    yearSel.appendChild(opt);
-                }
-            }
-            yearSel.value = year;
+            // Set year input value
+            yearInput.value = year;
+            yearInput.min = curYear - 5;
+            yearInput.max = curYear + 5;
             
             // Populate month dropdown
             if (!monthSel.options.length) {
