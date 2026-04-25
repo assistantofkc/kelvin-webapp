@@ -388,6 +388,9 @@ def init_geckolab_db():
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS geckos (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, species TEXT, dob TEXT, adopted_date TEXT, color TEXT DEFAULT '#FF6B6B', avatar_path TEXT, personality TEXT, album_url TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)''')
     try:
+        c.execute("ALTER TABLE geckos ADD COLUMN album_url TEXT")
+    except: pass
+    try:
         c.execute("ALTER TABLE geckos ADD COLUMN personality TEXT")
     except: pass
     c.execute('''CREATE TABLE IF NOT EXISTS weight_records (id INTEGER PRIMARY KEY AUTOINCREMENT, gecko_id INTEGER NOT NULL, weight REAL NOT NULL, record_date TEXT NOT NULL, notes TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (gecko_id) REFERENCES geckos(id) ON DELETE CASCADE)''')
