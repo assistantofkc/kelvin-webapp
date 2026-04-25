@@ -1134,6 +1134,10 @@
         async function deleteLog(logId) {
             if (!confirm('確定刪除？')) return;
             await fetch(`${API_BASE}/logs/${logId}`, { method: 'DELETE' });
+            // Invalidate cache and re-render calendar
+            const cacheKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`;
+            delete logsCache[cacheKey];
+            await renderCalendar();
             if (currentGeckoId) loadGeckoLogs(currentGeckoId);
         }
         
@@ -1513,6 +1517,10 @@
                 delete logModal.dataset.editLogId;
                 hideLogModal();
                 showToast('已更新紀錄');
+                // Invalidate cache and re-render calendar
+                const cacheKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`;
+                delete logsCache[cacheKey];
+                await renderCalendar();
             } else {
                 // Create new log
                 const formData = new FormData();
@@ -1548,10 +1556,13 @@
                 });
                 hideLogModal();
                 showToast('已新增紀錄');
+                // Invalidate cache before rendering calendar
+                const cacheKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`;
+                delete logsCache[cacheKey];
+                await renderCalendar();
+                loadGeckoLogs(currentGeckoId);
+                loadGeckos();  // Refresh feeding reminder banner
             }
-            loadGeckoLogs(currentGeckoId);
-            loadGeckos();  // Refresh feeding reminder banner
-            renderCalendar();
         }
 
         // Calendar
