@@ -1416,7 +1416,8 @@
             
             // Ensure current year is in dropdown, add if missing
             if (yearInput.options.length === 0) {
-                for (let y = curYear - 15; y <= curYear + 15; y++) {
+                // Initial range: 2025-2040
+                for (let y = 2025; y <= 2040; y++) {
                     const opt = document.createElement('option');
                     opt.value = y;
                     opt.textContent = y;
