@@ -878,6 +878,9 @@
             });
             hideQuickAddModal();
             showToast('已新增記錄');
+            // Invalidate logs cache for current month
+            const cacheKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`;
+            delete logsCache[cacheKey];
             await renderCalendar();
         }
 
