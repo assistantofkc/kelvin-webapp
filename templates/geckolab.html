@@ -1272,8 +1272,10 @@
             
             if (fromSwipe && wrapper && content && grid) {
                 const dir = delta > 0 ? 1 : -1;
+                // Old month slides out in swipe direction
                 const slideOut = dir > 0 ? '-100%' : '100%';
-                const slideIn = dir > 0 ? '100%' : '-100%';
+                // New month slides in from OPPOSITE direction
+                const slideIn = dir > 0 ? '-100%' : '100%';
                 
                 content.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
                 content.style.transform = `translateX(${slideOut})`;
