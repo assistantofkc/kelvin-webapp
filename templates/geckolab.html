@@ -551,7 +551,16 @@
                 <input type="hidden" id="log-type">
                 <div id="feeding-quantity-section" class="hidden mb-2">
                     <label class="block text-sm mb-1">蟋蟀 (隻)</label>
-                    <input type="number" id="log-crickets" min="0" placeholder="0" class="w-full mb-2">
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <button type="button" onclick="selectCricket(0)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
+                        <button type="button" onclick="selectCricket(1)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="1">1</button>
+                        <button type="button" onclick="selectCricket(2)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="2">2</button>
+                        <button type="button" onclick="selectCricket(3)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="3">3</button>
+                        <button type="button" onclick="selectCricket(4)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="4">4</button>
+                        <button type="button" onclick="selectCricket(5)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="5">5</button>
+                        <button type="button" onclick="selectCricket(6)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="6">6</button>
+                    </div>
+                    <input type="hidden" id="log-crickets" value="0">
                     <label class="block text-sm mb-1">蟲泥 (克)</label>
                     <input type="number" id="log-worms" min="0" placeholder="0" class="w-full">
                 </div>
@@ -981,7 +990,11 @@
                 // Parse quantity like "2隻蟋蟀 + 3g蟲泥"
                 const cricketsMatch = quantity.match(/(\d+)隻蟋蟀/);
                 const wormsMatch = quantity.match(/(\d+)g蟲泥/);
-                if (cricketsMatch) document.getElementById('log-crickets').value = cricketsMatch[1];
+                const cricketCount = cricketsMatch ? parseInt(cricketsMatch[1]) : 0;
+                if (cricketsMatch) {
+                    document.getElementById('log-crickets').value = cricketCount;
+                    selectCricket(cricketCount);
+                }
                 if (wormsMatch) document.getElementById('log-worms').value = wormsMatch[1];
             } else {
                 document.getElementById('log-quantity').value = quantity;
@@ -1202,8 +1215,18 @@
             selectedLogType = null;
             document.querySelectorAll('[data-log-type]').forEach(b => b.classList.remove('btn-primary'));
             document.querySelectorAll('[data-log-type]').forEach(b => b.classList.add('btn-secondary'));
+            selectCricket(0);
         }
 
+        function selectCricket(n) {
+            document.getElementById('log-crickets').value = n;
+            document.querySelectorAll('.cricket-btn').forEach(b => {
+                b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                b.classList.add('border-gray-500');
+            });
+            document.querySelector(`.cricket-btn[data-val="${n}"]`).classList.remove('border-gray-500');
+            document.querySelector(`.cricket-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+        }
         function selectLogType(type) {
             selectedLogType = type;
             document.getElementById('log-type').value = type;
@@ -1222,6 +1245,8 @@
             if (type !== 'feeding') {
                 document.getElementById('log-crickets').value = '';
                 document.getElementById('log-worms').value = '';
+            } else {
+                selectCricket(0);
             }
         }
 
