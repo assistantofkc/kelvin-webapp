@@ -15,7 +15,7 @@
 - Social links: GitHub, LinkedIn, Email
 
 ### 2. 中文詞彙測試 (/vocab-test)
-- AI -powered 中文詞彙測驗工具
+- AI-powered 中文詞彙測驗工具
 - 輸入詞彙 → AI 自動生成填空題
 - 批次式題目（每批 4 題）
 - 支援多批次、累積分數
@@ -31,7 +31,7 @@
 ### 4. Slide Translator
 - Google Gemini app（外部連結）
 - 投影片翻譯工具
-- URL: https://gemini.google.com/share/34f6ac96cbc9
+- URL: https://gemini.google.com/share/97151a39e237
 
 ### 5. 倉頡學堂 (/cangjie)
 - 倉頡輸入法練習工具
@@ -39,14 +39,28 @@
 - 互動式鍵盤練習
 - 鍵位對照表 popup
 
+### 6. Geckolab (/geckolab)
+- 守宮（豹紋守宮）餵食追蹤工具
+- 日曆顯示餵食/大便/小便/脫皮記錄
+- 餵食提醒設定（自動計算下次餵食日期）
+- 體重管理
+- 領養紀念日標記（🎉）
+- 已過餵食日期警告顯示
+- 手機版 swipe 滑動切換月份（left→next, right→past）
+- 滑動動畫過渡效果
+- 年/月下拉選單快速跳轉
+- 守宮相簿連結（點頭像開相簿）
+- CSV 匯入/匯出
+
 ---
 
 ## 🛠️ 技術架構
 
-- **Frontend**: HTML5 + CSS3 + JavaScript (Vanilla)
+- **Frontend**: HTML5 + CSS3 + JavaScript (Vanilla) + Tailwind CSS (CDN)
 - **Backend**: Flask (Python)
-- **Hosting**: PythonAnywhere (Beginner tier)
+- **Hosting**: PythonAnywhere
 - **AI API**: MiniMax-M2.7
+- **Database**: SQLite (geckolab.db)
 - **React**: News Clipper (CDN)
 
 ---
@@ -57,7 +71,7 @@
 kelvin-webapp/
 ├── app.py                      # Flask 後端
 ├── requirements.txt            # Python 依賴
-├── .env                        # API keys (PythonAnywhere only - NOT in GitHub!)
+├── .env                        # API keys (NOT in GitHub!)
 ├── .gitignore                  # 排除敏感檔案
 ├── .github/
 │   └── workflows/
@@ -65,10 +79,15 @@ kelvin-webapp/
 ├── templates/
 │   ├── index.html              # 首頁
 │   ├── vocab_test.html          # 中文詞彙測試
-│   ├── news-clipper.html         # News Clipper
-│   └── cangjie.html             # 倉頡學堂
+│   ├── news-clipper.html        # News Clipper
+│   ├── cangjie.html             # 倉頡學堂
+│   └── geckolab.html            # Geckolab 守宮管理
+├── geckolab/                   # Geckolab 靜態/數據
+│   ├── geckolab.db              # SQLite database
+│   └── static/
+│       └── uploads/             # 守宮頭像上傳
 └── static/
-    ├── cangjie_keyboard_chart.jpg  # 倉頡鍵位對照圖
+    ├── cangjie_keyboard_chart.jpg
     └── ... other static assets
 ```
 
@@ -102,6 +121,10 @@ git pull origin main
 
 | 版本 | 日期 | 更新內容 |
 |-----|------|---------|
+| v7.50 | 2026-04-25 | Geckolab: 月份下拉置中、Year/Month 對齊、swipe 動畫 |
+| v7.40 | 2026-04-25 | Geckolab: 年月dropdown、swipe navigation |
+| v7.30 | 2026-04-25 | Geckolab: Back button 位置修正、被sidebar遮蓋 |
+| v7.22 | 2026-04-25 | Geckolab 相簿功能、hamburger menu 統一 |
 | v6.21 | 2026-04-23 | GitHub Action 自動部署 |
 | v6.20 | 2026-04-23 | 倉頡鍵位圖片 popup |
 | v6.19 | 2026-04-23 | Level 3 倉頡碼更新（支援5個鍵位）|
@@ -117,4 +140,4 @@ git pull origin main
 
 ---
 
-*Last Updated: 2026-04-23*
+*Last Updated: 2026-04-25*
