@@ -791,7 +791,7 @@ def geckolab_import():
                 header_skipped[section] = True
                 continue
             try:
-                if section == 'Geckos' and len(parts) >= 9:
+                if section == 'Geckos' and len(parts) >= 10:
                     if not parts[1]:  # name is REQUIRED
                         errors.append('Gecko name required')
                         continue
