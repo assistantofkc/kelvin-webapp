@@ -1152,23 +1152,28 @@
                 }
             });
             if (logType === 'feeding') {
-                // Parse quantity like "2隻蟋蟀 + 3g蟲泥" or "拒食蟋蟀"
+                // Parse quantity like "2隻蟋蟀 + 3g蟲泥" or "拒食蟋蟀" or "2.2g蟲泥"
                 const cricketsMatch = quantity.match(/(\d+)隻蟋蟀/);
-                const wormsMatch = quantity.match(/(\d+)g蟲泥/);
-                const cricketCount = cricketsMatch ? parseInt(cricketsMatch[1]) : 0;
+                const wormsMatch = quantity.match(/([\d.]+)g蟲泥/);
                 if (cricketsMatch) {
-                    document.getElementById('log-crickets').value = cricketCount;
-                    selectCricket(cricketCount);
+                    document.getElementById('log-crickets').value = cricketsMatch[1];
+                    selectCricket(parseInt(cricketsMatch[1]));
                 } else if (quantity.includes('拒食蟋蟀')) {
                     document.getElementById('log-crickets').value = 0;
                     selectCricket(0);
                 }
                 if (wormsMatch) {
-                    document.getElementById('log-worms').value = parseFloat(wormsMatch[1]);
-                    selectWorm(parseFloat(wormsMatch[1]).toString());
+                    const wormVal = parseFloat(wormsMatch[1]);
+                    document.getElementById('log-worms').value = wormVal;
+                    const btn = document.querySelector(`.worm-btn[data-val="${wormVal}"]`);
+                    if (btn) {
+                        selectWorm(wormVal.toString());
+                    } else {
+                        clearWormBtn();
+                    }
                 } else if (quantity.includes('拒食蟲泥')) {
                     document.getElementById('log-worms').value = 0;
-                    selectWorm(0);
+                    selectWorm('0');
                 }
             } else {
                 document.getElementById('log-quantity').value = quantity;
