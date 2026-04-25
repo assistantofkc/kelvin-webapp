@@ -504,7 +504,7 @@ def update_gecko(gecko_id):
     if avatar_path:
         c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, avatar_path=?, personality=?, album_url=? WHERE id=?', (name, species, dob, adopted_date, color, avatar_path, request.form.get('personality', '').strip(), request.form.get('album_url', '').strip(), gecko_id))
     else:
-        c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, personality=? WHERE id=?', (name, species, dob, adopted_date, color, request.form.get('personality', '').strip(), gecko_id))
+        c.execute('UPDATE geckos SET name=?, species=?, dob=?, adopted_date=?, color=?, personality=?, album_url=? WHERE id=?', (name, species, dob, adopted_date, color, request.form.get('personality', '').strip(), request.form.get('album_url', '').strip(), gecko_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
