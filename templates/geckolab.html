@@ -322,17 +322,19 @@
                     <span id="calendar-title" class="text-lg font-semibold"></span>
                     <button onclick="changeMonth(1)" class="btn btn-secondary">▶</button>
                 </div>
-                <div class="calendar-grid mb-2">
-                    <div class="text-center font-bold text-red-500">日</div>
-                    <div class="text-center font-bold">一</div>
-                    <div class="text-center font-bold">二</div>
-                    <div class="text-center font-bold">三</div>
-                    <div class="text-center font-bold">四</div>
-                    <div class="text-center font-bold">五</div>
-                    <div class="text-center font-bold text-red-500">六</div>
-                </div>
-                <div id="calendar-grid" class="calendar-grid">
-                    <!-- Calendar days will be loaded here -->
+                <div id="calendar-wrapper" style="overflow: hidden; position: relative;">
+                    <div id="calendar-content" class="calendar-grid mb-2">
+                        <div class="text-center font-bold text-red-500">日</div>
+                        <div class="text-center font-bold">一</div>
+                        <div class="text-center font-bold">二</div>
+                        <div class="text-center font-bold">三</div>
+                        <div class="text-center font-bold">四</div>
+                        <div class="text-center font-bold">五</div>
+                        <div class="text-center font-bold text-red-500">六</div>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid">
+                        <!-- Calendar days will be loaded here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1262,7 +1264,47 @@
         }
 
         // Calendar
-        function changeMonth(delta) {
+        let swipeDirection = 0; // -1 = right swipe (past month), +1 = left swipe (next month)
+        function changeMonth(delta, fromSwipe = false) {
+            const wrapper = document.getElementById('calendar-wrapper');
+            const content = document.getElementById('calendar-content');
+            const grid = document.getElementById('calendar-grid');
+            
+            if (fromSwipe && wrapper && content && grid) {
+                const dir = delta > 0 ? 1 : -1;
+                const slideOut = dir > 0 ? '-100%' : '100%';
+                const slideIn = dir > 0 ? '100%' : '-100%';
+                
+                content.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+                content.style.transform = `translateX(${slideOut})`;
+                content.style.opacity = '0';
+                grid.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out';
+                grid.style.transform = `translateX(${slideOut})`;
+                grid.style.opacity = '0';
+                
+                setTimeout(() => {
+                    currentMonth.setMonth(currentMonth.getMonth() + delta);
+                    renderCalendar();
+                    
+                    content.style.transition = 'none';
+                    content.style.transform = `translateX(${slideIn})`;
+                    content.style.opacity = '0';
+                    grid.style.transition = 'none';
+                    grid.style.transform = `translateX(${slideIn})`;
+                    grid.style.opacity = '0';
+                    
+                    requestAnimationFrame(() => {
+                        content.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
+                        content.style.transform = 'translateX(0)';
+                        content.style.opacity = '1';
+                        grid.style.transition = 'transform 0.25s ease-out, opacity 0.25s ease-out';
+                        grid.style.transform = 'translateX(0)';
+                        grid.style.opacity = '1';
+                    });
+                }, 220);
+                return;
+            }
+            
             currentMonth.setMonth(currentMonth.getMonth() + delta);
             renderCalendar();
         }
@@ -1284,9 +1326,9 @@
             const diff = touchStartX - touchEndX;
             if (Math.abs(diff) > 50) { // threshold 50px
                 if (diff > 0) {
-                    changeMonth(1); // swipe left → next month
+                    changeMonth(1, true); // swipe left → next month
                 } else {
-                    changeMonth(-1); // swipe right → past month
+                    changeMonth(-1, true); // swipe right → past month
                 }
             }
         }
