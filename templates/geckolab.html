@@ -1414,13 +1414,32 @@
             const monthSel = document.getElementById('cal-month');
             const curYear = new Date().getFullYear();
             
-            // Populate year dropdown (current year -5 to +15)
-            if (!yearInput.options.length) {
+            // Ensure current year is in dropdown, add if missing
+            if (yearInput.options.length === 0) {
                 for (let y = curYear - 15; y <= curYear + 15; y++) {
                     const opt = document.createElement('option');
                     opt.value = y;
                     opt.textContent = y;
                     yearInput.appendChild(opt);
+                }
+            } else {
+                // Check if current year is outside dropdown range, extend if needed
+                const minYear = parseInt(yearInput.options[0].value);
+                const maxYear = parseInt(yearInput.options[yearInput.options.length - 1].value);
+                if (year < minYear) {
+                    for (let y = year; y < minYear; y++) {
+                        const opt = document.createElement('option');
+                        opt.value = y;
+                        opt.textContent = y;
+                        yearInput.insertBefore(opt, yearInput.firstChild);
+                    }
+                } else if (year > maxYear) {
+                    for (let y = maxYear + 1; y <= year; y++) {
+                        const opt = document.createElement('option');
+                        opt.value = y;
+                        opt.textContent = y;
+                        yearInput.appendChild(opt);
+                    }
                 }
             }
             yearInput.value = year;
