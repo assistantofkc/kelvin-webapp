@@ -863,16 +863,16 @@
                 else if (worms) qty.push(`${worms}g蟲泥`);
             }
             const period = document.querySelector('input[name="quick-log-period"]:checked')?.value || '';
+            const formData = new FormData();
+            formData.append('log_date', document.getElementById('quick-log-date').value);
+            formData.append('log_type', logType);
+            formData.append('quantity', qty.join(' + '));
+            formData.append('notes', document.getElementById('quick-log-notes').value);
+            formData.append('period', period);
             await fetch(`${API_BASE}/geckos/${geckoId}/logs`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    log_date: document.getElementById('quick-log-date').value,
-                    log_type: logType,
-                    quantity: qty.join(' + '),
-                    notes: document.getElementById('quick-log-notes').value,
-                    period: period
-                })
+                body: formData,
+                credentials: 'same-origin'
             });
             hideQuickAddModal();
             showToast('已新增記錄');
