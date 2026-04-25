@@ -319,7 +319,12 @@
                 <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-800 text-sm text-white relative"><button onclick="document.getElementById('feeding-reminder-banner').classList.add('hidden')" class="absolute top-1 right-2 opacity-70 hover:opacity-100">✕</button><span id="feeding-reminder-text"></span></div>
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
-                    <span id="calendar-title" class="text-lg font-semibold"></span>
+                    <div class="flex items-center gap-2">
+                        <select id="cal-year" onchange="jumpToCalendar()" class="text-lg font-semibold bg-transparent border border-current rounded px-2 py-1 cursor-pointer"></select>
+                        <span class="text-lg font-semibold">年</span>
+                        <select id="cal-month" onchange="jumpToCalendar()" class="text-lg font-semibold bg-transparent border border-current rounded px-2 py-1 cursor-pointer"></select>
+                        <span class="text-lg font-semibold">月</span>
+                    </div>
                     <button onclick="changeMonth(1)" class="btn btn-secondary">▶</button>
                 </div>
                 <div id="calendar-wrapper" style="overflow: hidden; position: relative;">
@@ -1265,6 +1270,12 @@
 
         // Calendar
         let swipeDirection = 0; // -1 = right swipe (past month), +1 = left swipe (next month)
+        function jumpToCalendar() {
+            const year = parseInt(document.getElementById('cal-year').value);
+            const month = parseInt(document.getElementById('cal-month').value);
+            currentMonth = new Date(year, month - 1, 1);
+            renderCalendar();
+        }
         function changeMonth(delta, fromSwipe = false) {
             const content = document.getElementById('calendar-content');
             const grid = document.getElementById('calendar-grid');
@@ -1373,7 +1384,33 @@
         async function renderCalendar() {
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth() + 1;
-            document.getElementById('calendar-title').textContent = `${year}年 ${month}月`;
+            
+            // Update dropdowns
+            const yearSel = document.getElementById('cal-year');
+            const monthSel = document.getElementById('cal-month');
+            
+            // Populate year dropdown (current year -5 to +5)
+            const curYear = new Date().getFullYear();
+            if (!yearSel.options.length) {
+                for (let y = curYear - 5; y <= curYear + 5; y++) {
+                    const opt = document.createElement('option');
+                    opt.value = y;
+                    opt.textContent = y;
+                    yearSel.appendChild(opt);
+                }
+            }
+            yearSel.value = year;
+            
+            // Populate month dropdown
+            if (!monthSel.options.length) {
+                for (let m = 1; m <= 12; m++) {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = m;
+                    monthSel.appendChild(opt);
+                }
+            }
+            monthSel.value = month;
             
             // Get logs for this month (with cache)
             const logs = await getMonthlyLogs(year, month);
