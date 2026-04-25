@@ -30,6 +30,20 @@
             --accent: #4a5fd6;
             --card-bg: rgba(255, 255, 255, 0.9);
             --card-border: rgba(0, 0, 0, 0.1);
+            --select-bg: #ffffff;
+            --select-color: #1a1a2e;
+            --select-border: rgba(0, 0, 0, 0.1);
+            --option-bg: #ffffff;
+            --option-color: #1a1a2e;
+        }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            --select-bg: #2a2a3e;
+            --select-color: #ffffff;
+            --select-border: rgba(255, 255, 255, 0.2);
+            --option-bg: #2a2a3e;
+            --option-color: #ffffff;
         }
         body {
             background: var(--bg-primary);
@@ -203,7 +217,7 @@
             color: #fff;
         }
         .btn-danger:hover { opacity: 0.85; transform: scale(0.98); }
-        input[type="text"], input[type="password"], input[type="date"], input[type="number"], input[type="url"], textarea {
+        input[type="text"], input[type="password"], input[type="date"], input[type="number"], input[type="url"], textarea, select {
             width: 100%;
             padding: 10px;
             border-radius: 8px;
@@ -211,6 +225,15 @@
             background: var(--card-bg);
             color: var(--text-primary);
             margin-bottom: 10px;
+        }
+        select {
+            background: var(--select-bg);
+            color: var(--select-color);
+            border-color: var(--select-border);
+        }
+        select option {
+            background: var(--option-bg);
+            color: var(--option-color);
         }
         input:focus, textarea:focus {
             outline: 2px solid var(--accent);
