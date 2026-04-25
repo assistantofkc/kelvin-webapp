@@ -1215,7 +1215,12 @@
             selectedLogType = null;
             document.querySelectorAll('[data-log-type]').forEach(b => b.classList.remove('btn-primary'));
             document.querySelectorAll('[data-log-type]').forEach(b => b.classList.add('btn-secondary'));
-            selectCricket(0);
+            // Reset cricket selection (no button selected by default)
+            document.getElementById('log-crickets').value = '';
+            document.querySelectorAll('.cricket-btn').forEach(b => {
+                b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                b.classList.add('border-gray-500');
+            });
         }
 
         function selectCricket(n) {
@@ -1245,8 +1250,10 @@
             if (type !== 'feeding') {
                 document.getElementById('log-crickets').value = '';
                 document.getElementById('log-worms').value = '';
-            } else {
-                selectCricket(0);
+                document.querySelectorAll('.cricket-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                    b.classList.add('border-gray-500');
+                });
             }
         }
 
