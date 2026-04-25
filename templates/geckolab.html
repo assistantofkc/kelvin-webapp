@@ -876,11 +876,11 @@
                 body: formData,
                 credentials: 'same-origin'
             });
-            hideQuickAddModal();
-            showToast('已新增記錄');
-            // Invalidate logs cache for current month
+            // Invalidate logs cache for current month BEFORE hiding modal
             const cacheKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`;
             delete logsCache[cacheKey];
+            hideQuickAddModal();
+            showToast('已新增記錄');
             await renderCalendar();
         }
 
