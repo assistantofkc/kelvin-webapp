@@ -562,19 +562,10 @@
                     </div>
                     <input type="hidden" id="log-crickets" value="">
                     <label class="block text-sm mb-1">蟲泥 (克)</label>
-                    <div class="flex flex-wrap gap-2 mb-2">
+                    <div class="flex flex-wrap gap-2 mb-2 items-center">
                         <button type="button" onclick="selectWorm(0)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
-                        <button type="button" onclick="selectWorm(1)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="1">1</button>
-                        <button type="button" onclick="selectWorm(2)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="2">2</button>
-                        <button type="button" onclick="selectWorm(3)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="3">3</button>
-                        <button type="button" onclick="selectWorm(4)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="4">4</button>
-                        <button type="button" onclick="selectWorm(5)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="5">5</button>
-                        <button type="button" onclick="selectWorm(6)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="6">6</button>
-                        <button type="button" onclick="selectWorm(7)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="7">7</button>
-                        <button type="button" onclick="selectWorm(8)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="8">8</button>
-                        <button type="button" onclick="selectWorm(9)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="9">9</button>
+                        <input type="number" id="log-worms" min="0" step="0.1" placeholder="例如：2.2" class="flex-1 min-w-[80px]" oninput="clearWormBtn()">
                     </div>
-                    <input type="hidden" id="log-worms" value="">
                 </div>
                 <input type="text" id="log-quantity" placeholder="其他數量" class="mt-2">
                 <textarea id="log-notes" rows="2" placeholder="備註" class="mt-2"></textarea>
@@ -1011,8 +1002,8 @@
                     selectCricket(0);
                 }
                 if (wormsMatch) {
-                    document.getElementById('log-worms').value = parseInt(wormsMatch[1]);
-                    selectWorm(parseInt(wormsMatch[1]));
+                    document.getElementById('log-worms').value = parseFloat(wormsMatch[1]);
+                    selectWorm(parseFloat(wormsMatch[1]).toString());
                 } else if (quantity.includes('拒食蟲泥')) {
                     document.getElementById('log-worms').value = 0;
                     selectWorm(0);
@@ -1267,6 +1258,12 @@
             });
             document.querySelector(`.worm-btn[data-val="${n}"]`).classList.remove('border-gray-500');
             document.querySelector(`.worm-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+        }
+        function clearWormBtn() {
+            document.querySelectorAll('.worm-btn').forEach(b => {
+                b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                b.classList.add('border-gray-500');
+            });
         }
         function selectLogType(type) {
             selectedLogType = type;
