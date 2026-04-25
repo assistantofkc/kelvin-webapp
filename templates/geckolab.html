@@ -319,9 +319,9 @@
                 <div id="feeding-reminder-banner" class="mb-4 p-3 rounded-lg bg-yellow-800 text-sm text-white relative"><button onclick="document.getElementById('feeding-reminder-banner').classList.add('hidden')" class="absolute top-1 right-2 opacity-70 hover:opacity-100">✕</button><span id="feeding-reminder-text"></span></div>
                 <div class="flex justify-between items-center mb-4">
                     <button onclick="changeMonth(-1)" class="btn btn-secondary">◀</button>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-end gap-2">
                         <input type="number" id="cal-year" value="" onchange="jumpToCalendar()" class="text-base font-semibold bg-transparent border border-transparent rounded px-1 py-0.5 w-12 h-8 text-center" min="2000" max="2100">
-                        <span class="text-lg font-semibold">年</span>
+                        <span class="text-lg font-semibold pb-0.5">年</span>
                         <select id="cal-month" onchange="jumpToCalendar()" class="text-base font-semibold bg-transparent border border-transparent rounded px-1 py-0.5 w-16 h-8 cursor-pointer hover:border-gray-500"></select>
                         <span class="text-lg font-semibold">月</span>
                     </div>
