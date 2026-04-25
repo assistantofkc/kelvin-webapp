@@ -1271,7 +1271,11 @@
                 const crickets = document.getElementById('log-crickets').value;
                 const worms = document.getElementById('log-worms').value;
                 let qty = [];
-                if (crickets) qty.push(`${crickets}隻蟋蟀`);
+                if (crickets === '0') {
+                    qty.push('拒食蟋蟀');
+                } else if (crickets) {
+                    qty.push(`${crickets}隻蟋蟀`);
+                }
                 if (worms) qty.push(`${worms}g蟲泥`);
                 const otherQty = document.getElementById('log-quantity').value;
                 if (otherQty) qty.push(otherQty);
@@ -1300,7 +1304,11 @@
                     const crickets = document.getElementById('log-crickets').value;
                     const worms = document.getElementById('log-worms').value;
                     let qty = [];
-                    if (crickets) qty.push(`${crickets}隻蟋蟀`);
+                    if (crickets === '0') {
+                        qty.push('拒食蟋蟀');
+                    } else if (crickets) {
+                        qty.push(`${crickets}隻蟋蟀`);
+                    }
                     if (worms) qty.push(`${worms}g蟲泥`);
                     const otherQty = document.getElementById('log-quantity').value;
                     if (otherQty) qty.push(otherQty);
