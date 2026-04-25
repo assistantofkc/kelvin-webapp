@@ -600,19 +600,19 @@
                 <div id="quick-feeding-quantity-section" class="hidden mb-2">
                     <label class="block text-sm mb-1">蟋蟀 (隻)</label>
                     <div class="flex flex-wrap gap-2 mb-2">
-                        <button type="button" onclick="selectCricket(0)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
-                        <button type="button" onclick="selectCricket(1)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="1">1</button>
-                        <button type="button" onclick="selectCricket(2)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="2">2</button>
-                        <button type="button" onclick="selectCricket(3)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="3">3</button>
-                        <button type="button" onclick="selectCricket(4)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="4">4</button>
-                        <button type="button" onclick="selectCricket(5)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="5">5</button>
-                        <button type="button" onclick="selectCricket(6)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="6">6</button>
+                        <button type="button" onclick="selectQuickCricket(0)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
+                        <button type="button" onclick="selectQuickCricket(1)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="1">1</button>
+                        <button type="button" onclick="selectQuickCricket(2)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="2">2</button>
+                        <button type="button" onclick="selectQuickCricket(3)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="3">3</button>
+                        <button type="button" onclick="selectQuickCricket(4)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="4">4</button>
+                        <button type="button" onclick="selectQuickCricket(5)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="5">5</button>
+                        <button type="button" onclick="selectQuickCricket(6)" class="quick-cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="6">6</button>
                     </div>
                     <input type="hidden" id="quick-log-crickets" value="">
                     <label class="block text-sm mb-1">蟲泥 (克)</label>
                     <div class="flex flex-wrap gap-2 mb-2 items-center">
-                        <button type="button" onclick="selectWorm(0)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
-                        <input type="number" id="quick-log-worms" min="0" step="0.1" placeholder="例如：2.2" class="flex-1 min-w-[80px]" oninput="clearWormBtn()">
+                        <button type="button" onclick="selectQuickWorm(0)" class="quick-worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
+                        <input type="number" id="quick-log-worms" min="0" step="0.1" placeholder="例如：2.2" class="flex-1 min-w-[80px]" oninput="clearQuickWormBtn()">
                     </div>
                 </div>
                 <div class="mb-3">
@@ -818,7 +818,36 @@
             if (type !== 'feeding') {
                 document.getElementById('quick-log-crickets').value = '';
                 document.getElementById('quick-log-worms').value = '';
+                document.querySelectorAll('.quick-cricket-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+                document.querySelectorAll('.quick-worm-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
             }
+        }
+        function selectQuickCricket(n) {
+            const curr = document.getElementById('quick-log-crickets').value;
+            if (curr === String(n)) {
+                document.getElementById('quick-log-crickets').value = '';
+                document.querySelectorAll('.quick-cricket-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+            } else {
+                document.getElementById('quick-log-crickets').value = n;
+                document.querySelectorAll('.quick-cricket-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+                document.querySelector(`.quick-cricket-btn[data-val="${n}"]`).classList.remove('border-gray-500');
+                document.querySelector(`.quick-cricket-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+            }
+        }
+        function selectQuickWorm(n) {
+            const curr = document.getElementById('quick-log-worms').value;
+            if (curr === String(n)) {
+                document.getElementById('quick-log-worms').value = '';
+                document.querySelectorAll('.quick-worm-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+            } else {
+                document.getElementById('quick-log-worms').value = n;
+                document.querySelectorAll('.quick-worm-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+                document.querySelector(`.quick-worm-btn[data-val="${n}"]`).classList.remove('border-gray-500');
+                document.querySelector(`.quick-worm-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+            }
+        }
+        function clearQuickWormBtn() {
+            document.querySelectorAll('.quick-worm-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
         }
         async function submitQuickAdd() {
             const geckoId = document.getElementById('quick-gecko-select').value;
