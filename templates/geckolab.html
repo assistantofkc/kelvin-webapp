@@ -1414,9 +1414,9 @@
             const monthSel = document.getElementById('cal-month');
             const curYear = new Date().getFullYear();
             
-            // Populate year dropdown (2025-2040)
+            // Populate year dropdown (current year -5 to +15)
             if (!yearInput.options.length) {
-                for (let y = 2025; y <= 2040; y++) {
+                for (let y = curYear - 5; y <= curYear + 15; y++) {
                     const opt = document.createElement('option');
                     opt.value = y;
                     opt.textContent = y;
