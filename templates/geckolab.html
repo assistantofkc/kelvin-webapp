@@ -338,7 +338,8 @@
         <!-- Gecko Profile View -->
         <div id="profile-view" class="hidden mt-4">
             <div class="text-center">
-                <img id="profile-avatar" src="" class="gecko-avatar gecko-avatar-lg mb-4 mx-auto">
+                <img id="profile-avatar" src="" class="gecko-avatar gecko-avatar-lg mb-4 mx-auto cursor-pointer" onclick="openAlbumUrl()">
+                <p id="profile-album-btn" class="hidden mb-2"><a id="profile-album-link" href="#" target="_blank" class="text-blue-400 hover:underline">📸 查看相簿</a></p>
                 <h2 id="profile-name" class="text-2xl font-bold mb-2"></h2>
                 <p id="profile-species" class="opacity-70 mb-1"></p>
                 <p id="profile-personality" class="opacity-70 mb-2"></p>
@@ -404,6 +405,8 @@
                 <input type="date" id="gecko-dob">
                 <label class="block text-sm mb-1">領養日期</label>
                 <input type="date" id="gecko-adopted">
+                <label class="block text-sm mb-1">相簿連結</label>
+                <input type="url" id="gecko-album-url" placeholder="https://...">
                 <label class="block text-sm mb-1">顏色</label>
                 <input type="color" id="gecko-color" value="#FF6B6B" class="w-full h-10 rounded cursor-pointer">
                 <button onclick="saveGecko()" class="btn btn-primary w-full mt-4">儲存</button>
@@ -873,6 +876,16 @@
             // Store for editing
             window.currentGecko = g;
             
+            // Show album link if album_url exists
+            const albumBtn = document.getElementById('profile-album-btn');
+            const albumLink = document.getElementById('profile-album-link');
+            if (g.album_url) {
+                albumBtn.classList.remove('hidden');
+                albumLink.href = g.album_url;
+            } else {
+                albumBtn.classList.add('hidden');
+            }
+            
             loadGeckoLogs(geckoId);
         }
 
@@ -958,9 +971,17 @@
             document.getElementById('gecko-species').value = '';
             document.getElementById('gecko-dob').value = '';
             document.getElementById('gecko-adopted').value = '';
+            document.getElementById('gecko-album-url').value = '';
             document.getElementById('gecko-color').value = '#FF6B6B';
             document.getElementById('gecko-avatar-preview').src = '/static/geckolab/default_gecko.png';
             document.getElementById('gecko-modal').classList.add('show');
+        }
+
+        function openAlbumUrl() {
+            const g = window.currentGecko;
+            if (g && g.album_url) {
+                window.open(g.album_url, '_blank');
+            }
         }
 
         async function confirmRemoveGecko() {
@@ -988,6 +1009,7 @@
             document.getElementById('gecko-personality').value = g.personality || '';
             document.getElementById('gecko-dob').value = g.dob || '';
             document.getElementById('gecko-adopted').value = g.adopted_date || '';
+            document.getElementById('gecko-album-url').value = g.album_url || '';
             document.getElementById('gecko-color').value = g.color || '#FF6B6B';
             document.getElementById('gecko-avatar-preview').src = g.avatar_path || '/static/geckolab/default_gecko.png';
             document.getElementById('gecko-modal').classList.add('show');
@@ -1001,6 +1023,7 @@
             formData.append('personality', document.getElementById('gecko-personality').value);
             formData.append('dob', document.getElementById('gecko-dob').value);
             formData.append('adopted_date', document.getElementById('gecko-adopted').value);
+            formData.append('album_url', document.getElementById('gecko-album-url').value);
             formData.append('color', document.getElementById('gecko-color').value);
             
             const avatarInput = document.getElementById('gecko-avatar-input');
