@@ -365,6 +365,11 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Quick Add Section -->
+            <div class="mt-4 mb-4">
+                <button onclick="showQuickAddModal()" class="btn btn-secondary w-full py-3 text-base">⚡ 快速加入</button>
+            </div>
         </div>
 
         <!-- Gecko Profile View -->
@@ -574,6 +579,59 @@
         </div>
     </div>
 
+    <!-- Quick Add Modal -->
+    <div id="quick-add-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold">⚡ 快速加入</h2>
+                <button class="modal-close" onclick="hideQuickAddModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="block text-sm mb-2">守宮</label>
+                <select id="quick-gecko-select" class="w-full mb-3"></select>
+                <label class="block text-sm mb-1">類型</label>
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button type="button" onclick="selectQuickLogType('feeding')" class="btn btn-secondary" data-quick-type="feeding">🦗 餵食</button>
+                    <button type="button" onclick="selectQuickLogType('poo')" class="btn btn-secondary" data-quick-type="poo">💩 大便</button>
+                    <button type="button" onclick="selectQuickLogType('pee')" class="btn btn-secondary" data-quick-type="pee">💧 小便</button>
+                    <button type="button" onclick="selectQuickLogType('peeling')" class="btn btn-secondary" data-quick-type="peeling">🦎 脫皮</button>
+                </div>
+                <input type="hidden" id="quick-log-type">
+                <div id="quick-feeding-quantity-section" class="hidden mb-2">
+                    <label class="block text-sm mb-1">蟋蟀 (隻)</label>
+                    <div class="flex flex-wrap gap-2 mb-2">
+                        <button type="button" onclick="selectCricket(0)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
+                        <button type="button" onclick="selectCricket(1)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="1">1</button>
+                        <button type="button" onclick="selectCricket(2)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="2">2</button>
+                        <button type="button" onclick="selectCricket(3)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="3">3</button>
+                        <button type="button" onclick="selectCricket(4)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="4">4</button>
+                        <button type="button" onclick="selectCricket(5)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="5">5</button>
+                        <button type="button" onclick="selectCricket(6)" class="cricket-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="6">6</button>
+                    </div>
+                    <input type="hidden" id="quick-log-crickets" value="">
+                    <label class="block text-sm mb-1">蟲泥 (克)</label>
+                    <div class="flex flex-wrap gap-2 mb-2 items-center">
+                        <button type="button" onclick="selectWorm(0)" class="worm-btn px-3 py-1 rounded border border-gray-500 text-sm" data-val="0">拒食</button>
+                        <input type="number" id="quick-log-worms" min="0" step="0.1" placeholder="例如：2.2" class="flex-1 min-w-[80px]" oninput="clearWormBtn()">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-sm mb-1">日期</label>
+                    <input type="date" id="quick-log-date" class="w-full mb-2">
+                </div>
+                <div class="mb-3">
+                    <label class="block text-sm mb-1">時段</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="quick-log-period" value="上午" checked> 上午</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="quick-log-period" value="下午"> 下午</label>
+                    </div>
+                </div>
+                <textarea id="quick-log-notes" rows="2" placeholder="備註" class="w-full mb-3"></textarea>
+                <button onclick="submitQuickAdd()" class="btn btn-primary w-full">儲存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Day Detail Modal -->
     <div id="day-modal" class="modal" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -731,6 +789,66 @@
         function hideSettingsModal() { document.getElementById('settings-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
         function hideLogModal() { document.getElementById('log-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
         function hideDayModal() { document.getElementById('day-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
+        function hideQuickAddModal() { document.getElementById('quick-add-modal').classList.remove('show'); document.body.classList.remove('modal-open'); }
+        function showQuickAddModal() {
+            document.getElementById('quick-add-modal').classList.add('show');
+            document.body.classList.add('modal-open');
+            // Refresh gecko list in dropdown
+            const sel = document.getElementById('quick-gecko-select');
+            sel.innerHTML = geckos.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+            document.getElementById('quick-log-date').value = new Date().toISOString().split('T')[0];
+            document.querySelector('input[name="quick-log-period"][value="上午"]').checked = true;
+            document.getElementById('quick-log-notes').value = '';
+            document.getElementById('quick-log-type').value = '';
+            document.getElementById('quick-log-crickets').value = '';
+            document.getElementById('quick-log-worms').value = '';
+            document.querySelectorAll('[data-quick-type]').forEach(b => b.classList.remove('btn-primary'));
+            document.querySelectorAll('[data-quick-type]').forEach(b => b.classList.add('btn-secondary'));
+            document.querySelectorAll('.cricket-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+            document.querySelectorAll('.worm-btn').forEach(b => { b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white'); b.classList.add('border-gray-500'); });
+            document.getElementById('quick-feeding-quantity-section').classList.add('hidden');
+        }
+        function selectQuickLogType(type) {
+            document.getElementById('quick-log-type').value = type;
+            document.querySelectorAll('[data-quick-type]').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-secondary'); });
+            document.querySelector(`[data-quick-type="${type}"]`).classList.remove('btn-secondary');
+            document.querySelector(`[data-quick-type="${type}"]`).classList.add('btn-primary');
+            const section = document.getElementById('quick-feeding-quantity-section');
+            section.classList.toggle('hidden', type !== 'feeding');
+            if (type !== 'feeding') {
+                document.getElementById('quick-log-crickets').value = '';
+                document.getElementById('quick-log-worms').value = '';
+            }
+        }
+        async function submitQuickAdd() {
+            const geckoId = document.getElementById('quick-gecko-select').value;
+            const logType = document.getElementById('quick-log-type').value;
+            if (!geckoId || !logType) { showToast('請選擇守宮及類型', 'error'); return; }
+            const crickets = document.getElementById('quick-log-crickets').value;
+            const worms = document.getElementById('quick-log-worms').value;
+            let qty = [];
+            if (logType === 'feeding') {
+                if (crickets === '0') qty.push('拒食蟋蟀');
+                else if (crickets) qty.push(`${crickets}隻蟋蟀`);
+                if (worms === '0') qty.push('拒食蟲泥');
+                else if (worms) qty.push(`${worms}g蟲泥`);
+            }
+            const period = document.querySelector('input[name="quick-log-period"]:checked')?.value || '';
+            await fetch(`${API_BASE}/geckos/${geckoId}/logs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    log_date: document.getElementById('quick-log-date').value,
+                    log_type: logType,
+                    quantity: qty.join(' + '),
+                    notes: document.getElementById('quick-log-notes').value,
+                    period: period
+                })
+            });
+            hideQuickAddModal();
+            showToast('已新增記錄');
+            renderCalendar(currentYear, currentMonth);
+        }
 
         // Login
         function showLoginModal() { document.getElementById('login-modal').classList.add('show'); document.body.classList.add('modal-open'); }
@@ -867,6 +985,7 @@
             const data = await res.json();
             geckos = data.geckos || [];
             renderGeckoList();
+            renderQuickGeckoSelect();
             if (isLoggedIn) {
                 renderGeckoGrid();
                 renderCalendar();
@@ -883,6 +1002,11 @@
                     <p class="mt-2 font-semibold">${g.name}</p>
                 </div>
             `).join('');
+        }
+
+        function renderQuickGeckoSelect() {
+            const sel = document.getElementById('quick-gecko-select');
+            sel.innerHTML = geckos.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
         }
 
         function renderGeckoGrid() {
