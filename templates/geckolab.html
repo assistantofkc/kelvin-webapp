@@ -1526,6 +1526,7 @@
                 const cacheKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth() + 1}`;
                 delete logsCache[cacheKey];
                 await renderCalendar();
+                if (currentGeckoId) loadGeckoLogs(currentGeckoId);
             } else {
                 // Create new log
                 const formData = new FormData();
