@@ -1242,22 +1242,42 @@
         }
 
         function selectCricket(n) {
-            document.getElementById('log-crickets').value = n;
-            document.querySelectorAll('.cricket-btn').forEach(b => {
-                b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
-                b.classList.add('border-gray-500');
-            });
-            document.querySelector(`.cricket-btn[data-val="${n}"]`).classList.remove('border-gray-500');
-            document.querySelector(`.cricket-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+            const curr = document.getElementById('log-crickets').value;
+            if (curr === String(n)) {
+                // Deselect
+                document.getElementById('log-crickets').value = '';
+                document.querySelectorAll('.cricket-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                    b.classList.add('border-gray-500');
+                });
+            } else {
+                document.getElementById('log-crickets').value = n;
+                document.querySelectorAll('.cricket-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                    b.classList.add('border-gray-500');
+                });
+                document.querySelector(`.cricket-btn[data-val="${n}"]`).classList.remove('border-gray-500');
+                document.querySelector(`.cricket-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+            }
         }
         function selectWorm(n) {
-            document.getElementById('log-worms').value = n;
-            document.querySelectorAll('.worm-btn').forEach(b => {
-                b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
-                b.classList.add('border-gray-500');
-            });
-            document.querySelector(`.worm-btn[data-val="${n}"]`).classList.remove('border-gray-500');
-            document.querySelector(`.worm-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+            const curr = document.getElementById('log-worms').value;
+            if (curr === String(n)) {
+                // Deselect
+                document.getElementById('log-worms').value = '';
+                document.querySelectorAll('.worm-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                    b.classList.add('border-gray-500');
+                });
+            } else {
+                document.getElementById('log-worms').value = n;
+                document.querySelectorAll('.worm-btn').forEach(b => {
+                    b.classList.remove('bg-blue-500', 'border-blue-500', 'text-white');
+                    b.classList.add('border-gray-500');
+                });
+                document.querySelector(`.worm-btn[data-val="${n}"]`).classList.remove('border-gray-500');
+                document.querySelector(`.worm-btn[data-val="${n}"]`).classList.add('bg-blue-500', 'border-blue-500', 'text-white');
+            }
         }
         function clearWormBtn() {
             document.querySelectorAll('.worm-btn').forEach(b => {
