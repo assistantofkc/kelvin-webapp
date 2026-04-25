@@ -1267,6 +1267,30 @@
             renderCalendar();
         }
 
+        // Swipe detection for calendar
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const calendarGrid = document.getElementById('calendar-grid');
+        if (calendarGrid) {
+            calendarGrid.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+            calendarGrid.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+        }
+        function handleSwipe() {
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) { // threshold 50px
+                if (diff > 0) {
+                    changeMonth(1); // swipe left → next month
+                } else {
+                    changeMonth(-1); // swipe right → past month
+                }
+            }
+        }
+
         // Cache for geckos data (valid for session)
         let geckosCache = null;
         let geckosCacheTime = 0;
