@@ -74,6 +74,7 @@
         }
         .sidebar a:hover { color: var(--accent); }
         .sidebar a span { margin-right: 10px; }
+        .sidebar-header { padding: 10px 15px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: #888; border-bottom: 1px solid var(--card-border); margin-bottom: 8px; }
         .overlay {
             position: fixed;
             top: 0;
@@ -349,19 +350,19 @@
     </div>
 
     <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
+        <nav class="sidebar" id="sidebar">
         <div class="theme-switch" onclick="toggleTheme()">
             <span id="theme-icon">🌙</span>
             <span id="theme-text">Dark Mode</span>
         </div>
-        <a href="/"><span>🏠</span> Home</a>
+        <div class="sidebar-header">📋 App Menu</div>
         <a href="/news-clipper"><span>📰</span> News Clipper</a>
         <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
         <a href="https://gemini.google.com/share/b200771ce08e" target="_blank"><span>🧩</span> 中文詞彙測試 (Gemini)</a>
         <a href="/geckolab"><span>🦎</span> Geckolab</a>
         <a href="/cangjie"><span>🔣</span> 倉頡學堂</a>
-        
         <a href="https://gemini.google.com/share/97151a39e237" target="_blank"><span>🎭</span> Slide Translator (Gemini)</a>
+        <a href="/"><span>🏠</span> About</a>
     </nav>
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     
