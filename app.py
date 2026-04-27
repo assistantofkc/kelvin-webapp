@@ -842,3 +842,7 @@ def save_geckolab_password(new_password):
     import json as _json
     with open(GECKOLAB_PASS_FILE, 'w') as f:
         _json.dump({'password': new_password}, f)
+
+# Geckolab Sync API (separate module, no changes to existing routes)
+from geckolab_sync import init_sync
+init_sync(app)
