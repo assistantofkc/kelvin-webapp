@@ -49,18 +49,51 @@ def init_sync(app):
     def sync_push():
         if request.method == 'OPTIONS': return _json({})
         body = request.json
-        room = _load(body.get('code'))
+        code = body.get('code')
+        user = body.get('user', '?')
+        room = _load(code)
         if not room: return _json({'error': 'Room not found'}, 404)
         g = body.get('gecko')
         if g and (not room['gecko'] or g.get('updated_at','') > room['gecko'].get('updated_at','')):
             room['gecko'] = g
-        # Full replace: push sends ALL current data, server replaces entire list.
-        # This handles deletions naturally — missing items are removed.
-        for key in ['logs', 'weights']:
-            room[key] = body.get(key, [])
-        room['history'].append({'user': body.get('user','?'), 'action': 'pushed',
+
+        # Apply deletions first (before merging new data)
+        deleted_log_ids = set(body.get('deleted_log_ids', []))
+        deleted_weight_ids = set(body.get('deleted_weight_ids', []))
+        if deleted_log_ids:
+            room['logs'] = [l for l in room['logs'] if l['id'] not in deleted_log_ids]
+            room['history'].append({'user': user, 'action': f'deleted {len(deleted_log_ids)} logs',
+                'time': datetime.now().isoformat()})
+        if deleted_weight_ids:
+            room['weights'] = [w for w in room['weights'] if w['id'] not in deleted_weight_ids]
+            room['history'].append({'user': user, 'action': f'deleted {len(deleted_weight_ids)} weights',
+                'time': datetime.now().isoformat()})
+
+        # Merge logs by ID (if same ID, later timestamp wins)
+        logs = body.get('logs', [])
+        existing_log_ids = {l['id']: i for i, l in enumerate(room['logs'])}
+        for log in logs:
+            if log['id'] in existing_log_ids:
+                idx = existing_log_ids[log['id']]
+                if log.get('updated_at', '') > room['logs'][idx].get('updated_at', ''):
+                    room['logs'][idx] = log
+            else:
+                room['logs'].append(log)
+
+        # Merge weights by ID
+        weights = body.get('weights', [])
+        existing_weight_ids = {w['id']: i for i, w in enumerate(room['weights'])}
+        for w in weights:
+            if w['id'] in existing_weight_ids:
+                idx = existing_weight_ids[w['id']]
+                if w.get('updated_at', '') > room['weights'][idx].get('updated_at', ''):
+                    room['weights'][idx] = w
+            else:
+                room['weights'].append(w)
+
+        room['history'].append({'user': user, 'action': 'pushed',
             'time': datetime.now().isoformat()})
-        _save(body['code'], room)
+        _save(code, room)
         return _json({'ok': True, 'logs': len(room['logs']), 'weights': len(room['weights'])})
 
     @app.route('/sync/pull', methods=['GET', 'OPTIONS'])
