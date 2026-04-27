@@ -842,15 +842,3 @@ def save_geckolab_password(new_password):
     import json as _json
     with open(GECKOLAB_PASS_FILE, 'w') as f:
         _json.dump({'password': new_password}, f)
-
-
-# Geckolab Sync API (separate module)
-import sys, os as _os
-_sync_dir = _os.path.dirname(_os.path.abspath(__file__))
-if _sync_dir not in sys.path:
-    sys.path.insert(0, _sync_dir)
-try:
-    from geckolab_sync import init_sync
-    init_sync(app)
-except Exception as _e:
-    print(f"[SYNC] Failed to load: {_e}")
