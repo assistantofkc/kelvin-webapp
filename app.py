@@ -842,3 +842,101 @@ def save_geckolab_password(new_password):
     import json as _json
     with open(GECKOLAB_PASS_FILE, 'w') as f:
         _json.dump({'password': new_password}, f)
+
+
+# ==================== GECKOLAB SYNC API ====================
+# Endpoints for syncing gecko data between users
+# Deployed at /sync/
+import secrets as _secrets
+from datetime import datetime as _datetime
+
+SYNC_DATA_DIR = os.path.join(os.path.dirname(__file__), 'sync_data')
+os.makedirs(SYNC_DATA_DIR, exist_ok=True)
+
+def _sync_get_room_file(code):
+    safe_code = ''.join(c for c in code if c.isalnum() or c in '-_')
+    return os.path.join(SYNC_DATA_DIR, f'{safe_code}.json')
+
+def _sync_load_room(code):
+    filepath = _sync_get_room_file(code)
+    if not os.path.exists(filepath):
+        return None
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def _sync_save_room(code, data):
+    filepath = _sync_get_room_file(code)
+    data['updated_at'] = _datetime.now().isoformat()
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+@app.route('/sync/create', methods=['POST'])
+def sync_create_room():
+    code = _secrets.token_hex(3).upper()
+    data = {
+        'code': code,
+        'created_at': _datetime.now().isoformat(),
+        'gecko': None,
+        'logs': [],
+        'weights': [],
+        'history': []
+    }
+    _sync_save_room(code, data)
+    data['history'].append({'user': request.json.get('user', 'A'), 'action': 'created', 'timestamp': _datetime.now().isoformat()})
+    _sync_save_room(code, data)
+    return jsonify({'sync_code': code, 'message': 'Sync room created'})
+
+@app.route('/sync/push', methods=['POST'])
+def sync_push_data():
+    body = request.json
+    code = body.get('code')
+    gecko_data = body.get('gecko')
+    logs = body.get('logs', [])
+    weights = body.get('weights', [])
+    user = body.get('user', 'unknown')
+    if not code or not gecko_data:
+        return jsonify({'error': 'Missing code or gecko data'}), 400
+    room = _sync_load_room(code)
+    if not room:
+        return jsonify({'error': 'Sync room not found'}), 404
+    if not room['gecko'] or (gecko_data.get('updated_at', '') > room['gecko'].get('updated_at', '')):
+        room['gecko'] = gecko_data
+    existing_log_ids = {l['id']: i for i, l in enumerate(room['logs'])}
+    for log in logs:
+        if log['id'] in existing_log_ids:
+            idx = existing_log_ids[log['id']]
+            if log.get('updated_at', '') > room['logs'][idx].get('updated_at', ''):
+                room['logs'][idx] = log
+        else:
+            room['logs'].append(log)
+    existing_weight_ids = {w['id']: i for i, w in enumerate(room['weights'])}
+    for w in weights:
+        if w['id'] in existing_weight_ids:
+            idx = existing_weight_ids[w['id']]
+            if w.get('updated_at', '') > room['weights'][idx].get('updated_at', ''):
+                room['weights'][idx] = w
+        else:
+            room['weights'].append(w)
+    room['history'].append({'user': user, 'action': 'pushed', 'timestamp': _datetime.now().isoformat()})
+    _sync_save_room(code, room)
+    return jsonify({'message': 'Data synced', 'log_count': len(room['logs']), 'weight_count': len(room['weights'])})
+
+@app.route('/sync/pull', methods=['GET'])
+def sync_pull_data():
+    code = request.args.get('code')
+    if not code:
+        return jsonify({'error': 'Missing code'}), 400
+    room = _sync_load_room(code)
+    if not room:
+        return jsonify({'error': 'Sync room not found'}), 404
+    return jsonify({'code': code, 'gecko': room['gecko'], 'logs': room['logs'], 'weights': room['weights'], 'updated_at': room['updated_at']})
+
+@app.route('/sync/status', methods=['GET'])
+def sync_room_status():
+    code = request.args.get('code')
+    if not code:
+        return jsonify({'error': 'Missing code'}), 400
+    room = _sync_load_room(code)
+    if not room:
+        return jsonify({'error': 'Sync room not found'}), 404
+    return jsonify({'code': code, 'created_at': room['created_at'], 'updated_at': room['updated_at'], 'log_count': len(room['logs']), 'weight_count': len(room['weights']), 'history': room['history'][-5:]})
