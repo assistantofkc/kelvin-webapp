@@ -13,6 +13,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Wait for auto-pull to settle
+        run: sleep 15
+      
       - name: Reload PythonAnywhere Webapp
         uses: jensvog/pythonanywhere-webapp-reload-action@v1
         with:
