@@ -54,14 +54,10 @@ def init_sync(app):
         g = body.get('gecko')
         if g and (not room['gecko'] or g.get('updated_at','') > room['gecko'].get('updated_at','')):
             room['gecko'] = g
+        # Full replace: push sends ALL current data, server replaces entire list.
+        # This handles deletions naturally — missing items are removed.
         for key in ['logs', 'weights']:
-            idxs = {i['id']: i for i in room[key]}
-            for item in body.get(key, []):
-                if item['id'] in idxs:
-                    if item.get('updated_at','') > idxs[item['id']].get('updated_at',''):
-                        room[key][room[key].index(idxs[item['id']])] = item
-                else:
-                    room[key].append(item)
+            room[key] = body.get(key, [])
         room['history'].append({'user': body.get('user','?'), 'action': 'pushed',
             'time': datetime.now().isoformat()})
         _save(body['code'], room)
