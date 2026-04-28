@@ -730,6 +730,50 @@ def privacy_policy():
 </body>
 </html>'''
 
+# Data Deletion
+@app.route('/privacy/delete')
+def data_deletion():
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Deletion - Geckolab</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+        h1 { color: #1a1a2e; }
+        h2 { color: #333; margin-top: 30px; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; }
+        .step { margin: 15px 0; padding: 10px 15px; background: #f8f8f8; border-left: 3px solid #26A69A; }
+    </style>
+</head>
+<body>
+    <h1>Data Deletion - Geckolab</h1>
+    <p>This page explains how to request deletion of your data in the Geckolab app.</p>
+
+    <h2>Local Data</h2>
+    <p>All gecko data is stored locally on your device. To delete local data:</p>
+    <div class="step"><strong>Option A:</strong> Go to App Settings > Clear Data / Clear Storage on your Android device, or uninstall the app.</div>
+    <div class="step"><strong>Option B:</strong> Open Geckolab > Settings > Reset All Data.</div>
+
+    <h2>Synced Data (GeckoSync)</h2>
+    <p>If you have used the GeckoSync feature, your gecko data is stored on our sync server under an anonymous sync code. To delete synced data:</p>
+    <div class="step"><strong>Method 1:</strong> Open the gecko profile > Sync > Reset Sync. This immediately removes all synced data from the server.</div>
+    <div class="step"><strong>Method 2:</strong> Email us at <code>assistantofkc@gmail.com</code> with your sync code, and we will delete your data within 7 days.</div>
+
+    <h2>What Gets Deleted</h2>
+    <ul>
+        <li>Gecko profiles (name, species, photos)</li>
+        <li>Feeding logs and records</li>
+        <li>Weight history</li>
+        <li>All associated sync data</li>
+    </ul>
+
+    <h2>Retention</h2>
+    <p>Synced data is retained only while the sync code is active. Data is immediately deleted when the user performs a Reset Sync in the app. No data is retained after deletion.</p>
+</body>
+</html>'''
+
 # Feeding Reminder endpoints
 @app.route('/geckolab/api/feeding-reminders', methods=['GET'])
 def get_feeding_reminders():
