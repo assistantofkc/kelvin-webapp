@@ -687,6 +687,49 @@ def geckolab_reset_data():
     conn.close()
     return jsonify({'success': True})
 
+# Privacy Policy
+@app.route('/privacy')
+def privacy_policy():
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Geckolab</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+        h1 { color: #1a1a2e; }
+        h2 { color: #333; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Privacy Policy</h1>
+    <p><strong>Last updated: April 28, 2026</strong></p>
+
+    <p>This Privacy Policy describes how Geckolab ("we", "our", or "the app") handles your information when you use our mobile application.</p>
+
+    <h2>Information We Collect</h2>
+    <p><strong>Local Data Only:</strong> All your gecko data (names, species, feeding records, weight history, photos) is stored <strong>locally on your device</strong>. We do not collect, upload, or store any of your personal data on our servers unless you explicitly enable the <strong>GeckoSync</strong> feature.</p>
+
+    <p><strong>GeckoSync Data:</strong> If you choose to use the GeckoSync feature to share gecko data with a partner, the shared data (gecko profiles, feeding logs, weight records) is transmitted to and stored on our sync server. This data is only accessible using the unique sync code you create and share. We do not access, read, or use this data for any purpose other than facilitating the sync between paired devices.</p>
+
+    <h2>Data Storage and Security</h2>
+    <p>Local data is stored in a SQLite database on your device. Sync data is stored on our secure server and is associated only with an anonymous sync code. No personally identifiable information is collected or stored.</p>
+
+    <h2>Third-Party Services</h2>
+    <p>Geckolab does not use any third-party analytics, advertising, or tracking services. No data is shared with third parties.</p>
+
+    <h2>Children\'s Privacy</h2>
+    <p>Geckolab does not knowingly collect personal information from children under 13.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. Changes will be posted on this page.</p>
+
+    <h2>Contact</h2>
+    <p>If you have questions about this Privacy Policy, please contact us at: assistantofkc@gmail.com</p>
+</body>
+</html>'''
+
 # Feeding Reminder endpoints
 @app.route('/geckolab/api/feeding-reminders', methods=['GET'])
 def get_feeding_reminders():
