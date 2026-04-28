@@ -1,14 +1,15 @@
 """
 Geckolab Sync API Module
 Imported by kelvin-webapp - self-contained, zero impact on existing routes
-Sync data stored in sync_data/ folder (auto-created, gitignored)
+Storage: SQLite (transaction-safe, no race condition on concurrent pushes)
 """
-import json, os, secrets
+import json, os, secrets, sqlite3
 from datetime import datetime
 from flask import request, jsonify, make_response
 
 SYNC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sync_data')
 os.makedirs(SYNC_DIR, exist_ok=True)
+DB_PATH = os.path.join(SYNC_DIR, 'geckolab_sync.db')
 
 def _cors(resp):
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -19,30 +20,149 @@ def _cors(resp):
 def _json(data, status=200):
     return _cors(make_response(jsonify(data), status))
 
-def _f(code):
-    safe = ''.join(c for c in code if c.isalnum() or c in '-_')
-    return os.path.join(SYNC_DIR, f'{safe}.json')
+def _get_db():
+    """Get a new SQLite connection (WAL mode for concurrent reads)."""
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+def _init_db():
+    """Initialize the database schema."""
+    conn = _get_db()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS sync_rooms (
+            code TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            app_version TEXT DEFAULT 'unknown',
+            gecko TEXT,
+            logs TEXT DEFAULT '[]',
+            weights TEXT DEFAULT '[]',
+            history TEXT DEFAULT '[]'
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 def _load(code):
-    f = _f(code)
-    return json.load(open(f, encoding='utf-8')) if os.path.exists(f) else None
+    """Load a sync room from SQLite. Returns dict or None."""
+    conn = _get_db()
+    row = conn.execute("SELECT * FROM sync_rooms WHERE code = ?", (code,)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        'code': row['code'],
+        'created_at': row['created_at'],
+        'updated_at': row['updated_at'],
+        'app_version': row['app_version'],
+        'gecko': json.loads(row['gecko']) if row['gecko'] else None,
+        'logs': json.loads(row['logs']) if row['logs'] else [],
+        'weights': json.loads(row['weights']) if row['weights'] else [],
+        'history': json.loads(row['history']) if row['history'] else [],
+    }
 
 def _save(code, data):
+    """Save a sync room to SQLite (UPSERT)."""
+    conn = _get_db()
     data['updated_at'] = datetime.now().isoformat()
-    json.dump(data, open(_f(code), 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+    conn.execute('''
+        INSERT INTO sync_rooms (code, created_at, updated_at, app_version, gecko, logs, weights, history)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(code) DO UPDATE SET
+            updated_at = excluded.updated_at,
+            gecko = excluded.gecko,
+            logs = excluded.logs,
+            weights = excluded.weights,
+            history = excluded.history
+    ''', (
+        code,
+        data.get('created_at', data['updated_at']),
+        data['updated_at'],
+        data.get('app_version', 'unknown'),
+        json.dumps(data.get('gecko'), ensure_ascii=False) if data.get('gecko') else None,
+        json.dumps(data.get('logs', []), ensure_ascii=False),
+        json.dumps(data.get('weights', []), ensure_ascii=False),
+        json.dumps(data.get('history', []), ensure_ascii=False),
+    ))
+    conn.commit()
+    conn.close()
+
+def _transactional_push(code, updater_fn):
+    """Execute a push within a SQLite transaction to prevent race conditions."""
+    conn = _get_db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT * FROM sync_rooms WHERE code = ?", (code,)).fetchone()
+        if not row:
+            conn.rollback()
+            conn.close()
+            return None
+
+        room = {
+            'code': row['code'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at'],
+            'app_version': row['app_version'],
+            'gecko': json.loads(row['gecko']) if row['gecko'] else None,
+            'logs': json.loads(row['logs']) if row['logs'] else [],
+            'weights': json.loads(row['weights']) if row['weights'] else [],
+            'history': json.loads(row['history']) if row['history'] else [],
+        }
+
+        # Apply changes within the transaction
+        result = updater_fn(room)
+
+        now = datetime.now().isoformat()
+        room['updated_at'] = now
+
+        conn.execute('''
+            UPDATE sync_rooms SET
+                updated_at = ?, gecko = ?, logs = ?, weights = ?, history = ?
+            WHERE code = ?
+        ''', (
+            now,
+            json.dumps(room.get('gecko'), ensure_ascii=False) if room.get('gecko') else None,
+            json.dumps(room.get('logs', []), ensure_ascii=False),
+            json.dumps(room.get('weights', []), ensure_ascii=False),
+            json.dumps(room.get('history', []), ensure_ascii=False),
+            code,
+        ))
+        conn.commit()
+        conn.close()
+        return result
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+
 
 def init_sync(app):
+    _init_db()
+
     @app.route('/sync/create', methods=['POST', 'OPTIONS'])
     def sync_create():
         if request.method == 'OPTIONS': return _json({})
         code = secrets.token_hex(3).upper()
-        data = {'code': code, 'created_at': datetime.now().isoformat(),
-                'app_version': request.json.get('app_version', 'unknown'),
-                'gecko': None, 'logs': [], 'weights': [], 'history': []}
+        now = datetime.now().isoformat()
+        data = {
+            'code': code, 'created_at': now, 'updated_at': now,
+            'app_version': request.json.get('app_version', 'unknown'),
+            'gecko': None, 'logs': [], 'weights': [], 'history': []
+        }
         _save(code, data)
-        data['history'].append({'user': request.json.get('user', 'A'),
+        # Record creation in history
+        conn = _get_db()
+        row = conn.execute("SELECT history FROM sync_rooms WHERE code = ?", (code,)).fetchone()
+        history = json.loads(row['history']) if row and row['history'] else []
+        history.append({'user': request.json.get('user', 'A'),
             'action': 'created', 'time': datetime.now().isoformat()})
-        _save(code, data)
+        conn.execute("UPDATE sync_rooms SET history = ? WHERE code = ?",
+            (json.dumps(history, ensure_ascii=False), code))
+        conn.commit()
+        conn.close()
         return _json({'sync_code': code})
 
     @app.route('/sync/push', methods=['POST', 'OPTIONS'])
@@ -51,50 +171,56 @@ def init_sync(app):
         body = request.json
         code = body.get('code')
         user = body.get('user', '?')
-        room = _load(code)
-        if not room: return _json({'error': 'Room not found'}, 404)
-        g = body.get('gecko')
-        if g and (not room['gecko'] or g.get('updated_at','') > room['gecko'].get('updated_at','')):
-            room['gecko'] = g
 
-        # Apply deletions first (before merging new data)
-        deleted_log_ids = set(body.get('deleted_log_ids', []))
-        deleted_weight_ids = set(body.get('deleted_weight_ids', []))
-        if deleted_log_ids:
-            room['logs'] = [l for l in room['logs'] if l['id'] not in deleted_log_ids]
-            room['history'].append({'user': user, 'action': f'deleted {len(deleted_log_ids)} logs',
+        def do_push(room):
+            g = body.get('gecko')
+            if g and (not room['gecko'] or g.get('updated_at', '') > room['gecko'].get('updated_at', '')):
+                room['gecko'] = g
+
+            # Apply deletions first
+            deleted_log_ids = set(body.get('deleted_log_ids', []))
+            deleted_weight_ids = set(body.get('deleted_weight_ids', []))
+            if deleted_log_ids:
+                room['logs'] = [l for l in room['logs'] if l['id'] not in deleted_log_ids]
+                room['history'].append({'user': user,
+                    'action': f'deleted {len(deleted_log_ids)} logs',
+                    'time': datetime.now().isoformat()})
+            if deleted_weight_ids:
+                room['weights'] = [w for w in room['weights'] if w['id'] not in deleted_weight_ids]
+                room['history'].append({'user': user,
+                    'action': f'deleted {len(deleted_weight_ids)} weights',
+                    'time': datetime.now().isoformat()})
+
+            # Merge logs by ID
+            logs = body.get('logs', [])
+            existing = {l['id']: i for i, l in enumerate(room['logs'])}
+            for log in logs:
+                if log['id'] in existing:
+                    idx = existing[log['id']]
+                    if log.get('updated_at', '') > room['logs'][idx].get('updated_at', ''):
+                        room['logs'][idx] = log
+                else:
+                    room['logs'].append(log)
+
+            # Merge weights by ID
+            weights = body.get('weights', [])
+            existing_w = {w['id']: i for i, w in enumerate(room['weights'])}
+            for w in weights:
+                if w['id'] in existing_w:
+                    idx = existing_w[w['id']]
+                    if w.get('updated_at', '') > room['weights'][idx].get('updated_at', ''):
+                        room['weights'][idx] = w
+                else:
+                    room['weights'].append(w)
+
+            room['history'].append({'user': user, 'action': 'pushed',
                 'time': datetime.now().isoformat()})
-        if deleted_weight_ids:
-            room['weights'] = [w for w in room['weights'] if w['id'] not in deleted_weight_ids]
-            room['history'].append({'user': user, 'action': f'deleted {len(deleted_weight_ids)} weights',
-                'time': datetime.now().isoformat()})
+            return {'ok': True, 'logs': len(room['logs']), 'weights': len(room['weights'])}
 
-        # Merge logs by ID (if same ID, later timestamp wins)
-        logs = body.get('logs', [])
-        existing_log_ids = {l['id']: i for i, l in enumerate(room['logs'])}
-        for log in logs:
-            if log['id'] in existing_log_ids:
-                idx = existing_log_ids[log['id']]
-                if log.get('updated_at', '') > room['logs'][idx].get('updated_at', ''):
-                    room['logs'][idx] = log
-            else:
-                room['logs'].append(log)
-
-        # Merge weights by ID
-        weights = body.get('weights', [])
-        existing_weight_ids = {w['id']: i for i, w in enumerate(room['weights'])}
-        for w in weights:
-            if w['id'] in existing_weight_ids:
-                idx = existing_weight_ids[w['id']]
-                if w.get('updated_at', '') > room['weights'][idx].get('updated_at', ''):
-                    room['weights'][idx] = w
-            else:
-                room['weights'].append(w)
-
-        room['history'].append({'user': user, 'action': 'pushed',
-            'time': datetime.now().isoformat()})
-        _save(code, room)
-        return _json({'ok': True, 'logs': len(room['logs']), 'weights': len(room['weights'])})
+        result = _transactional_push(code, do_push)
+        if result is None:
+            return _json({'error': 'Room not found'}, 404)
+        return _json(result)
 
     @app.route('/sync/pull', methods=['GET', 'OPTIONS'])
     def sync_pull():
