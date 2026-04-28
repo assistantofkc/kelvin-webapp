@@ -238,3 +238,16 @@ def init_sync(app):
         return _json({'code': room['code'], 'logs': len(room['logs']),
             'weights': len(room['weights']), 'updated_at': room['updated_at'],
             'history': room['history'][-5:]})
+
+    @app.route('/sync/room', methods=['DELETE', 'OPTIONS'])
+    def sync_delete_room():
+        if request.method == 'OPTIONS': return _json({})
+        code = request.args.get('code')
+        if not code: return _json({'error': 'Missing code'}, 400)
+        conn = _get_db()
+        cursor = conn.execute("DELETE FROM sync_rooms WHERE code = ?", (code,))
+        conn.commit()
+        conn.close()
+        if cursor.rowcount == 0:
+            return _json({'error': 'Room not found'}, 404)
+        return _json({'ok': True})
