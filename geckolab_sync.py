@@ -2,6 +2,14 @@
 Geckolab Sync API Module
 Imported by kelvin-webapp - self-contained, zero impact on existing routes
 Storage: SQLite (transaction-safe, no race condition on concurrent pushes)
+
+⚠️  PRODUCTION DATABASE - SCHEMA LOCKED
+    The sync table structure must NEVER be modified without:
+    1. Creating a staging environment first
+    2. Testing all edge cases
+    3. Getting explicit approval from Kelvin
+    4. Having a rollback plan
+    Live users depend on this DB. DO NOT ADD/ALTER/DROP columns.
 """
 import json, os, secrets, sqlite3
 from datetime import datetime
@@ -10,6 +18,21 @@ from flask import request, jsonify, make_response
 SYNC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sync_data')
 os.makedirs(SYNC_DIR, exist_ok=True)
 DB_PATH = os.path.join(SYNC_DIR, 'geckolab_sync.db')
+
+# ⚠️ Production schema - DO NOT MODIFY
+# This is the canonical schema definition. _init_db() validates against this.
+_EXPECTED_SCHEMA = {
+    'sync_rooms': {
+        'code':         ('TEXT', True),    # PRIMARY KEY
+        'created_at':   ('TEXT', True),
+        'updated_at':   ('TEXT', True),
+        'app_version':  ('TEXT', False, "'unknown'"),
+        'gecko':        ('TEXT', False),
+        'logs':         ('TEXT', False, "'[]'"),
+        'weights':      ('TEXT', False, "'[]'"),
+        'history':      ('TEXT', False, "'[]'"),
+    }
+}
 
 def _cors(resp):
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -28,8 +51,28 @@ def _get_db():
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
+def _validate_schema(conn):
+    """Verify the production DB schema matches the expected schema.
+    Prints warnings if mismatches are found. Never alters the schema."""
+    try:
+        for table_name, expected_cols in _EXPECTED_SCHEMA.items():
+            rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+            actual_cols = {r['name']: {'type': r['type'], 'notnull': bool(r['notnull']),
+                                        'dflt_value': r['dflt_value']} for r in rows}
+            for col_name, (col_type, required, *rest) in expected_cols.items():
+                default = rest[0] if rest else None
+                if col_name not in actual_cols:
+                    print(f"⚠️  SCHEMA MISMATCH: Column '{col_name}' missing from '{table_name}'!")
+                elif actual_cols[col_name]['type'].upper() != col_type.upper():
+                    print(f"⚠️  SCHEMA MISMATCH: Column '{col_name}' type is "
+                          f"'{actual_cols[col_name]['type']}' instead of '{col_type}'")
+    except Exception as e:
+        print(f"⚠️  Schema validation skipped (table may not exist yet): {e}")
+
 def _init_db():
-    """Initialize the database schema."""
+    """Initialize the database schema.
+    ⚠️  USES CREATE IF NOT EXISTS — will never alter existing tables.
+        Any schema change must go through staging first."""
     conn = _get_db()
     conn.execute('''
         CREATE TABLE IF NOT EXISTS sync_rooms (
@@ -44,6 +87,8 @@ def _init_db():
         )
     ''')
     conn.commit()
+    # Validate existing schema on every startup
+    _validate_schema(conn)
     conn.close()
 
 def _load(code):
