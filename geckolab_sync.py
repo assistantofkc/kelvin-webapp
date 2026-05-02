@@ -19,8 +19,9 @@ SYNC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sync_data')
 os.makedirs(SYNC_DIR, exist_ok=True)
 DB_PATH = os.path.join(SYNC_DIR, 'geckolab_sync.db')
 
-# ⚠️ Production schema - DO NOT MODIFY
+# ⚠️ Production schema - DO NOT MODIFY existing tables
 # This is the canonical schema definition. _init_db() validates against this.
+# Medical tables added 2026-05-02 — new tables only, no existing table changes
 _EXPECTED_SCHEMA = {
     'sync_rooms': {
         'code':         ('TEXT', True),    # PRIMARY KEY
@@ -31,7 +32,53 @@ _EXPECTED_SCHEMA = {
         'logs':         ('TEXT', False, "'[]'"),
         'weights':      ('TEXT', False, "'[]'"),
         'history':      ('TEXT', False, "'[]'"),
-    }
+    },
+    # === NEW: Medical Handbook Tables (2026-05-02) ===
+    'medical_illnesses': {
+        'id':           ('INTEGER', True),  # PRIMARY KEY AUTOINCREMENT
+        'gecko_id':     ('INTEGER', True),
+        'name':         ('TEXT', True),
+        'start_date':   ('TEXT', True),
+        'end_date':     ('TEXT', False),
+        'symptoms':     ('TEXT', False),
+        'severity':     ('TEXT', False, "'medium'"),
+        'status':       ('TEXT', False, "'active'"),
+        'photo_paths':  ('TEXT', False),
+        'notes':        ('TEXT', False),
+        'created_at':   ('TEXT', False),
+        'updated_at':   ('TEXT', False),
+    },
+    'medical_medicines': {
+        'id':           ('INTEGER', True),
+        'gecko_id':     ('INTEGER', True),
+        'illness_id':   ('INTEGER', False),
+        'name':         ('TEXT', True),
+        'dosage':       ('TEXT', False),
+        'frequency':    ('TEXT', False),
+        'time_of_day':  ('TEXT', False),
+        'start_date':   ('TEXT', True),
+        'end_date':     ('TEXT', False),
+        'reminder_enabled': ('INTEGER', False, '0'),
+        'notes':        ('TEXT', False),
+        'created_at':   ('TEXT', False),
+        'updated_at':   ('TEXT', False),
+    },
+    'medical_vet_visits': {
+        'id':           ('INTEGER', True),
+        'gecko_id':     ('INTEGER', True),
+        'illness_id':   ('INTEGER', False),
+        'clinic_name':  ('TEXT', False),
+        'vet_name':     ('TEXT', False),
+        'visit_date':   ('TEXT', True),
+        'diagnosis':    ('TEXT', False),
+        'cost':         ('REAL', False),
+        'next_visit_date': ('TEXT', False),
+        'reminder_enabled': ('INTEGER', False, '0'),
+        'photo_paths':  ('TEXT', False),
+        'notes':        ('TEXT', False),
+        'created_at':   ('TEXT', False),
+        'updated_at':   ('TEXT', False),
+    },
 }
 
 def _cors(resp):
@@ -84,6 +131,59 @@ def _init_db():
             logs TEXT DEFAULT '[]',
             weights TEXT DEFAULT '[]',
             history TEXT DEFAULT '[]'
+        )
+    ''')
+    # === NEW: Medical Handbook Tables (2026-05-02) ===
+    # These are additive — zero impact on existing sync_rooms table
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS medical_illnesses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gecko_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            symptoms TEXT,
+            severity TEXT DEFAULT 'medium',
+            status TEXT DEFAULT 'active',
+            photo_paths TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS medical_medicines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gecko_id INTEGER NOT NULL,
+            illness_id INTEGER,
+            name TEXT NOT NULL,
+            dosage TEXT,
+            frequency TEXT,
+            time_of_day TEXT,
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            reminder_enabled INTEGER DEFAULT 0,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS medical_vet_visits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            gecko_id INTEGER NOT NULL,
+            illness_id INTEGER,
+            clinic_name TEXT,
+            vet_name TEXT,
+            visit_date TEXT NOT NULL,
+            diagnosis TEXT,
+            cost REAL,
+            next_visit_date TEXT,
+            reminder_enabled INTEGER DEFAULT 0,
+            photo_paths TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
         )
     ''')
     conn.commit()
@@ -296,3 +396,87 @@ def init_sync(app):
         if cursor.rowcount == 0:
             return _json({'error': 'Room not found'}, 404)
         return _json({'ok': True})
+
+    # ========== Medical Handbook Sync Endpoints (2026-05-02) ==========
+
+    @app.route('/sync/medical/pull', methods=['GET', 'OPTIONS'])
+    def sync_medical_pull():
+        """Pull all medical records for a sync room."""
+        if request.method == 'OPTIONS': return _json({})
+        code = request.args.get('code')
+        if not code: return _json({'error': 'Missing code'}, 400)
+        # Verify room exists
+        room = _load(code)
+        if not room: return _json({'error': 'Room not found'}, 404)
+        conn = _get_db()
+        # Get all gecko IDs from the room (medical data is per-gecko)
+        gecko_data = room.get('gecko') or []
+        if isinstance(gecko_data, dict):
+            gecko_ids = [gecko_data.get('id')] if gecko_data.get('id') else []
+        elif isinstance(gecko_data, list):
+            gecko_ids = [g['id'] for g in gecko_data if g.get('id')]
+        else:
+            gecko_ids = []
+        illnesses, medicines, vet_visits = [], [], []
+        if gecko_ids:
+            placeholders = ','.join('?' * len(gecko_ids))
+            illnesses = [dict(r) for r in conn.execute(
+                f"SELECT * FROM medical_illnesses WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
+            medicines = [dict(r) for r in conn.execute(
+                f"SELECT * FROM medical_medicines WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
+            vet_visits = [dict(r) for r in conn.execute(
+                f"SELECT * FROM medical_vet_visits WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
+        conn.close()
+        return _json({'illnesses': illnesses, 'medicines': medicines, 'vet_visits': vet_visits})
+
+    @app.route('/sync/medical/push', methods=['POST', 'OPTIONS'])
+    def sync_medical_push():
+        """Push medical records to the server. Upserts by ID."""
+        if request.method == 'OPTIONS': return _json({})
+        body = request.json
+        code = body.get('code')
+        user = body.get('user', '?')
+        if not code: return _json({'error': 'Missing code'}, 400)
+        room = _load(code)
+        if not room: return _json({'error': 'Room not found'}, 404)
+        conn = _get_db()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            now = datetime.now().isoformat()
+
+            def _upsert(table, records):
+                """Upsert records into a medical table."""
+                for rec in records:
+                    rec['updated_at'] = now
+                    existing = conn.execute(f"SELECT id FROM {table} WHERE id = ? AND gecko_id = ?",
+                        (rec['id'], rec['gecko_id'])).fetchone()
+                    if existing:
+                        cols = ', '.join(f"{k} = ?" for k in rec if k != 'id')
+                        vals = [rec[k] for k in rec if k != 'id'] + [rec['id'], rec['gecko_id']]
+                        conn.execute(f"UPDATE {table} SET {cols} WHERE id = ? AND gecko_id = ?", vals)
+                    else:
+                        cols = ', '.join(rec.keys())
+                        ph = ', '.join('?' * len(rec))
+                        conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({ph})", list(rec.values()))
+
+            _upsert('medical_illnesses', body.get('illnesses', []))
+            _upsert('medical_medicines', body.get('medicines', []))
+            _upsert('medical_vet_visits', body.get('vet_visits', []))
+
+            # Handle deletions
+            for id_set, table in [(body.get('deleted_illness_ids', []), 'medical_illnesses'),
+                                   (body.get('deleted_medicine_ids', []), 'medical_medicines'),
+                                   (body.get('deleted_vet_ids', []), 'medical_vet_visits')]:
+                for rid in id_set:
+                    conn.execute(f"DELETE FROM {table} WHERE id = ?", (rid,))
+
+            conn.commit()
+            result = {'ok': True, 'illnesses': len(body.get('illnesses', [])),
+                      'medicines': len(body.get('medicines', [])),
+                      'vet_visits': len(body.get('vet_visits', []))}
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return _json(result)
