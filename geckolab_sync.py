@@ -79,6 +79,15 @@ _EXPECTED_SCHEMA = {
         'created_at':   ('TEXT', False),
         'updated_at':   ('TEXT', False),
     },
+    'medicine_log': {
+        'id':           ('INTEGER', True),
+        'medicine_id':  ('INTEGER', True),
+        'gecko_id':     ('INTEGER', True),
+        'taken_date':   ('TEXT', True),
+        'taken_period': ('TEXT', False),
+        'notes':        ('TEXT', False),
+        'created_at':   ('TEXT', False),
+    },
 }
 
 def _cors(resp):
@@ -184,6 +193,17 @@ def _init_db():
             notes TEXT,
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS medicine_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            medicine_id INTEGER NOT NULL,
+            gecko_id INTEGER NOT NULL,
+            taken_date TEXT NOT NULL,
+            taken_period TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
         )
     ''')
     conn.commit()
@@ -417,7 +437,7 @@ def init_sync(app):
             gecko_ids = [g['id'] for g in gecko_data if g.get('id')]
         else:
             gecko_ids = []
-        illnesses, medicines, vet_visits = [], [], []
+        illnesses, medicines, vet_visits, med_logs = [], [], [], []
         if gecko_ids:
             placeholders = ','.join('?' * len(gecko_ids))
             illnesses = [dict(r) for r in conn.execute(
@@ -426,8 +446,10 @@ def init_sync(app):
                 f"SELECT * FROM medical_medicines WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
             vet_visits = [dict(r) for r in conn.execute(
                 f"SELECT * FROM medical_vet_visits WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
+            med_logs = [dict(r) for r in conn.execute(
+                f"SELECT * FROM medicine_log WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
         conn.close()
-        return _json({'illnesses': illnesses, 'medicines': medicines, 'vet_visits': vet_visits})
+        return _json({'illnesses': illnesses, 'medicines': medicines, 'vet_visits': vet_visits, 'medicine_logs': med_logs})
 
     @app.route('/sync/medical/push', methods=['POST', 'OPTIONS'])
     def sync_medical_push():
@@ -463,10 +485,21 @@ def init_sync(app):
             _upsert('medical_medicines', body.get('medicines', []))
             _upsert('medical_vet_visits', body.get('vet_visits', []))
 
+            # Handle medicine_logs separately (no UPDATE needed, just INSERT if new)
+            for log in body.get('medicine_logs', []):
+                existing = conn.execute(
+                    'SELECT id FROM medicine_log WHERE medicine_id = ? AND gecko_id = ? AND taken_date = ?',
+                    (log['medicine_id'], log['gecko_id'], log['taken_date'])).fetchone()
+                if not existing:
+                    cols = ', '.join(log.keys())
+                    ph = ', '.join('?' * len(log))
+                    conn.execute(f"INSERT INTO medicine_log ({cols}) VALUES ({ph})", list(log.values()))
+
             # Handle deletions
             for id_set, table in [(body.get('deleted_illness_ids', []), 'medical_illnesses'),
                                    (body.get('deleted_medicine_ids', []), 'medical_medicines'),
-                                   (body.get('deleted_vet_ids', []), 'medical_vet_visits')]:
+                                   (body.get('deleted_vet_ids', []), 'medical_vet_visits'),
+                                   (body.get('deleted_medlog_ids', []), 'medicine_log')]:
                 for rid in id_set:
                     conn.execute(f"DELETE FROM {table} WHERE id = ?", (rid,))
 
