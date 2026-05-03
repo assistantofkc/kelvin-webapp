@@ -331,23 +331,15 @@ def _dump_db(conn):
         medical['vet_visits'].append({'id': r['id'], 'gecko_id': r['gecko_id'], 'clinic_name': r['clinic_name'], 'vet_name': r['vet_name']})
     return {'rooms': rooms, 'medical': medical}
 
-@app.route('/sync/debug', methods=['GET'])
-def sync_debug():
-    conn = _get_db()
-    data = _dump_db(conn)
-    conn.close()
-    return _json(data)
-        conn.commit()
-        conn.close()
-        return result
-    except Exception:
-        conn.rollback()
-        conn.close()
-        raise
-
-
 def init_sync(app):
     _init_db()
+
+    @app.route('/sync/debug', methods=['GET'])
+    def sync_debug():
+        conn = _get_db()
+        data = _dump_db(conn)
+        conn.close()
+        return _json(data)
 
     @app.route('/sync/create', methods=['POST', 'OPTIONS'])
     def sync_create():
