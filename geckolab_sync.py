@@ -467,11 +467,13 @@ def init_sync(app):
         code = request.args.get('code')
         if not code: return _json({'error': 'Missing code'}, 400)
         conn = _get_db()
-        cursor = conn.execute("DELETE FROM sync_rooms WHERE code = ?", (code,))
+        conn.execute("DELETE FROM sync_rooms WHERE code = ?", (code,))
+        conn.execute("DELETE FROM medical_illnesses WHERE code = ?", (code,))
+        conn.execute("DELETE FROM medical_medicines WHERE code = ?", (code,))
+        conn.execute("DELETE FROM medical_vet_visits WHERE code = ?", (code,))
+        conn.execute("DELETE FROM medicine_log WHERE code = ?", (code,))
         conn.commit()
         conn.close()
-        if cursor.rowcount == 0:
-            return _json({'error': 'Room not found'}, 404)
         return _json({'ok': True})
 
     # ========== Medical Handbook Sync Endpoints (2026-05-02) ==========
