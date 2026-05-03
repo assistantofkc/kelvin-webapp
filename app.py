@@ -15,6 +15,7 @@ import os
 import re
 import sqlite3
 import secrets
+import bcrypt
 from dotenv import load_dotenv
 
 # Load .env file
@@ -361,8 +362,8 @@ def geckolab():
 @rate_limit(max_requests=5, window_seconds=60)  # Security: max 5 login attempts/minute/IP
 def geckolab_login():
     password = request.form.get('password', '')
-    env_password = get_geckolab_password()
-    if password == env_password:
+    success, upgraded = verify_password(password)
+    if success:
         session['geckolab_logged_in'] = True
         # Create auth token for "remember me" - never expires
         token = secrets.token_hex(32)
@@ -699,8 +700,8 @@ def geckolab_change_password():
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
     old_pwd = request.form.get('old_password', '')
     new_pwd = request.form.get('new_password', '')
-    current_password = get_geckolab_password()
-    if old_pwd != current_password:
+    success, _ = verify_password(old_pwd)
+    if not success:
         return jsonify({'success': False, 'error': '舊密碼錯誤'})
     save_geckolab_password(new_pwd)
     # Invalidate all existing tokens - all users must re-login with new password
@@ -952,20 +953,85 @@ if __name__ == '__main__':
 # Password file for Geckolab
 GECKOLAB_PASS_FILE = os.path.join(os.path.dirname(__file__), 'geckolab', 'password.json')
 
+def _bcrypt_hash(plaintext):
+    """Hash a plaintext password with bcrypt."""
+    if isinstance(plaintext, str):
+        plaintext = plaintext.encode('utf-8')
+    return bcrypt.hashpw(plaintext, bcrypt.gensalt()).decode('utf-8')
+
+def _bcrypt_verify(plaintext, stored_hash):
+    """Verify a plaintext password against a bcrypt hash."""
+    if isinstance(plaintext, str):
+        plaintext = plaintext.encode('utf-8')
+    if isinstance(stored_hash, str):
+        stored_hash = stored_hash.encode('utf-8')
+    try:
+        return bcrypt.checkpw(plaintext, stored_hash)
+    except ValueError:
+        # Invalid hash format (e.g., still legacy plaintext)
+        return False
+
 def get_geckolab_password():
+    """Returns dict with 'password' (bcrypt hash) and optionally 'password_legacy' (plaintext for migration)."""
     try:
         if os.path.exists(GECKOLAB_PASS_FILE):
-            import json as _json
             with open(GECKOLAB_PASS_FILE, 'r') as f:
-                data = _json.load(f)
-                return data.get('password', os.environ.get('GECKOLAB_PASSWORD', 'geckolab123'))
+                data = json.load(f)
+                return {
+                    'password': data.get('password', os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')),
+                    'password_legacy': data.get('password_legacy')
+                }
     except: pass
-    return os.environ.get('GECKOLAB_PASSWORD', 'geckolab123')
+    return {
+        'password': os.environ.get('GECKOLAB_PASSWORD', 'geckolab123'),
+        'password_legacy': None
+    }
+
+def verify_password(plaintext):
+    """
+    Verify password with fallback for migration.
+    Strategy:
+    1. Try bcrypt first (normal path after migration)
+    2. Fallback: check explicit password_legacy OR auto-detect plaintext (not starting with $2)
+    3. On legacy match -> auto-upgrade to bcrypt (best-effort, non-blocking)
+       If upgrade fails, legacy still works on next login.
+    Returns: (success: bool, upgraded: bool)
+    """
+    stored = get_geckolab_password()
+
+    # Path 1: bcrypt verification (normal after migration)
+    if _bcrypt_verify(plaintext, stored['password']):
+        return True, False
+
+    # Path 2: legacy fallback — explicit password_legacy OR auto-detect plaintext
+    is_bcrypt = stored['password'].startswith('$2')
+    legacy_candidate = None
+
+    if stored.get('password_legacy'):
+        legacy_candidate = stored['password_legacy']
+    elif not is_bcrypt:
+        # Stored password is plaintext (not bcrypt hash) → auto-detect legacy
+        legacy_candidate = stored['password']
+
+    if legacy_candidate and plaintext == legacy_candidate:
+        # Auto-upgrade: hash with bcrypt, write new file
+        # Best-effort: if this fails, legacy comparison still works on next login
+        try:
+            bcrypt_hash = _bcrypt_hash(plaintext)
+            new_data = {'password': bcrypt_hash}
+            with open(GECKOLAB_PASS_FILE, 'w') as f:
+                json.dump(new_data, f)
+        except Exception as e:
+            print(f"[Security] bcrypt auto-upgrade failed (legacy fallback intact): {e}")
+        return True, True
+
+    return False, False
 
 def save_geckolab_password(new_password):
-    import json as _json
+    """Save new password as bcrypt hash (clears any legacy)."""
+    bcrypt_hash = _bcrypt_hash(new_password)
     with open(GECKOLAB_PASS_FILE, 'w') as f:
-        _json.dump({'password': new_password}, f)
+        json.dump({'password': bcrypt_hash}, f)
 
 # === Geckolab Sync (separate module) ===
 import sys, os as _os
