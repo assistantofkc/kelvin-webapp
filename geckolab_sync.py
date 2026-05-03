@@ -309,6 +309,13 @@ def _transactional_push(code, updater_fn):
             json.dumps(room.get('history', []), ensure_ascii=False),
             code,
         ))
+        conn.commit()
+        conn.close()
+        return result
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
 
 def _dump_db(conn):
     """Diagnostic: dump all sync rooms and medical records."""
