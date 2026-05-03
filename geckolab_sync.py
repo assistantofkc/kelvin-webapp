@@ -531,12 +531,13 @@ def init_sync(app):
             _upsert('medical_medicines', body.get('medicines', []))
             _upsert('medical_vet_visits', body.get('vet_visits', []))
 
-            # Handle medicine_logs separately (no UPDATE needed, just INSERT if new)
+            # Handle medicine_logs separately (scoped by code, INSERT if new)
             for log in body.get('medicine_logs', []):
                 existing = conn.execute(
-                    'SELECT id FROM medicine_log WHERE medicine_id = ? AND gecko_id = ? AND taken_date = ?',
-                    (log['medicine_id'], log['gecko_id'], log['taken_date'])).fetchone()
+                    'SELECT id FROM medicine_log WHERE code = ? AND medicine_id = ? AND taken_date = ?',
+                    (code, log['medicine_id'], log['taken_date'])).fetchone()
                 if not existing:
+                    log['code'] = code
                     cols = ', '.join(log.keys())
                     ph = ', '.join('?' * len(log))
                     conn.execute(f"INSERT INTO medicine_log ({cols}) VALUES ({ph})", list(log.values()))
