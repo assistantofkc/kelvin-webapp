@@ -58,6 +58,7 @@ _EXPECTED_SCHEMA = {
         'time_of_day':  ('TEXT', False),
         'start_date':   ('TEXT', True),
         'end_date':     ('TEXT', False),
+        'interval_days':('INTEGER', False, '1'),
         'reminder_enabled': ('INTEGER', False, '0'),
         'notes':        ('TEXT', False),
         'created_at':   ('TEXT', False),
