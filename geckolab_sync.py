@@ -309,6 +309,34 @@ def _transactional_push(code, updater_fn):
             json.dumps(room.get('history', []), ensure_ascii=False),
             code,
         ))
+
+def _dump_db(conn):
+    """Diagnostic: dump all sync rooms and medical records."""
+    rooms = []
+    for row in conn.execute("SELECT code, gecko, logs, weights FROM sync_rooms").fetchall():
+        g = json.loads(row['gecko']) if row['gecko'] else None
+        rooms.append({
+            'code': row['code'],
+            'gecko_id': g.get('id') if g else None,
+            'gecko_name': g.get('name') if g else None,
+            'logs': len(json.loads(row['logs']) if row['logs'] else []),
+            'weights': len(json.loads(row['weights']) if row['weights'] else []),
+        })
+    medical = {'illnesses': [], 'medicines': [], 'vet_visits': []}
+    for r in conn.execute("SELECT * FROM medical_illnesses").fetchall():
+        medical['illnesses'].append({'id': r['id'], 'gecko_id': r['gecko_id'], 'name': r['name'], 'status': r['status']})
+    for r in conn.execute("SELECT * FROM medical_medicines").fetchall():
+        medical['medicines'].append({'id': r['id'], 'gecko_id': r['gecko_id'], 'name': r['name']})
+    for r in conn.execute("SELECT * FROM medical_vet_visits").fetchall():
+        medical['vet_visits'].append({'id': r['id'], 'gecko_id': r['gecko_id'], 'clinic_name': r['clinic_name'], 'vet_name': r['vet_name']})
+    return {'rooms': rooms, 'medical': medical}
+
+@app.route('/sync/debug', methods=['GET'])
+def sync_debug():
+    conn = _get_db()
+    data = _dump_db(conn)
+    conn.close()
+    return _json(data)
         conn.commit()
         conn.close()
         return result
