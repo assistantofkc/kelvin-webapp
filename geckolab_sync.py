@@ -481,15 +481,16 @@ def init_sync(app):
             now = datetime.now().isoformat()
 
             def _upsert(table, records):
-                """Upsert records into a medical table."""
+                """Upsert records into a medical table. Matches by id only (PK), updates gecko_id on re-add."""
                 for rec in records:
                     rec['updated_at'] = now
-                    existing = conn.execute(f"SELECT id FROM {table} WHERE id = ? AND gecko_id = ?",
-                        (rec['id'], rec['gecko_id'])).fetchone()
+                    existing = conn.execute(f"SELECT id, gecko_id FROM {table} WHERE id = ?",
+                        (rec['id'],)).fetchone()
                     if existing:
+                        # Update all fields including gecko_id (changes when gecko is re-added)
                         cols = ', '.join(f"{k} = ?" for k in rec if k != 'id')
-                        vals = [rec[k] for k in rec if k != 'id'] + [rec['id'], rec['gecko_id']]
-                        conn.execute(f"UPDATE {table} SET {cols} WHERE id = ? AND gecko_id = ?", vals)
+                        vals = [rec[k] for k in rec if k != 'id'] + [rec['id']]
+                        conn.execute(f"UPDATE {table} SET {cols} WHERE id = ?", vals)
                     else:
                         cols = ', '.join(rec.keys())
                         ph = ', '.join('?' * len(rec))
