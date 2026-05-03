@@ -11,8 +11,9 @@ Storage: SQLite (transaction-safe, no race condition on concurrent pushes)
     4. Having a rollback plan
     Live users depend on this DB. DO NOT ADD/ALTER/DROP columns.
 """
-import json, os, secrets, sqlite3
+import json, os, secrets, sqlite3, time as _time
 from datetime import datetime
+from collections import defaultdict
 from flask import request, jsonify, make_response
 
 SYNC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sync_data')
@@ -95,8 +96,37 @@ _EXPECTED_SCHEMA = {
     },
 }
 
+# ⚠️  Security: Restrict CORS to known origins only
+# Requests from native apps (no Origin header) are allowed — they can't be CSRF'd
+# Requests from browsers MUST come from our own domain
+ALLOWED_ORIGINS = {
+    'https://assistantofkc.pythonanywhere.com',
+    'http://assistantofkc.pythonanywhere.com',
+    'https://assistantofkc.eu.pythonanywhere.com',
+    'http://assistantofkc.eu.pythonanywhere.com',
+}
+
+# ==================== SECURITY: Rate Limiter (sync endpoints) ====================
+_sync_rate_limits = defaultdict(list)
+
+def _check_rate_limit(key, max_requests, window_seconds):
+    """Check rate limit for a given key. Returns (allowed: bool, remaining: int)."""
+    now = _time.time()
+    cutoff = now - window_seconds
+    _sync_rate_limits[key] = [t for t in _sync_rate_limits[key] if t > cutoff]
+    if len(_sync_rate_limits[key]) >= max_requests:
+        return False, 0
+    _sync_rate_limits[key].append(now)
+    return True, max_requests - len(_sync_rate_limits[key])
+
 def _cors(resp):
-    resp.headers['Access-Control-Allow-Origin'] = '*'
+    origin = request.headers.get('Origin', '')
+    if origin:
+        # Browser request: only allow known origins
+        if origin in ALLOWED_ORIGINS:
+            resp.headers['Access-Control-Allow-Origin'] = origin
+        # else: unknown origin → no CORS header → blocked by browser
+    # No Origin header = native app / server-to-server → allow (no browser to enforce CORS)
     resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
     return resp
@@ -367,6 +397,10 @@ def init_sync(app):
     @app.route('/sync/create', methods=['POST', 'OPTIONS'])
     def sync_create():
         if request.method == 'OPTIONS': return _json({})
+        # Security: rate limit — max 5 room creations/minute/IP
+        allowed, remaining = _check_rate_limit(f"create:{request.remote_addr}", 5, 60)
+        if not allowed:
+            return _json({'error': 'Too many requests. Please try again later.'}, 429)
         code = secrets.token_hex(3).upper()
         now = datetime.now().isoformat()
         data = {
@@ -390,6 +424,10 @@ def init_sync(app):
     @app.route('/sync/push', methods=['POST', 'OPTIONS'])
     def sync_push():
         if request.method == 'OPTIONS': return _json({})
+        # Security: rate limit — max 30 pushes/minute/IP
+        allowed, remaining = _check_rate_limit(f"push:{request.remote_addr}", 30, 60)
+        if not allowed:
+            return _json({'error': 'Too many requests. Please try again later.'}, 429)
         body = request.json
         code = body.get('code')
         user = body.get('user', '?')
@@ -464,6 +502,10 @@ def init_sync(app):
     @app.route('/sync/room', methods=['DELETE', 'OPTIONS'])
     def sync_delete_room():
         if request.method == 'OPTIONS': return _json({})
+        # Security: rate limit — max 5 deletions/minute/IP
+        allowed, remaining = _check_rate_limit(f"delete:{request.remote_addr}", 5, 60)
+        if not allowed:
+            return _json({'error': 'Too many requests. Please try again later.'}, 429)
         code = request.args.get('code')
         if not code: return _json({'error': 'Missing code'}, 400)
         conn = _get_db()

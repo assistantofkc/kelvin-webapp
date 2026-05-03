@@ -23,6 +23,41 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'kelvin-webapp-secret-key-change-in-production')
 
+# ==================== SECURITY: HTTPS Enforcement ====================
+@app.before_request
+def enforce_https():
+    """Redirect HTTP to HTTPS on PythonAnywhere (behind proxy)."""
+    if request.headers.get('X-Forwarded-Proto', 'https') == 'http':
+        url = request.url.replace('http://', 'https://', 1)
+        return redirect(url, code=301)
+
+# ==================== SECURITY: Rate Limiter ====================
+from collections import defaultdict
+import time as _time
+
+_rate_limits = defaultdict(list)  # key → list of timestamps
+
+def rate_limit(max_requests, window_seconds, key_fn=None):
+    """
+    Decorator: limit requests per key (default: client IP).
+    Returns 429 if limit exceeded.
+    """
+    def decorator(f):
+        from functools import wraps
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            key = key_fn(request) if key_fn else request.remote_addr
+            now = _time.time()
+            cutoff = now - window_seconds
+            # Clean old entries
+            _rate_limits[key] = [t for t in _rate_limits[key] if t > cutoff]
+            if len(_rate_limits[key]) >= max_requests:
+                return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+            _rate_limits[key].append(now)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
 # Auto-pull latest code on EVERY request (ensures latest code is always loaded)
 @app.before_request
 def auto_git_pull():
@@ -323,6 +358,7 @@ def geckolab():
     return render_template('geckolab.html', version=APP_VERSION)
 
 @app.route('/geckolab/api/login', methods=['POST'])
+@rate_limit(max_requests=5, window_seconds=60)  # Security: max 5 login attempts/minute/IP
 def geckolab_login():
     password = request.form.get('password', '')
     env_password = get_geckolab_password()
@@ -657,6 +693,7 @@ def delete_log(log_id):
     return jsonify({'success': True})
 
 @app.route('/geckolab/api/change-password', methods=['POST'])
+@rate_limit(max_requests=3, window_seconds=60)  # Security: max 3 change attempts/minute/IP
 def geckolab_change_password():
     if not session.get('geckolab_logged_in'):
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
