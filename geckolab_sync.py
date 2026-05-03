@@ -171,6 +171,7 @@ def _init_db():
             time_of_day TEXT,
             start_date TEXT NOT NULL,
             end_date TEXT,
+            interval_days INTEGER DEFAULT 1,
             reminder_enabled INTEGER DEFAULT 0,
             notes TEXT,
             created_at TEXT DEFAULT (datetime('now')),
@@ -207,9 +208,21 @@ def _init_db():
         )
     ''')
     conn.commit()
+    # Migrations: add missing columns for existing databases
+    _migrate_schema(conn)
     # Validate existing schema on every startup
     _validate_schema(conn)
     conn.close()
+
+def _migrate_schema(conn):
+    """Add missing columns to existing tables (idempotent)."""
+    try:
+        # v1.12.112+: Add interval_days to medical_medicines (was missing, caused sync data loss)
+        cols = [r['name'] for r in conn.execute("PRAGMA table_info(medical_medicines)").fetchall()]
+        if 'interval_days' not in cols:
+            conn.execute("ALTER TABLE medical_medicines ADD COLUMN interval_days INTEGER DEFAULT 1")
+    except Exception as e:
+        print(f'[sync] Schema migration warning: {e}')
 
 def _load(code):
     """Load a sync room from SQLite. Returns dict or None."""
