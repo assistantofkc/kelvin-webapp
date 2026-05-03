@@ -36,6 +36,7 @@ _EXPECTED_SCHEMA = {
     # === NEW: Medical Handbook Tables (2026-05-02) ===
     'medical_illnesses': {
         'id':           ('INTEGER', True),  # PRIMARY KEY AUTOINCREMENT
+        'code':         ('TEXT', False),     # sync room code (global scope, avoids cross-contamination)
         'gecko_id':     ('INTEGER', True),
         'name':         ('TEXT', True),
         'start_date':   ('TEXT', True),
@@ -50,6 +51,7 @@ _EXPECTED_SCHEMA = {
     },
     'medical_medicines': {
         'id':           ('INTEGER', True),
+        'code':         ('TEXT', False),
         'gecko_id':     ('INTEGER', True),
         'illness_id':   ('INTEGER', False),
         'name':         ('TEXT', True),
@@ -66,6 +68,7 @@ _EXPECTED_SCHEMA = {
     },
     'medical_vet_visits': {
         'id':           ('INTEGER', True),
+        'code':         ('TEXT', False),
         'gecko_id':     ('INTEGER', True),
         'illness_id':   ('INTEGER', False),
         'clinic_name':  ('TEXT', False),
@@ -82,6 +85,7 @@ _EXPECTED_SCHEMA = {
     },
     'medicine_log': {
         'id':           ('INTEGER', True),
+        'code':         ('TEXT', False),
         'medicine_id':  ('INTEGER', True),
         'gecko_id':     ('INTEGER', True),
         'taken_date':   ('TEXT', True),
@@ -148,6 +152,7 @@ def _init_db():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS medical_illnesses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
             gecko_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             start_date TEXT NOT NULL,
@@ -164,6 +169,7 @@ def _init_db():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS medical_medicines (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
             gecko_id INTEGER NOT NULL,
             illness_id INTEGER,
             name TEXT NOT NULL,
@@ -182,6 +188,7 @@ def _init_db():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS medical_vet_visits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
             gecko_id INTEGER NOT NULL,
             illness_id INTEGER,
             clinic_name TEXT,
@@ -200,6 +207,7 @@ def _init_db():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS medicine_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
             medicine_id INTEGER NOT NULL,
             gecko_id INTEGER NOT NULL,
             taken_date TEXT NOT NULL,
@@ -218,10 +226,18 @@ def _init_db():
 def _migrate_schema(conn):
     """Add missing columns to existing tables (idempotent)."""
     try:
-        # v1.12.112+: Add interval_days to medical_medicines (was missing, caused sync data loss)
-        cols = [r['name'] for r in conn.execute("PRAGMA table_info(medical_medicines)").fetchall()]
-        if 'interval_days' not in cols:
-            conn.execute("ALTER TABLE medical_medicines ADD COLUMN interval_days INTEGER DEFAULT 1")
+        for table in ['medical_illnesses', 'medical_medicines', 'medical_vet_visits', 'medicine_log']:
+            cols = [r['name'] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+            if 'interval_days' not in cols and table == 'medical_medicines':
+                conn.execute("ALTER TABLE medical_medicines ADD COLUMN interval_days INTEGER DEFAULT 1")
+            if 'code' not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN code TEXT")
+        # Clean up orphaned records from before code-scoping was added
+        for table in ['medical_illnesses', 'medical_medicines', 'medical_vet_visits', 'medicine_log']:
+            deleted = conn.execute(f"DELETE FROM {table} WHERE code IS NULL").rowcount
+            if deleted:
+                print(f'[sync] Cleaned {deleted} orphaned records from {table}')
+        conn.commit()
     except Exception as e:
         print(f'[sync] Schema migration warning: {e}')
 
@@ -462,33 +478,21 @@ def init_sync(app):
 
     @app.route('/sync/medical/pull', methods=['GET', 'OPTIONS'])
     def sync_medical_pull():
-        """Pull all medical records for a sync room."""
+        """Pull all medical records for a sync room. Keys by sync code (not gecko_id)."""
         if request.method == 'OPTIONS': return _json({})
         code = request.args.get('code')
         if not code: return _json({'error': 'Missing code'}, 400)
-        # Verify room exists
         room = _load(code)
         if not room: return _json({'error': 'Room not found'}, 404)
         conn = _get_db()
-        # Get all gecko IDs from the room (medical data is per-gecko)
-        gecko_data = room.get('gecko') or []
-        if isinstance(gecko_data, dict):
-            gecko_ids = [gecko_data.get('id')] if gecko_data.get('id') else []
-        elif isinstance(gecko_data, list):
-            gecko_ids = [g['id'] for g in gecko_data if g.get('id')]
-        else:
-            gecko_ids = []
-        illnesses, medicines, vet_visits, med_logs = [], [], [], []
-        if gecko_ids:
-            placeholders = ','.join('?' * len(gecko_ids))
-            illnesses = [dict(r) for r in conn.execute(
-                f"SELECT * FROM medical_illnesses WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
-            medicines = [dict(r) for r in conn.execute(
-                f"SELECT * FROM medical_medicines WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
-            vet_visits = [dict(r) for r in conn.execute(
-                f"SELECT * FROM medical_vet_visits WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
-            med_logs = [dict(r) for r in conn.execute(
-                f"SELECT * FROM medicine_log WHERE gecko_id IN ({placeholders})", gecko_ids).fetchall()]
+        illnesses = [dict(r) for r in conn.execute(
+            "SELECT * FROM medical_illnesses WHERE code = ?", (code,)).fetchall()]
+        medicines = [dict(r) for r in conn.execute(
+            "SELECT * FROM medical_medicines WHERE code = ?", (code,)).fetchall()]
+        vet_visits = [dict(r) for r in conn.execute(
+            "SELECT * FROM medical_vet_visits WHERE code = ?", (code,)).fetchall()]
+        med_logs = [dict(r) for r in conn.execute(
+            "SELECT * FROM medicine_log WHERE code = ?", (code,)).fetchall()]
         conn.close()
         return _json({'illnesses': illnesses, 'medicines': medicines, 'vet_visits': vet_visits, 'medicine_logs': med_logs})
 
@@ -508,20 +512,20 @@ def init_sync(app):
             now = datetime.now().isoformat()
 
             def _upsert(table, records):
-                """Upsert records into a medical table. Matches by id only (PK), updates gecko_id on re-add."""
+                """Upsert records into a medical table. Keys by (code, id) for global uniqueness."""
                 for rec in records:
                     rec['updated_at'] = now
-                    existing = conn.execute(f"SELECT id, gecko_id FROM {table} WHERE id = ?",
-                        (rec['id'],)).fetchone()
+                    existing = conn.execute(f"SELECT id FROM {table} WHERE code = ? AND id = ?",
+                        (code, rec['id'])).fetchone()
                     if existing:
-                        # Update all fields including gecko_id (changes when gecko is re-added)
-                        cols = ', '.join(f"{k} = ?" for k in rec if k != 'id')
-                        vals = [rec[k] for k in rec if k != 'id'] + [rec['id']]
-                        conn.execute(f"UPDATE {table} SET {cols} WHERE id = ?", vals)
+                        cols = ', '.join(f"{k} = ?" for k in rec if k not in ('id', 'code'))
+                        vals = [rec[k] for k in rec if k not in ('id', 'code')] + [code, rec['id']]
+                        conn.execute(f"UPDATE {table} SET {cols} WHERE code = ? AND id = ?", vals)
                     else:
+                        rec['code'] = code
                         cols = ', '.join(rec.keys())
                         ph = ', '.join('?' * len(rec))
-                        conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({ph})", list(rec.values()))
+                        conn.execute(f"INSERT OR REPLACE INTO {table} ({cols}) VALUES ({ph})", list(rec.values()))
 
             _upsert('medical_illnesses', body.get('illnesses', []))
             _upsert('medical_medicines', body.get('medicines', []))
@@ -543,7 +547,7 @@ def init_sync(app):
                                    (body.get('deleted_vet_ids', []), 'medical_vet_visits'),
                                    (body.get('deleted_medlog_ids', []), 'medicine_log')]:
                 for rid in id_set:
-                    conn.execute(f"DELETE FROM {table} WHERE id = ?", (rid,))
+                    conn.execute(f"DELETE FROM {table} WHERE code = ? AND id = ?", (code, rid))
 
             conn.commit()
             result = {'ok': True, 'illnesses': len(body.get('illnesses', [])),
