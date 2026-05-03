@@ -104,7 +104,24 @@ ALLOWED_ORIGINS = {
     'http://assistantofkc.pythonanywhere.com',
     'https://assistantofkc.eu.pythonanywhere.com',
     'http://assistantofkc.eu.pythonanywhere.com',
+    # Android Capacitor WebView origins (cannot be spoofed by browsers)
+    'capacitor://localhost',
+    'http://localhost',
+    'http://localhost:8080',
+    'http://localhost:8100',
 }
+
+def _is_allowed_origin(origin):
+    """Check if origin is allowed. Also allow capacitor:// and http://localhost variants."""
+    if origin in ALLOWED_ORIGINS:
+        return True
+    # Capacitor WebView can use capacitor://localhost or ionic://localhost
+    if origin.startswith('capacitor://') or origin.startswith('ionic://'):
+        return True
+    # Allow any localhost variant (used by dev builds)
+    if origin.startswith('http://localhost') or origin.startswith('https://localhost'):
+        return True
+    return False
 
 # ==================== SECURITY: Rate Limiter (sync endpoints) ====================
 _sync_rate_limits = defaultdict(list)
@@ -122,11 +139,13 @@ def _check_rate_limit(key, max_requests, window_seconds):
 def _cors(resp):
     origin = request.headers.get('Origin', '')
     if origin:
-        # Browser request: only allow known origins
-        if origin in ALLOWED_ORIGINS:
+        # Browser/WebView request: only allow known origins
+        # Malicious websites cannot spoof capacitor:// or localhost origins
+        if _is_allowed_origin(origin):
             resp.headers['Access-Control-Allow-Origin'] = origin
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
         # else: unknown origin → no CORS header → blocked by browser
-    # No Origin header = native app / server-to-server → allow (no browser to enforce CORS)
+    # No Origin header = native app / server-to-server → allow (no CORS enforcement)
     resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS'
     return resp
