@@ -210,45 +210,52 @@
             const recognizedClean = cleanText(recognized);
             const pinyins = getPinyin(expected);
 
-            const statuses = [];
-            let ri = 0, correctCount = 0, wrongCount = 0;
             const expChars = expectedClean.split('');
             const recChars = recognizedClean.split('');
 
+            const statuses = [];
+            let ri = 0;
+            let correctCount = 0, wrongCount = 0;
+
             for (let ei = 0; ei < expChars.length; ei++) {
-                if (ri < recChars.length && expChars[ei] === recChars[ri]) {
+                if (ri >= recChars.length) {
+                    // Not yet reached by reader → pending (not missing!)
+                    statuses.push({ status: 'pending', recognized: '' });
+                } else if (expChars[ei] === recChars[ri]) {
                     statuses.push({ status: 'correct', recognized: recChars[ri] });
                     correctCount++; ri++;
-                } else if (ri < recChars.length) {
-                    let found = -1;
-                    const lookAhead = Math.min(5, recChars.length - ri);
-                    for (let k = 0; k < lookAhead; k++) {
-                        if (expChars[ei] === recChars[ri + k]) { found = k; break; }
+                } else {
+                    // Look ahead in recognized for this expected char (tolerance ≤ 3)
+                    let foundRec = -1;
+                    for (let k = 1; k <= 3 && ri + k < recChars.length; k++) {
+                        if (expChars[ei] === recChars[ri + k]) { foundRec = k; break; }
                     }
-                    if (found > 0) {
-                        for (let k = 0; k < found; k++) {
-                            statuses.push({ status: 'extra', recognized: recChars[ri + k], char: '' });
+                    if (foundRec > 0) {
+                        // Recognizer inserted extra chars → mark them wrong
+                        for (let k = 0; k < foundRec; k++) {
+                            statuses.push({ status: 'wrong', recognized: recChars[ri + k] });
                             wrongCount++;
                         }
-                        statuses.push({ status: 'correct', recognized: recChars[ri + found] });
-                        correctCount++; ri += found + 1;
+                        statuses.push({ status: 'correct', recognized: recChars[ri + foundRec] });
+                        correctCount++;
+                        ri += foundRec + 1;
                     } else {
-                        statuses.push({ status: 'wrong', recognized: ri < recChars.length ? recChars[ri] : '' });
+                        // Genuine mismatch at this position
+                        statuses.push({ status: 'wrong', recognized: recChars[ri] });
                         wrongCount++; ri++;
                     }
-                } else {
-                    statuses.push({ status: 'missing', recognized: '' });
-                    wrongCount++;
                 }
             }
+
+            // Remaining recognized chars → extra
             while (ri < recChars.length) {
-                statuses.push({ status: 'extra', recognized: recChars[ri], char: '' });
+                statuses.push({ status: 'extra', recognized: recChars[ri] });
                 wrongCount++; ri++;
             }
 
             charStatuses = statuses;
             renderPassageWithStatus(expected, pinyins, statuses);
-            if (isFinal || recognizedClean.length > 0) {
+            if (recChars.length > 0) {
                 updateScore(correctCount, wrongCount);
             }
         }
@@ -257,6 +264,12 @@
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
             let statusIdx = 0;
+            let readingPos = -1;
+
+            // Find the first pending char as "reading position" indicator
+            for (let s = 0; s < statuses.length; s++) {
+                if (statuses[s].status === 'pending') { readingPos = s; break; }
+            }
 
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
@@ -276,7 +289,10 @@
                     let tooltip = '';
                     if (status === 'wrong' && recognizedChar) tooltip = ' data-tooltip="你讀咗「' + recognizedChar + '」"';
                     else if (status === 'missing') tooltip = ' data-tooltip="未讀到"';
-                    html += '<div class="char-cell ' + status + '"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    // Add reading-position class to first pending char
+                    let posClass = '';
+                    if (status === 'pending' && statusIdx - 1 === readingPos) posClass = ' reading-pos';
+                    html += '<div class="char-cell ' + status + posClass + '"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
                 }
             }
             while (statusIdx < statuses.length) {

@@ -167,7 +167,19 @@ body {
 }
 
 .char-cell.pending .char {
-    color: #555;
+    color: #aaa;
+}
+
+/* Reading position indicator - first pending char shows where to read next */
+.char-cell.pending.reading-pos {
+    background: #e0e7ff;
+    border: 2px dashed #818cf8;
+    animation: readingPulse 1.5s ease-in-out infinite;
+}
+
+.char-cell.pending.reading-pos .char {
+    color: #4f46e5;
+    font-weight: 600;
 }
 
 /* Status: correct */
@@ -432,6 +444,11 @@ body {
 @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
+}
+
+@keyframes readingPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(129, 140, 248, 0); }
 }
 
 /* ==================== RESPONSIVE ==================== */
