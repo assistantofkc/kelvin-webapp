@@ -162,22 +162,35 @@
             recognition.lang = 'zh-CN';
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.maxAlternatives = 1;
+            recognition.maxAlternatives = 3;  // get top 3 alternatives for better matching
 
             recognition.onstart = () => {
-                updateStatus('recording', '收聽中... 請大聲朗讀！');
+                updateStatus('recording', '🎤 收聽中... 請大聲朗讀！');
                 document.getElementById('record-btn').classList.add('recording');
                 document.getElementById('record-btn').querySelector('.btn-text').textContent = '停止錄音';
             };
 
+            recognition.onsoundstart = () => {
+                updateStatus('recording', '🔊 聽到聲音...');
+            };
+
+            recognition.onsoundend = () => {
+                updateStatus('recording', '🎤 收聽中... 請繼續朗讀');
+            };
+
+            recognition.onspeechstart = () => {
+                updateStatus('recording', '🗣️ 辨識中...');
+            };
+
+            recognition.onspeechend = () => {
+                updateStatus('recording', '🎤 收聽中...');
+            };
+
             recognition.onend = () => {
                 if (isRecording) {
-                    // Chrome quirk: recognition stops after ~60s or pause.
-                    // Restart after a short delay to avoid "already started" error.
                     setTimeout(() => {
                         if (!isRecording) return;
                         try { recognition.start(); } catch(e) {
-                            // If still can't restart, try once more after longer delay
                             setTimeout(() => {
                                 if (!isRecording) return;
                                 try { recognition.start(); } catch(e2) {
@@ -197,6 +210,10 @@
             recognition.onerror = (event) => {
                 if (event.error === 'no-speech') {
                     updateStatus('warning', '聽唔到聲音，請再試下...');
+                } else if (event.error === 'audio-capture') {
+                    updateStatus('error', '❌ 無法使用咪高峰，請檢查權限');
+                } else if (event.error === 'not-allowed') {
+                    updateStatus('error', '❌ 請允許瀏覽器使用咪高峰');
                 } else if (event.error !== 'aborted') {
                     updateStatus('error', '錯誤: ' + event.error);
                 }
@@ -206,6 +223,7 @@
                 let interim = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
+                        // Use best alternative for final results
                         finalTranscript += event.results[i][0].transcript;
                     } else {
                         interim += event.results[i][0].transcript;
@@ -214,7 +232,7 @@
                 const currentText = finalTranscript + interim;
                 document.getElementById('recognized-text').textContent = currentText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
-                compareText(currentText, false);
+                compareText(currentText);
             };
         }
 
@@ -222,59 +240,86 @@
             return text.replace(/[，。！？、！？：；「」『』（）\s\.\,\!\?\:\;\-]/g, '');
         }
 
-        function compareText(recognized, isFinal) {
+        function isPunct(ch) {
+            return /[，。！？、！？：；「」『』（）\s]/.test(ch);
+        }
+
+        function stripTone(py) {
+            return (py || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function pinyinMatch(a, b) {
+            if (!a || !b) return a === b;
+            if (a === b) return true;
+            if (stripTone(a) === stripTone(b)) return true;
+            return false;
+        }
+
+        function compareText(recognized) {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const expected = passage.text;
-            const expectedClean = cleanText(expected);
-            const recognizedClean = cleanText(recognized);
-            const pinyins = getPinyin(expected);
 
-            const expChars = expectedClean.split('');
-            const recChars = recognizedClean.split('');
+            // Get pinyin for BOTH texts
+            const expectedPinyins = getPinyin(expected);
+            const recognizedPinyins = getPinyin(recognized);
 
+            // Build arrays of {char, pinyin} for non-punctuation only
+            const expItems = [];
+            for (let i = 0; i < expected.length; i++) {
+                if (!isPunct(expected[i])) {
+                    expItems.push({ char: expected[i], pinyin: expectedPinyins[i] || '' });
+                }
+            }
+
+            const recItems = [];
+            for (let i = 0; i < recognized.length; i++) {
+                if (!isPunct(recognized[i])) {
+                    recItems.push({ char: recognized[i], pinyin: recognizedPinyins[i] || '' });
+                }
+            }
+
+            // Pinyin-based progressive matching
             const statuses = [];
             let ri = 0;
             let correctCount = 0, wrongCount = 0;
 
-            for (let ei = 0; ei < expChars.length; ei++) {
-                if (ri >= recChars.length) {
-                    // Not yet reached by reader → pending (not missing!)
+            for (let ei = 0; ei < expItems.length; ei++) {
+                if (ri >= recItems.length) {
                     statuses.push({ status: 'pending', recognized: '' });
-                } else if (expChars[ei] === recChars[ri]) {
-                    statuses.push({ status: 'correct', recognized: recChars[ri] });
+                } else if (pinyinMatch(expItems[ei].pinyin, recItems[ri].pinyin)) {
+                    statuses.push({ status: 'correct', recognized: recItems[ri].char });
+                    correctCount++; ri++;
+                } else if (expItems[ei].char === recItems[ri].char) {
+                    statuses.push({ status: 'correct', recognized: recItems[ri].char });
                     correctCount++; ri++;
                 } else {
-                    // Look ahead in recognized for this expected char (tolerance ≤ 3)
                     let foundRec = -1;
-                    for (let k = 1; k <= 3 && ri + k < recChars.length; k++) {
-                        if (expChars[ei] === recChars[ri + k]) { foundRec = k; break; }
+                    for (let k = 1; k <= 5 && ri + k < recItems.length; k++) {
+                        if (pinyinMatch(expItems[ei].pinyin, recItems[ri + k].pinyin)) { foundRec = k; break; }
                     }
                     if (foundRec > 0) {
-                        // Recognizer inserted extra chars → mark them wrong
                         for (let k = 0; k < foundRec; k++) {
-                            statuses.push({ status: 'wrong', recognized: recChars[ri + k] });
+                            statuses.push({ status: 'wrong', recognized: recItems[ri + k].char });
                             wrongCount++;
                         }
-                        statuses.push({ status: 'correct', recognized: recChars[ri + foundRec] });
+                        statuses.push({ status: 'correct', recognized: recItems[ri + foundRec].char });
                         correctCount++;
                         ri += foundRec + 1;
                     } else {
-                        // Genuine mismatch at this position
-                        statuses.push({ status: 'wrong', recognized: recChars[ri] });
+                        statuses.push({ status: 'wrong', recognized: recItems[ri].char });
                         wrongCount++; ri++;
                     }
                 }
             }
 
-            // Remaining recognized chars → extra
-            while (ri < recChars.length) {
-                statuses.push({ status: 'extra', recognized: recChars[ri] });
+            while (ri < recItems.length) {
+                statuses.push({ status: 'extra', recognized: recItems[ri].char });
                 wrongCount++; ri++;
             }
 
             charStatuses = statuses;
-            renderPassageWithStatus(expected, pinyins, statuses);
-            if (recChars.length > 0) {
+            renderPassageWithStatus(expected, expectedPinyins, statuses);
+            if (recItems.length > 0) {
                 updateScore(correctCount, wrongCount);
             }
         }
@@ -355,7 +400,7 @@
         }
 
         function finalizeComparison() {
-            compareText(finalTranscript, true);
+            compareText(finalTranscript);
             const cleanExpected = cleanText(PASSAGES.find(p => p.id === currentPassageId).text);
             const correctCount = charStatuses.filter(s => s.status === 'correct').length;
             const totalExpected = cleanExpected.length;
