@@ -122,7 +122,20 @@
 
             recognition.onend = () => {
                 if (isRecording) {
-                    try { recognition.start(); } catch(e) {}
+                    // Chrome quirk: recognition stops after ~60s or pause.
+                    // Restart after a short delay to avoid "already started" error.
+                    setTimeout(() => {
+                        if (!isRecording) return;
+                        try { recognition.start(); } catch(e) {
+                            // If still can't restart, try once more after longer delay
+                            setTimeout(() => {
+                                if (!isRecording) return;
+                                try { recognition.start(); } catch(e2) {
+                                    console.log('Recognition restart failed:', e2);
+                                }
+                            }, 300);
+                        }
+                    }, 250);
                 } else {
                     document.getElementById('record-btn').classList.remove('recording');
                     document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
@@ -308,18 +321,54 @@
 
         function playTTS() {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
-            if (!passage || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(passage.text);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 0.85;
-            utterance.pitch = 1.0;
+            if (!passage) return;
+            if (!window.speechSynthesis) {
+                updateStatus('warning', '⚠️ 你的瀏覽器唔支援語音播放，請用 Chrome');
+                return;
+            }
+
+            function doSpeak() {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(passage.text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.85;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                const voices = window.speechSynthesis.getVoices();
+                const mandarinVoice = voices.find(v =>
+                    v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
+                    v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-') ||
+                    v.lang === 'zh-HK' || v.lang.startsWith('zh-HK-')
+                );
+                if (mandarinVoice) {
+                    utterance.voice = mandarinVoice;
+                }
+
+                updateStatus('playing', '🔊 播放示範中...');
+                utterance.onstart = () => updateStatus('playing', '🔊 播放示範中...');
+                utterance.onend = () => updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+                utterance.onerror = (e) => {
+                    updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
+                };
+
+                // Chrome fix: sometimes speak() does nothing without a small delay after cancel()
+                setTimeout(() => {
+                    window.speechSynthesis.speak(utterance);
+                }, 50);
+            }
+
+            // Voices may load asynchronously — wait if needed
             const voices = window.speechSynthesis.getVoices();
-            const mandarinVoice = voices.find(v => v.lang.startsWith('zh-CN') || v.lang.startsWith('zh-TW') || v.lang.startsWith('zh-HK'));
-            if (mandarinVoice) utterance.voice = mandarinVoice;
-            updateStatus('playing', '🔊 播放示範中...');
-            utterance.onend = () => updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
-            window.speechSynthesis.speak(utterance);
+            if (voices.length === 0) {
+                updateStatus('playing', '⏳ 載入語音中...');
+                window.speechSynthesis.onvoiceschanged = () => {
+                    window.speechSynthesis.onvoiceschanged = null;
+                    doSpeak();
+                };
+            } else {
+                doSpeak();
+            }
         }
 
         function resetAll() {
