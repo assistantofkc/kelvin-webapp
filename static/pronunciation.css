@@ -132,6 +132,17 @@ body {
     min-width: 44px;
     transition: all 0.3s ease;
     position: relative;
+    cursor: pointer;
+}
+
+.char-cell:not(.punctuation):hover {
+    transform: scale(1.12);
+    z-index: 5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.char-cell:not(.punctuation):active {
+    transform: scale(0.95);
 }
 
 .char-cell .pinyin {

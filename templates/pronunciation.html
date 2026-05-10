@@ -292,12 +292,12 @@
                     // Add reading-position class to first pending char
                     let posClass = '';
                     if (status === 'pending' && statusIdx - 1 === readingPos) posClass = ' reading-pos';
-                    html += '<div class="char-cell ' + status + posClass + '"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    html += '<div class="char-cell ' + status + posClass + '" onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
                 }
             }
             while (statusIdx < statuses.length) {
                 const s = statuses[statusIdx];
-                html += '<div class="char-cell extra" data-tooltip="多餘字: ' + s.recognized + '"><span class="pinyin"></span><span class="char extra-char">' + s.recognized + '</span></div>';
+                html += '<div class="char-cell extra" onclick="speakChar(\'' + s.recognized + '\')" title="撳我聽發音" data-tooltip="多餘字: ' + s.recognized + '"><span class="pinyin"></span><span class="char extra-char">' + s.recognized + '</span></div>';
                 statusIdx++;
             }
             html += '</div>';
@@ -313,7 +313,7 @@
                 const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
                 const rawPinyin = i < pinyins.length ? pinyins[i] : '';
                 const showPinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
-                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + '"><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
+                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + '"' + (isPunctuation ? '' : ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"') + '><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
             }
             html += '</div>';
             display.innerHTML = html;
@@ -481,6 +481,23 @@
             ttsPaused = false;
             updateTTSButtons('stop');
             updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+        }
+
+        function speakChar(ch) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(ch);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.75;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const mandarinVoice = voices.find(v =>
+                v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
+                v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-')
+            );
+            if (mandarinVoice) utterance.voice = mandarinVoice;
+            setTimeout(() => { window.speechSynthesis.speak(utterance); }, 30);
         }
 
         function resetAll() {
