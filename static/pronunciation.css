@@ -33,6 +33,14 @@ body {
     margin-bottom: 4px;
 }
 
+.version-tag {
+    font-size: 0.75rem;
+    color: #aaa;
+    font-weight: normal;
+    vertical-align: middle;
+    margin-left: 8px;
+}
+
 .subtitle {
     color: #888;
     font-size: 0.95rem;
