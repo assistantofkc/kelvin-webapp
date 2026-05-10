@@ -223,16 +223,17 @@
                 let interim = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
-                        // Use best alternative for final results
                         finalTranscript += event.results[i][0].transcript;
                     } else {
                         interim += event.results[i][0].transcript;
                     }
                 }
                 const currentText = finalTranscript + interim;
+                const hasInterim = interim.length > 0;
                 document.getElementById('recognized-text').textContent = currentText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
-                compareText(currentText);
+                // Pass isFinal flag: true only when no interim (all results confirmed)
+                compareText(currentText, !hasInterim);
             };
         }
 
@@ -255,7 +256,7 @@
             return false;
         }
 
-        function compareText(recognized) {
+        function compareText(recognized, isFinal) {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const expected = passage.text;
 
@@ -285,14 +286,25 @@
 
             for (let ei = 0; ei < expItems.length; ei++) {
                 if (ri >= recItems.length) {
+                    // No more recognized chars → everything pending
                     statuses.push({ status: 'pending', recognized: '' });
                 } else if (pinyinMatch(expItems[ei].pinyin, recItems[ri].pinyin)) {
+                    // Pinyin match → correct
                     statuses.push({ status: 'correct', recognized: recItems[ri].char });
                     correctCount++; ri++;
                 } else if (expItems[ei].char === recItems[ri].char) {
+                    // Same character (fallback)
                     statuses.push({ status: 'correct', recognized: recItems[ri].char });
                     correctCount++; ri++;
+                } else if (!isFinal) {
+                    // ⚠️ INTERIM MODE: don't mark wrong for noise!
+                    // Skip this noise char, retry expected char against next recognized
+                    ri++;
+                    ei--;
+                    // Safety: if too much noise, just mark pending
+                    if (ri > 10 && ei < 0) { ri = 0; statuses.push({ status: 'pending', recognized: '' }); }
                 } else {
+                    // ✅ FINAL MODE: do full comparison with wrong marking
                     let foundRec = -1;
                     for (let k = 1; k <= 5 && ri + k < recItems.length; k++) {
                         if (pinyinMatch(expItems[ei].pinyin, recItems[ri + k].pinyin)) { foundRec = k; break; }
@@ -312,9 +324,11 @@
                 }
             }
 
-            while (ri < recItems.length) {
-                statuses.push({ status: 'extra', recognized: recItems[ri].char });
-                wrongCount++; ri++;
+            if (isFinal) {
+                while (ri < recItems.length) {
+                    statuses.push({ status: 'extra', recognized: recItems[ri].char });
+                    wrongCount++; ri++;
+                }
             }
 
             charStatuses = statuses;
@@ -400,7 +414,7 @@
         }
 
         function finalizeComparison() {
-            compareText(finalTranscript);
+            compareText(finalTranscript, true);
             const cleanExpected = cleanText(PASSAGES.find(p => p.id === currentPassageId).text);
             const correctCount = charStatuses.filter(s => s.status === 'correct').length;
             const totalExpected = cleanExpected.length;
