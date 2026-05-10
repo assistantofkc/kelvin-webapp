@@ -295,11 +295,6 @@
                     html += '<div class="char-cell ' + status + posClass + '" onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
                 }
             }
-            while (statusIdx < statuses.length) {
-                const s = statuses[statusIdx];
-                html += '<div class="char-cell extra" onclick="speakChar(\'' + s.recognized + '\')" title="撳我聽發音" data-tooltip="多餘字: ' + s.recognized + '"><span class="pinyin"></span><span class="char extra-char">' + s.recognized + '</span></div>';
-                statusIdx++;
-            }
             html += '</div>';
             display.innerHTML = html;
         }
