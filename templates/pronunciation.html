@@ -65,6 +65,14 @@
                 <span class="btn-icon">🔊</span>
                 <span class="btn-text">聽示範</span>
             </button>
+            <button id="pause-btn" class="btn-pause" onclick="togglePauseTTS()" title="暫停/繼續" style="display:none;">
+                <span class="btn-icon">⏯️</span>
+                <span class="btn-text">暫停</span>
+            </button>
+            <button id="stop-tts-btn" class="btn-stop-tts" onclick="stopTTS()" title="停止播放" style="display:none;">
+                <span class="btn-icon">⏹️</span>
+                <span class="btn-text">停止</span>
+            </button>
             <button id="reset-btn" class="btn-reset" onclick="resetAll()">
                 <span class="btn-icon">🔄</span>
                 <span class="btn-text">重設</span>
@@ -86,9 +94,32 @@
     <script>
         const PASSAGES = {{ passages | tojson }};
 
+        // Known polyphone corrections for these passages
+        const PINYIN_FIX = {
+            // 於: wū → yú (形成於, 對...於)
+            // 重: zhòng → chóng (重用 = reuse)
+            // 卷: juàn → juǎn (卷上天空 = sweep up)
+        };
+
+        function fixPolyphone(pinyins, text) {
+            const chars = text.split('');
+            const fixed = [...pinyins];
+            for (let i = 0; i < chars.length; i++) {
+                if (chars[i] === '於' && fixed[i] === 'wū') fixed[i] = 'yú';
+                if (chars[i] === '重' && fixed[i] === 'zhòng') {
+                    if (chars[i+1] === '用' || chars[i+1] === '新') fixed[i] = 'chóng';
+                }
+                if (chars[i] === '卷' && fixed[i] === 'juàn') {
+                    if (chars[i+1] === '上' || chars[i-1] === '席') fixed[i] = 'juǎn';
+                }
+            }
+            return fixed;
+        }
+
         function getPinyin(text) {
             try {
-                return pinyinPro.pinyin(text, { toneType: 'symbol', type: 'array' });
+                const raw = pinyinPro.pinyin(text, { toneType: 'symbol', type: 'array' });
+                return fixPolyphone(raw, text);
             } catch(e) {
                 return text.split('').map(() => '');
             }
@@ -225,15 +256,17 @@
         function renderPassageWithStatus(text, pinyins, statuses) {
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
-            let statusIdx = 0, cleanIdx = 0;
+            let statusIdx = 0;
 
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
                 const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
+                const rawPinyin = i < pinyins.length ? pinyins[i] : '';
+                const pinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
+
                 if (isPunctuation) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    const pinyin = cleanIdx < pinyins.length ? pinyins[cleanIdx] : '';
                     let status = 'pending', recognizedChar = '';
                     if (statusIdx < statuses.length) {
                         status = statuses[statusIdx].status;
@@ -244,7 +277,6 @@
                     if (status === 'wrong' && recognizedChar) tooltip = ' data-tooltip="你讀咗「' + recognizedChar + '」"';
                     else if (status === 'missing') tooltip = ' data-tooltip="未讀到"';
                     html += '<div class="char-cell ' + status + '"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
-                    cleanIdx++;
                 }
             }
             while (statusIdx < statuses.length) {
@@ -260,17 +292,12 @@
             const pinyins = getPinyin(text);
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
-            let pinyinIdx = 0;
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
                 const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
-                if (isPunctuation) {
-                    html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
-                } else {
-                    const pinyin = pinyinIdx < pinyins.length ? pinyins[pinyinIdx] : '';
-                    html += '<div class="char-cell pending"><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
-                    pinyinIdx++;
-                }
+                const rawPinyin = i < pinyins.length ? pinyins[i] : '';
+                const showPinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
+                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + '"><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
             }
             html += '</div>';
             display.innerHTML = html;
@@ -319,6 +346,29 @@
             }
         }
 
+        let ttsPlaying = false;
+        let ttsPaused = false;
+
+        function updateTTSButtons(state) {
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const stopBtn = document.getElementById('stop-tts-btn');
+            if (state === 'playing') {
+                playBtn.style.display = 'none';
+                pauseBtn.style.display = 'inline-flex';
+                stopBtn.style.display = 'inline-flex';
+                pauseBtn.querySelector('.btn-text').textContent = '暫停';
+                pauseBtn.querySelector('.btn-icon').textContent = '⏸️';
+            } else if (state === 'paused') {
+                pauseBtn.querySelector('.btn-text').textContent = '繼續';
+                pauseBtn.querySelector('.btn-icon').textContent = '▶️';
+            } else {
+                playBtn.style.display = 'inline-flex';
+                pauseBtn.style.display = 'none';
+                stopBtn.style.display = 'none';
+            }
+        }
+
         function playTTS() {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             if (!passage) return;
@@ -327,8 +377,21 @@
                 return;
             }
 
+            // If paused, resume
+            if (ttsPaused) {
+                window.speechSynthesis.resume();
+                ttsPaused = false;
+                ttsPlaying = true;
+                updateStatus('playing', '🔊 繼續播放示範...');
+                updateTTSButtons('playing');
+                return;
+            }
+
+            window.speechSynthesis.cancel();
+            ttsPlaying = false;
+            ttsPaused = false;
+
             function doSpeak() {
-                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(passage.text);
                 utterance.lang = 'zh-CN';
                 utterance.rate = 0.85;
@@ -341,24 +404,33 @@
                     v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-') ||
                     v.lang === 'zh-HK' || v.lang.startsWith('zh-HK-')
                 );
-                if (mandarinVoice) {
-                    utterance.voice = mandarinVoice;
-                }
+                if (mandarinVoice) utterance.voice = mandarinVoice;
 
+                ttsPlaying = true;
+                ttsPaused = false;
                 updateStatus('playing', '🔊 播放示範中...');
-                utterance.onstart = () => updateStatus('playing', '🔊 播放示範中...');
-                utterance.onend = () => updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+                updateTTSButtons('playing');
+
+                utterance.onstart = () => {
+                    ttsPlaying = true; ttsPaused = false;
+                    updateStatus('playing', '🔊 播放示範中...');
+                };
+                utterance.onend = () => {
+                    ttsPlaying = false; ttsPaused = false;
+                    updateTTSButtons('stop');
+                    updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+                };
                 utterance.onerror = (e) => {
-                    updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
+                    ttsPlaying = false; ttsPaused = false;
+                    updateTTSButtons('stop');
+                    if (e.error !== 'canceled') {
+                        updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
+                    }
                 };
 
-                // Chrome fix: sometimes speak() does nothing without a small delay after cancel()
-                setTimeout(() => {
-                    window.speechSynthesis.speak(utterance);
-                }, 50);
+                setTimeout(() => { window.speechSynthesis.speak(utterance); }, 50);
             }
 
-            // Voices may load asynchronously — wait if needed
             const voices = window.speechSynthesis.getVoices();
             if (voices.length === 0) {
                 updateStatus('playing', '⏳ 載入語音中...');
@@ -371,8 +443,36 @@
             }
         }
 
+        function togglePauseTTS() {
+            if (!window.speechSynthesis) return;
+            if (ttsPaused) {
+                window.speechSynthesis.resume();
+                ttsPaused = false;
+                updateStatus('playing', '🔊 繼續播放示範...');
+                updateTTSButtons('playing');
+            } else if (ttsPlaying) {
+                window.speechSynthesis.pause();
+                ttsPaused = true;
+                updateStatus('playing', '⏸️ 已暫停播放');
+                updateTTSButtons('paused');
+            }
+        }
+
+        function stopTTS() {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            ttsPlaying = false;
+            ttsPaused = false;
+            updateTTSButtons('stop');
+            updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+        }
+
         function resetAll() {
             if (isRecording) { isRecording = false; if (recognition) recognition.stop(); }
+            // Stop any TTS
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            ttsPlaying = false; ttsPaused = false;
+            updateTTSButtons('stop');
             finalTranscript = ''; charStatuses = [];
             document.getElementById('recognized-text').textContent = '';
             document.getElementById('recognized-section').style.display = 'none';
