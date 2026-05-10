@@ -308,12 +308,18 @@
             const pinyins = getPinyin(text);
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
+            let firstChar = true;
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
                 const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
                 const rawPinyin = i < pinyins.length ? pinyins[i] : '';
                 const showPinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
-                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + '"' + (isPunctuation ? '' : ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"') + '><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
+                let extraClass = '';
+                if (!isPunctuation && firstChar) {
+                    extraClass = ' reading-pos';
+                    firstChar = false;
+                }
+                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + extraClass + '"' + (isPunctuation ? '' : ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"') + '><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
             }
             html += '</div>';
             display.innerHTML = html;
