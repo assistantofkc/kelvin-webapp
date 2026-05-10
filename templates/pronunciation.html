@@ -148,6 +148,7 @@
         let recognition = null;
         let isRecording = false;
         let interim = '';  // latest interim only (not accumulated)
+        let seenResultIndexes = new Set();  // dedup: track which result indexes we've already processed
         let finalTranscript = '';
         let charStatuses = [];
 
@@ -224,8 +225,12 @@
                 // Reset interim each time — only keep the latest interim result
                 let newInterim = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
+                    // Deduplicate: skip if we've already processed this result index
                     if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
+                        if (!seenResultIndexes.has(i)) {
+                            seenResultIndexes.add(i);
+                            finalTranscript += event.results[i][0].transcript;
+                        }
                     } else {
                         newInterim = event.results[i][0].transcript;  // overwrite, not append
                     }
@@ -445,6 +450,8 @@
             if (!recognition) return;
             if (!isRecording) {
                 finalTranscript = '';
+                seenResultIndexes = new Set();
+                interim = '';
                 document.getElementById('recognized-text').textContent = '';
                 document.getElementById('recognized-section').style.display = 'none';
                 document.getElementById('score-bar').style.display = 'none';
