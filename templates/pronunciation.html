@@ -293,7 +293,8 @@
                     correctCount++; ri++;
                 } else {
                     let foundRec = -1;
-                    for (let k = 1; k <= 5 && ri + k < recItems.length; k++) {
+                    // Look ahead max 2 chars — prevents cross-sentence mismapping
+                    for (let k = 1; k <= 2 && ri + k < recItems.length; k++) {
                         if (pinyinMatch(expItems[ei].pinyin, recItems[ri + k].pinyin)) { foundRec = k; break; }
                     }
                     if (foundRec > 0) {
