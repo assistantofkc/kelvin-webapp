@@ -29,7 +29,7 @@ PASSAGES = [
     }
 ]
 
-PRONUNCIATION_VERSION = 'v1.03'
+PRONUNCIATION_VERSION = 'v1.04'
 
 @pronunciation_bp.route('/pronunciation')
 def index():
