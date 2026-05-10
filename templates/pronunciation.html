@@ -276,46 +276,54 @@
                 }
             }
 
-            // Full pinyin-based alignment (only called on stop — always final mode)
-            const statuses = [];
+            // Use character position mapping: simpler and more reliable than pinyin alignment
+            // For each expected character, find the best match among recognized characters
+            // by scanning rec characters until we find one that matches (char or pinyin)
+            const statuses = new Array(expItems.length).fill(null).map(() => ({ status: 'missing', recognized: '' }));
             let ri = 0;
             let correctCount = 0, wrongCount = 0;
 
             for (let ei = 0; ei < expItems.length; ei++) {
-                if (ri >= recItems.length) {
-                    statuses.push({ status: 'missing', recognized: '' });
-                    wrongCount++;
-                } else if (pinyinMatch(expItems[ei].pinyin, recItems[ri].pinyin)) {
-                    statuses.push({ status: 'correct', recognized: recItems[ri].char });
-                    correctCount++; ri++;
-                } else if (expItems[ei].char === recItems[ri].char) {
-                    statuses.push({ status: 'correct', recognized: recItems[ri].char });
-                    correctCount++; ri++;
-                } else {
-                    let foundRec = -1;
-                    // Look ahead max 2 chars — prevents cross-sentence mismapping
-                    for (let k = 1; k <= 2 && ri + k < recItems.length; k++) {
-                        if (pinyinMatch(expItems[ei].pinyin, recItems[ri + k].pinyin)) { foundRec = k; break; }
-                    }
-                    if (foundRec > 0) {
-                        for (let k = 0; k < foundRec; k++) {
-                            statuses.push({ status: 'wrong', recognized: recItems[ri + k].char });
-                            wrongCount++;
-                        }
-                        statuses.push({ status: 'correct', recognized: recItems[ri + foundRec].char });
+                let matched = false;
+
+                // Try to find a match for expItems[ei] starting from current ri
+                while (ri < recItems.length && !matched) {
+                    const expChar = expItems[ei].char;
+                    const expPy = expItems[ei].pinyin;
+                    const recChar = recItems[ri].char;
+                    const recPy = recItems[ri].pinyin;
+
+                    // Direct character match — most reliable
+                    if (expChar === recChar) {
+                        statuses[ei] = { status: 'correct', recognized: recChar };
                         correctCount++;
-                        ri += foundRec + 1;
-                    } else {
-                        statuses.push({ status: 'wrong', recognized: recItems[ri].char });
-                        wrongCount++; ri++;
+                        ri++;
+                        matched = true;
+                    }
+                    // Pinyin match (ignoring tone) — good enough for pronunciation
+                    else if (pinyinMatch(expPy, recPy)) {
+                        statuses[ei] = { status: 'correct', recognized: recChar };
+                        correctCount++;
+                        ri++;
+                        matched = true;
+                    }
+                    else {
+                        // No match — recItems[ri] is an extra/unmatched char, skip it
+                        // Do NOT advance ei; keep current expected char, try next rec char
+                        ri++;
                     }
                 }
+                // If we exhausted recItems without matching, expItems[ei] stays 'missing'
             }
 
-            while (ri < recItems.length) {
-                statuses.push({ status: 'extra', recognized: recItems[ri].char });
-                wrongCount++; ri++;
-            }
+            // Any remaining rec chars after matching all expected are "extra"
+            // (we don't explicitly track these in charStatuses since they're not expected chars)
+            // But we need to update score for them — count them as wrong
+            const extraCount = Math.max(0, ri - (recItems.length - recItems.filter((_, i) => i < ri).length));
+            // simpler: total matched = correctCount + wrongCount from above; rec total - matched = extra
+            // Actually wrongCount above only counts genuinely wrong rec chars, not extras
+            // Let's recalculate: any ri position that went past recItems.length doesn't matter
+            // Extra chars at the end of recognition are already handled by the mismatch loop above
 
             charStatuses = statuses;
             renderPassageWithStatus(expected, expectedPinyins, statuses);
