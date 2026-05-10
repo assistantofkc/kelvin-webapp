@@ -147,6 +147,7 @@
         let currentPassageId = 1;
         let recognition = null;
         let isRecording = false;
+        let interim = '';  // latest interim only (not accumulated)
         let finalTranscript = '';
         let charStatuses = [];
 
@@ -220,16 +221,20 @@
             };
 
             recognition.onresult = (event) => {
-                let interim = '';
+                // Reset interim each time — only keep the latest interim result
+                let newInterim = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript;
                     } else {
-                        interim += event.results[i][0].transcript;
+                        newInterim = event.results[i][0].transcript;  // overwrite, not append
                     }
                 }
+                interim = newInterim;
                 const currentText = finalTranscript + interim;
-                document.getElementById('recognized-text').textContent = currentText || '(等待中...)';
+                // Filter out non-Chinese from display too
+                const displayText = currentText.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '');
+                document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
                 // Show live progress only — NO per-character comparison during recording
                 showLiveProgress(currentText);
@@ -244,15 +249,27 @@
             return /[，。！？、！？：；「」『』（）\s]/.test(ch);
         }
 
+        // Remove non-Chinese junk and de-duplicate consecutive repeated chars (common STT artifact)
+        function filterChinese(text) {
+            return text.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '')
+                       .replace(/(.)\1+/g, '$1');  // dedup: "呆呆呆" → "呆"
+        }
+
         function stripTone(py) {
             return (py || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         }
 
         function pinyinMatch(a, b) {
+            // Exact match including tone — tone matters for Mandarin pronunciation practice
+            // Using stripped pinyin only when tone is absent (already legacy behavior)
             if (!a || !b) return a === b;
             if (a === b) return true;
-            if (stripTone(a) === stripTone(b)) return true;
-            return false;
+            // Only allow stripped match if both inputs lack tone info (i.e., both are unaccented)
+            // This prevents homophones with different tones from matching incorrectly
+            const aHasTone = /[\u0300-\u036f]/.test(a);
+            const bHasTone = /[\u0300-\u036f]/.test(b);
+            if (aHasTone || bHasTone) return false;  // tone mismatch → no match
+            return stripTone(a) === stripTone(b);
         }
 
         function compareText(recognized, isFinal) {
@@ -411,7 +428,10 @@
         }
 
         function finalizeComparison() {
-            compareText(finalTranscript, true);
+            // Use only final transcripts — interim is for display only, not for comparison
+            // Also filter out any non-Chinese characters (English, garbled output)
+            const filteredTranscript = filterChinese(finalTranscript);
+            compareText(filteredTranscript, true);
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const totalExpected = cleanText(passage.text).length;
             const correctCount = charStatuses.filter(s => s.status === 'correct').length;
