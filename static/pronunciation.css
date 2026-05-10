@@ -1,0 +1,449 @@
+/* ==================== RESET & BASE ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang HK', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 16px;
+}
+
+.app-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.97);
+    border-radius: 24px;
+    padding: 32px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+/* ==================== HEADER ==================== */
+.app-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.app-header h1 {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    color: #888;
+    font-size: 0.95rem;
+}
+
+/* ==================== PASSAGE SELECTOR ==================== */
+.passage-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.passage-selector label {
+    font-weight: 600;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.passage-selector select {
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 2px solid #ddd;
+    font-size: 1rem;
+    font-family: inherit;
+    background: #f9f9f9;
+    cursor: pointer;
+    min-width: 280px;
+    transition: border-color 0.2s;
+}
+
+.passage-selector select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+/* ==================== SCORE BAR ==================== */
+.score-bar {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: #f8f9ff;
+    border-radius: 16px;
+    flex-wrap: wrap;
+}
+
+.score-item {
+    text-align: center;
+    min-width: 80px;
+}
+
+.score-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.score-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.correct-count .score-value { color: #22c55e; }
+.wrong-count .score-value { color: #ef4444; }
+.accuracy .score-value { color: #667eea; }
+
+/* ==================== PASSAGE DISPLAY ==================== */
+.passage-display {
+    margin-bottom: 20px;
+    padding: 24px 16px;
+    background: #fafafa;
+    border-radius: 16px;
+    border: 2px solid #eee;
+    min-height: 100px;
+    line-height: 2.4;
+}
+
+.char-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 2px;
+    justify-content: flex-start;
+    align-items: flex-end;
+}
+
+.char-cell {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 5px;
+    border-radius: 10px;
+    min-width: 44px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.char-cell .pinyin {
+    font-size: 0.65rem;
+    color: #999;
+    line-height: 1.2;
+    min-height: 14px;
+    white-space: nowrap;
+    margin-bottom: 2px;
+    font-family: 'Arial', sans-serif;
+}
+
+.char-cell .char {
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+/* Punctuation */
+.char-cell.punctuation {
+    min-width: 20px;
+    padding: 6px 2px;
+}
+
+.char-cell.punctuation .char {
+    font-size: 1.3rem;
+    color: #999;
+}
+
+/* Status: pending (default) */
+.char-cell.pending {
+    background: transparent;
+}
+
+.char-cell.pending .char {
+    color: #555;
+}
+
+/* Status: correct */
+.char-cell.correct {
+    background: #dcfce7;
+    animation: popCorrect 0.3s ease;
+}
+
+.char-cell.correct .pinyin {
+    color: #16a34a;
+}
+
+.char-cell.correct .char {
+    color: #15803d;
+    font-weight: 700;
+}
+
+/* Status: wrong */
+.char-cell.wrong {
+    background: #fef2f2;
+    animation: shake 0.3s ease;
+}
+
+.char-cell.wrong .pinyin {
+    color: #dc2626;
+}
+
+.char-cell.wrong .char {
+    color: #b91c1c;
+    text-decoration: underline wavy #f87171;
+}
+
+/* Status: missing */
+.char-cell.missing {
+    background: #fff7ed;
+}
+
+.char-cell.missing .pinyin {
+    color: #ea580c;
+}
+
+.char-cell.missing .char {
+    color: #c2410c;
+    opacity: 0.5;
+}
+
+/* Status: extra */
+.char-cell.extra {
+    background: #fefce8;
+    border: 2px dashed #eab308;
+}
+
+.char-cell.extra .char.extra-char {
+    color: #a16207;
+    font-size: 1.1rem;
+    font-style: italic;
+}
+
+/* Tooltip */
+.char-cell[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* ==================== RECOGNIZED TEXT ==================== */
+.recognized-section {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #f0f9ff;
+    border-radius: 12px;
+    border: 2px solid #bae6fd;
+}
+
+.recognized-section h3 {
+    font-size: 0.8rem;
+    color: #0369a1;
+    margin-bottom: 4px;
+}
+
+.recognized-text {
+    font-size: 1.3rem;
+    color: #0c4a6e;
+    min-height: 32px;
+    line-height: 1.6;
+    word-break: break-all;
+}
+
+/* ==================== CONTROLS ==================== */
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.btn-record, .btn-play, .btn-reset {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.btn-record {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.btn-record:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.btn-record.recording {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    animation: pulse 1.5s infinite;
+}
+
+.btn-record .btn-icon {
+    font-size: 1.3rem;
+}
+
+.btn-play {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.btn-play:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.btn-reset {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+}
+
+.btn-reset:hover {
+    background: #e2e8f0;
+    transform: translateY(-2px);
+}
+
+/* ==================== STATUS BAR ==================== */
+.status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+}
+
+.status-dot.ready { background: #22c55e; }
+.status-dot.recording { background: #ef4444; animation: blink 0.8s infinite; }
+.status-dot.warning { background: #f59e0b; }
+.status-dot.error { background: #ef4444; }
+.status-dot.playing { background: #8b5cf6; }
+
+/* ==================== BROWSER WARNING ==================== */
+.browser-warning {
+    text-align: center;
+    padding: 16px;
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    margin-top: 16px;
+    color: #92400e;
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes popCorrect {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 600px) {
+    .app-container {
+        padding: 20px 12px;
+        border-radius: 16px;
+    }
+
+    .app-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .char-cell .char {
+        font-size: 1.25rem;
+    }
+
+    .char-cell .pinyin {
+        font-size: 0.6rem;
+    }
+
+    .char-cell {
+        min-width: 38px;
+        padding: 4px 3px;
+    }
+
+    .btn-record, .btn-play, .btn-reset {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+
+    .score-bar {
+        gap: 12px;
+    }
+
+    .score-value {
+        font-size: 1.4rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .char-cell .char {
+        font-size: 1.1rem;
+    }
+
+    .char-cell {
+        min-width: 32px;
+        padding: 3px 2px;
+    }
+
+    .controls {
+        gap: 8px;
+    }
+
+    .btn-record, .btn-play, .btn-reset {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+}

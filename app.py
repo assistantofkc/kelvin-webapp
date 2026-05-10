@@ -205,6 +205,13 @@ Rules:
     print(f"[DEBUG] All retries failed")
     return []
 
+# === Pronunciation Practice Blueprint ===
+try:
+    from pronunciation_bp import pronunciation_bp
+    app.register_blueprint(pronunciation_bp)
+except Exception as e:
+    print(f"[INFO] Pronunciation blueprint not loaded: {e}")
+
 
 @app.route('/')
 def index():

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>普通話發音練習 - 語音檢測</title>
+    <link rel="stylesheet" href="/static/pronunciation.css">
+    <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.25.0/dist/index.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Back link -->
+        <a href="/" class="back-link">← 返回主頁</a>
+
+        <!-- Header -->
+        <header class="app-header">
+            <h1>🗣️ 普通話發音練習</h1>
+            <p class="subtitle">讀出句子，即時睇下邊啲字讀得啱！</p>
+        </header>
+
+        <!-- Passage Selector -->
+        <section class="passage-selector">
+            <label for="passage-select">選擇篇章：</label>
+            <select id="passage-select">
+                {% for p in passages %}
+                <option value="{{ p.id }}" {% if loop.first %}selected{% endif %}>
+                    {{ p.id }}. {{ p.title }}
+                </option>
+                {% endfor %}
+            </select>
+        </section>
+
+        <!-- Score Bar -->
+        <div class="score-bar" id="score-bar" style="display:none;">
+            <div class="score-item correct-count">
+                <span class="score-label">✅ 正確</span>
+                <span class="score-value" id="correct-count">0</span>
+            </div>
+            <div class="score-item wrong-count">
+                <span class="score-label">❌ 錯誤</span>
+                <span class="score-value" id="wrong-count">0</span>
+            </div>
+            <div class="score-item accuracy">
+                <span class="score-label">準確度</span>
+                <span class="score-value" id="accuracy">0%</span>
+            </div>
+        </div>
+
+        <!-- Passage Display -->
+        <section class="passage-display" id="passage-display"></section>
+
+        <!-- Recognized text display -->
+        <div class="recognized-section" id="recognized-section" style="display:none;">
+            <h3>我聽到你讀：</h3>
+            <p class="recognized-text" id="recognized-text"></p>
+        </div>
+
+        <!-- Controls -->
+        <section class="controls">
+            <button id="record-btn" class="btn-record" onclick="toggleRecording()">
+                <span class="btn-icon">🎤</span>
+                <span class="btn-text">開始錄音</span>
+            </button>
+            <button id="play-btn" class="btn-play" onclick="playTTS()" title="聽正確發音">
+                <span class="btn-icon">🔊</span>
+                <span class="btn-text">聽示範</span>
+            </button>
+            <button id="reset-btn" class="btn-reset" onclick="resetAll()">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">重設</span>
+            </button>
+        </section>
+
+        <!-- Status -->
+        <div class="status-bar" id="status-bar">
+            <span class="status-dot"></span>
+            <span class="status-text">準備就緒 — 選擇篇章後按「開始錄音」</span>
+        </div>
+
+        <!-- Browser warning -->
+        <div class="browser-warning" id="browser-warning" style="display:none;">
+            <p>⚠️ 請使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 瀏覽器開啟此應用程式，先可以使用語音辨識功能。</p>
+        </div>
+    </div>
+
+    <script>
+        const PASSAGES = {{ passages | tojson }};
+
+        function getPinyin(text) {
+            try {
+                return pinyinPro.pinyin(text, { toneType: 'symbol', type: 'array' });
+            } catch(e) {
+                return text.split('').map(() => '');
+            }
+        }
+
+        let currentPassageId = 1;
+        let recognition = null;
+        let isRecording = false;
+        let finalTranscript = '';
+        let charStatuses = [];
+
+        function setupRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('browser-warning').style.display = 'block';
+                document.getElementById('record-btn').disabled = true;
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-CN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                updateStatus('recording', '收聽中... 請大聲朗讀！');
+                document.getElementById('record-btn').classList.add('recording');
+                document.getElementById('record-btn').querySelector('.btn-text').textContent = '停止錄音';
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    try { recognition.start(); } catch(e) {}
+                } else {
+                    document.getElementById('record-btn').classList.remove('recording');
+                    document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
+                    updateStatus('ready', '錄音已停止');
+                    finalizeComparison();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === 'no-speech') {
+                    updateStatus('warning', '聽唔到聲音，請再試下...');
+                } else if (event.error !== 'aborted') {
+                    updateStatus('error', '錯誤: ' + event.error);
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+                const currentText = finalTranscript + interim;
+                document.getElementById('recognized-text').textContent = currentText || '(等待中...)';
+                document.getElementById('recognized-section').style.display = 'block';
+                compareText(currentText, false);
+            };
+        }
+
+        function cleanText(text) {
+            return text.replace(/[，。！？、！？：；「」『』（）\s\.\,\!\?\:\;\-]/g, '');
+        }
+
+        function compareText(recognized, isFinal) {
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            const expected = passage.text;
+            const expectedClean = cleanText(expected);
+            const recognizedClean = cleanText(recognized);
+            const pinyins = getPinyin(expected);
+
+            const statuses = [];
+            let ri = 0, correctCount = 0, wrongCount = 0;
+            const expChars = expectedClean.split('');
+            const recChars = recognizedClean.split('');
+
+            for (let ei = 0; ei < expChars.length; ei++) {
+                if (ri < recChars.length && expChars[ei] === recChars[ri]) {
+                    statuses.push({ status: 'correct', recognized: recChars[ri] });
+                    correctCount++; ri++;
+                } else if (ri < recChars.length) {
+                    let found = -1;
+                    const lookAhead = Math.min(5, recChars.length - ri);
+                    for (let k = 0; k < lookAhead; k++) {
+                        if (expChars[ei] === recChars[ri + k]) { found = k; break; }
+                    }
+                    if (found > 0) {
+                        for (let k = 0; k < found; k++) {
+                            statuses.push({ status: 'extra', recognized: recChars[ri + k], char: '' });
+                            wrongCount++;
+                        }
+                        statuses.push({ status: 'correct', recognized: recChars[ri + found] });
+                        correctCount++; ri += found + 1;
+                    } else {
+                        statuses.push({ status: 'wrong', recognized: ri < recChars.length ? recChars[ri] : '' });
+                        wrongCount++; ri++;
+                    }
+                } else {
+                    statuses.push({ status: 'missing', recognized: '' });
+                    wrongCount++;
+                }
+            }
+            while (ri < recChars.length) {
+                statuses.push({ status: 'extra', recognized: recChars[ri], char: '' });
+                wrongCount++; ri++;
+            }
+
+            charStatuses = statuses;
+            renderPassageWithStatus(expected, pinyins, statuses);
+            if (isFinal || recognizedClean.length > 0) {
+                updateScore(correctCount, wrongCount);
+            }
+        }
+
+        function renderPassageWithStatus(text, pinyins, statuses) {
+            const display = document.getElementById('passage-display');
+            let html = '<div class="char-grid">';
+            let statusIdx = 0, cleanIdx = 0;
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
+                if (isPunctuation) {
+                    html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
+                } else {
+                    const pinyin = cleanIdx < pinyins.length ? pinyins[cleanIdx] : '';
+                    let status = 'pending', recognizedChar = '';
+                    if (statusIdx < statuses.length) {
+                        status = statuses[statusIdx].status;
+                        recognizedChar = statuses[statusIdx].recognized || '';
+                        statusIdx++;
+                    }
+                    let tooltip = '';
+                    if (status === 'wrong' && recognizedChar) tooltip = ' data-tooltip="你讀咗「' + recognizedChar + '」"';
+                    else if (status === 'missing') tooltip = ' data-tooltip="未讀到"';
+                    html += '<div class="char-cell ' + status + '"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    cleanIdx++;
+                }
+            }
+            while (statusIdx < statuses.length) {
+                const s = statuses[statusIdx];
+                html += '<div class="char-cell extra" data-tooltip="多餘字: ' + s.recognized + '"><span class="pinyin"></span><span class="char extra-char">' + s.recognized + '</span></div>';
+                statusIdx++;
+            }
+            html += '</div>';
+            display.innerHTML = html;
+        }
+
+        function renderPassageInitial(text) {
+            const pinyins = getPinyin(text);
+            const display = document.getElementById('passage-display');
+            let html = '<div class="char-grid">';
+            let pinyinIdx = 0;
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
+                if (isPunctuation) {
+                    html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
+                } else {
+                    const pinyin = pinyinIdx < pinyins.length ? pinyins[pinyinIdx] : '';
+                    html += '<div class="char-cell pending"><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    pinyinIdx++;
+                }
+            }
+            html += '</div>';
+            display.innerHTML = html;
+        }
+
+        function updateScore(correct, wrong) {
+            const total = correct + wrong;
+            const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+            document.getElementById('correct-count').textContent = correct;
+            document.getElementById('wrong-count').textContent = wrong;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            document.getElementById('score-bar').style.display = 'flex';
+        }
+
+        function updateStatus(type, message) {
+            const bar = document.getElementById('status-bar');
+            bar.querySelector('.status-dot').className = 'status-dot ' + type;
+            bar.querySelector('.status-text').textContent = message;
+        }
+
+        function finalizeComparison() {
+            compareText(finalTranscript, true);
+            const cleanExpected = cleanText(PASSAGES.find(p => p.id === currentPassageId).text);
+            const correctCount = charStatuses.filter(s => s.status === 'correct').length;
+            const totalExpected = cleanExpected.length;
+            const accuracy = totalExpected > 0 ? Math.round((correctCount / totalExpected) * 100) : 0;
+            let emoji = accuracy >= 90 ? '🌟' : accuracy >= 70 ? '👍' : accuracy >= 50 ? '💪' : '📚';
+            updateStatus('ready', emoji + ' 完成！準確度: ' + accuracy + '% (' + correctCount + '/' + totalExpected + ')');
+        }
+
+        function toggleRecording() {
+            if (!recognition) setupRecognition();
+            if (!recognition) return;
+            if (!isRecording) {
+                finalTranscript = '';
+                document.getElementById('recognized-text').textContent = '';
+                document.getElementById('recognized-section').style.display = 'none';
+                document.getElementById('score-bar').style.display = 'none';
+                const passage = PASSAGES.find(p => p.id === currentPassageId);
+                renderPassageInitial(passage.text);
+                isRecording = true;
+                try { recognition.start(); } catch(e) {}
+            } else {
+                isRecording = false;
+                recognition.stop();
+            }
+        }
+
+        function playTTS() {
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            if (!passage || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(passage.text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.85;
+            utterance.pitch = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const mandarinVoice = voices.find(v => v.lang.startsWith('zh-CN') || v.lang.startsWith('zh-TW') || v.lang.startsWith('zh-HK'));
+            if (mandarinVoice) utterance.voice = mandarinVoice;
+            updateStatus('playing', '🔊 播放示範中...');
+            utterance.onend = () => updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function resetAll() {
+            if (isRecording) { isRecording = false; if (recognition) recognition.stop(); }
+            finalTranscript = ''; charStatuses = [];
+            document.getElementById('recognized-text').textContent = '';
+            document.getElementById('recognized-section').style.display = 'none';
+            document.getElementById('score-bar').style.display = 'none';
+            document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            renderPassageInitial(passage.text);
+            updateStatus('ready', '準備就緒 — 選擇篇章後按「開始錄音」');
+        }
+
+        document.getElementById('passage-select').addEventListener('change', function() {
+            currentPassageId = parseInt(this.value);
+            resetAll();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' && e.target === document.body) {
+                e.preventDefault();
+                toggleRecording();
+            }
+        });
+
+        function init() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.getVoices();
+                window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+            }
+            setupRecognition();
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            renderPassageInitial(passage.text);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
