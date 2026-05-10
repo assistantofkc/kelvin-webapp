@@ -164,7 +164,10 @@
             recognition.lang = 'zh-CN';
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.maxAlternatives = 3;  // get top 3 alternatives for better matching
+            recognition.maxAlternatives = 1;  // reduce to just the best result
+            // Increase timeouts so long passages don't get cut off
+            recognition.timeout = 60000;  // 60s total session timeout
+            recognition.pauseThreshold = 30;  // seconds of silence before considered done
 
             recognition.onstart = () => {
                 updateStatus('recording', '🎤 收聽中... 請大聲朗讀！');
@@ -458,6 +461,7 @@
                 const passage = PASSAGES.find(p => p.id === currentPassageId);
                 renderPassageInitial(passage.text);
                 isRecording = true;
+                seenResultIndexes = new Set();  // reset on each fresh start
                 try { recognition.start(); } catch(e) {}
             } else {
                 isRecording = false;
