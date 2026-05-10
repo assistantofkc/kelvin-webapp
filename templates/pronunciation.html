@@ -365,6 +365,7 @@
 
         let ttsPlaying = false;
         let ttsPaused = false;
+        let ttsCharPos = 0;  // character position for resume after pause
 
         function updateTTSButtons(state) {
             const playBtn = document.getElementById('play-btn');
@@ -386,6 +387,59 @@
             }
         }
 
+        function speakPassage(text, startPos) {
+            // Cancel any existing speech
+            window.speechSynthesis.cancel();
+            
+            const toSpeak = startPos > 0 ? text.substring(startPos) : text;
+            const utterance = new SpeechSynthesisUtterance(toSpeak);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.85;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            const mandarinVoice = voices.find(v =>
+                v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
+                v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-') ||
+                v.lang === 'zh-HK' || v.lang.startsWith('zh-HK-')
+            );
+            if (mandarinVoice) utterance.voice = mandarinVoice;
+
+            ttsPlaying = true;
+            ttsPaused = false;
+            updateStatus('playing', '🔊 播放示範中...');
+            updateTTSButtons('playing');
+
+            // Track character position via onboundary
+            utterance.onboundary = (e) => {
+                if (e.charIndex !== undefined) {
+                    ttsCharPos = startPos + e.charIndex;
+                }
+            };
+
+            utterance.onstart = () => {
+                ttsPlaying = true; ttsPaused = false;
+                updateStatus('playing', '🔊 播放示範中...');
+            };
+            utterance.onend = () => {
+                ttsPlaying = false; ttsPaused = false;
+                ttsCharPos = 0;
+                updateTTSButtons('stop');
+                updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+            };
+            utterance.onerror = (e) => {
+                ttsPlaying = false; ttsPaused = false;
+                ttsCharPos = 0;
+                updateTTSButtons('stop');
+                if (e.error !== 'canceled') {
+                    updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
+                }
+            };
+
+            setTimeout(() => { window.speechSynthesis.speak(utterance); }, 50);
+        }
+
         function playTTS() {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             if (!passage) return;
@@ -394,83 +448,38 @@
                 return;
             }
 
-            // If paused, resume
+            // If paused, resume from saved position
             if (ttsPaused) {
-                window.speechSynthesis.resume();
-                ttsPaused = false;
-                ttsPlaying = true;
-                updateStatus('playing', '🔊 繼續播放示範...');
-                updateTTSButtons('playing');
+                speakPassage(passage.text, ttsCharPos);
                 return;
             }
 
-            window.speechSynthesis.cancel();
-            ttsPlaying = false;
-            ttsPaused = false;
-
-            function doSpeak() {
-                const utterance = new SpeechSynthesisUtterance(passage.text);
-                utterance.lang = 'zh-CN';
-                utterance.rate = 0.85;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-
-                const voices = window.speechSynthesis.getVoices();
-                const mandarinVoice = voices.find(v =>
-                    v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
-                    v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-') ||
-                    v.lang === 'zh-HK' || v.lang.startsWith('zh-HK-')
-                );
-                if (mandarinVoice) utterance.voice = mandarinVoice;
-
-                ttsPlaying = true;
-                ttsPaused = false;
-                updateStatus('playing', '🔊 播放示範中...');
-                updateTTSButtons('playing');
-
-                utterance.onstart = () => {
-                    ttsPlaying = true; ttsPaused = false;
-                    updateStatus('playing', '🔊 播放示範中...');
-                };
-                utterance.onend = () => {
-                    ttsPlaying = false; ttsPaused = false;
-                    updateTTSButtons('stop');
-                    updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
-                };
-                utterance.onerror = (e) => {
-                    ttsPlaying = false; ttsPaused = false;
-                    updateTTSButtons('stop');
-                    if (e.error !== 'canceled') {
-                        updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
-                    }
-                };
-
-                setTimeout(() => { window.speechSynthesis.speak(utterance); }, 50);
-            }
-
+            // Fresh start
+            ttsCharPos = 0;
             const voices = window.speechSynthesis.getVoices();
             if (voices.length === 0) {
                 updateStatus('playing', '⏳ 載入語音中...');
                 window.speechSynthesis.onvoiceschanged = () => {
                     window.speechSynthesis.onvoiceschanged = null;
-                    doSpeak();
+                    speakPassage(passage.text, 0);
                 };
             } else {
-                doSpeak();
+                speakPassage(passage.text, 0);
             }
         }
 
         function togglePauseTTS() {
             if (!window.speechSynthesis) return;
             if (ttsPaused) {
-                window.speechSynthesis.resume();
-                ttsPaused = false;
-                updateStatus('playing', '🔊 繼續播放示範...');
-                updateTTSButtons('playing');
+                // Resume: re-speak from saved position
+                const passage = PASSAGES.find(p => p.id === currentPassageId);
+                if (passage) speakPassage(passage.text, ttsCharPos);
             } else if (ttsPlaying) {
-                window.speechSynthesis.pause();
+                // Pause: save position, cancel
+                window.speechSynthesis.cancel();
                 ttsPaused = true;
-                updateStatus('playing', '⏸️ 已暫停播放');
+                ttsPlaying = false;
+                updateStatus('playing', '⏸️ 已暫停 — 按 ▶️ 繼續');
                 updateTTSButtons('paused');
             }
         }
@@ -480,6 +489,7 @@
             window.speechSynthesis.cancel();
             ttsPlaying = false;
             ttsPaused = false;
+            ttsCharPos = 0;
             updateTTSButtons('stop');
             updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
         }
@@ -505,7 +515,7 @@
             if (isRecording) { isRecording = false; if (recognition) recognition.stop(); }
             // Stop any TTS
             if (window.speechSynthesis) window.speechSynthesis.cancel();
-            ttsPlaying = false; ttsPaused = false;
+            ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
             updateTTSButtons('stop');
             finalTranscript = ''; charStatuses = [];
             document.getElementById('recognized-text').textContent = '';
