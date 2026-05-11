@@ -154,18 +154,18 @@ body {
 }
 
 .char-cell .pinyin {
-    font-size: 0.85rem;
+    font-size: 1rem;
     color: #999;
     line-height: 1.2;
-    min-height: 16px;
+    min-height: 18px;
     white-space: nowrap;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
     font-weight: 600;
     font-family: 'Arial', sans-serif;
 }
 
 .char-cell .char {
-    font-size: 1.65rem;
+    font-size: 1.5rem;
     font-weight: 500;
     line-height: 1.3;
 }
