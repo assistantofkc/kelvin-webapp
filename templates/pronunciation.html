@@ -65,15 +65,15 @@
         <!-- Score Bar -->
         <div class="score-bar" id="score-bar" style="display:none;">
             <div class="score-item correct-count">
-                <span class="score-label">✅ 正確</span>
+                <span class="score-label" id="green-label">🟢 優秀</span>
                 <span class="score-value" id="correct-count">0</span>
             </div>
             <div class="score-item wrong-count">
-                <span class="score-label">❌ 錯誤</span>
+                <span class="score-label" id="red-label">🔴 須改善</span>
                 <span class="score-value" id="wrong-count">0</span>
             </div>
             <div class="score-item accuracy">
-                <span class="score-label">準確度</span>
+                <span class="score-label" id="avg-label">📊 總平均分</span>
                 <span class="score-value" id="accuracy">0%</span>
             </div>
         </div>
@@ -405,8 +405,28 @@
             }
 
             const correctCount = charMatched.filter(Boolean).length;
-            const wrongCount = expectedChars.length - correctCount;
-            updateScore(correctCount, wrongCount);
+            // 3-tier breakdown for Azure
+            let greenCount = 0, yellowCount = 0, redCount = 0, totalScore = 0, scoredWords = 0;
+            for (let i = 0; i < expectedChars.length; i++) {
+                if (!charMatched[i]) { redCount++; continue; }
+                const detail = matchDetails[i];
+                const acc = detail ? Math.round(detail.accuracy) : 0;
+                totalScore += acc;
+                scoredWords++;
+                if (acc >= 80) greenCount++;
+                else if (acc >= 50) yellowCount++;
+                else redCount++;
+            }
+            const avgScore = scoredWords > 0 ? Math.round(totalScore / scoredWords) : 0;
+
+            // Update score bar with 3-tier data
+            document.getElementById('correct-count').textContent = greenCount;
+            document.getElementById('green-label').textContent = '🟢 ≥80%';
+            document.getElementById('wrong-count').textContent = redCount;
+            document.getElementById('red-label').textContent = '🔴 <50%';
+            document.getElementById('accuracy').textContent = avgScore + '%';
+            document.getElementById('avg-label').textContent = '📊 總平均分';
+            document.getElementById('score-bar').style.display = 'flex';
 
             // Render chars with color + phoneme details as title tooltip
             renderPassageWithPhonemes(expected, expectedPinyins, charMatched, matchDetails);
@@ -705,8 +725,11 @@
             const total = correct + wrong;
             const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
             document.getElementById('correct-count').textContent = correct;
+            document.getElementById('green-label').textContent = '🟢 正確';
             document.getElementById('wrong-count').textContent = wrong;
+            document.getElementById('red-label').textContent = '🔴 錯誤';
             document.getElementById('accuracy').textContent = accuracy + '%';
+            document.getElementById('avg-label').textContent = '📊 準確度';
             document.getElementById('score-bar').style.display = 'flex';
         }
         function updateStatus(type, message) {
