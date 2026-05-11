@@ -1,673 +1,269 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>普通話發音練習 - 語音檢測</title>
-    <link rel="stylesheet" href="/static/pronunciation.css">
-    <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.25.0/dist/index.js"></script>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>小朋友普通話發音練習</title>
+ <script src="https://cdn.tailwindcss.com"></script>
+ <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.25.0/dist/index.js"></script>
+ <style>
+ @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+ body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
+ .char-unit {
+ display: inline-flex; flex-direction: column; align-items: center;
+ margin: 6px 4px; padding: 8px; border-radius: 12px;
+ background: white; border: 2px solid #e2e8f0; transition: all 0.2s;
+ min-width: 60px; vertical-align: bottom;
+ }
+ .pinyin { font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 2px; font-family: 'Arial', sans-serif; }
+ .zh-char { font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
+ .status-correct { background-color: #d1fae5; border-color: #10b981; color: #064e3b; }
+ .status-correct .pinyin { color: #059669; }
+ .status-incorrect { background-color: #fee2e2; border-color: #f87171; color: #991b1b; }
+ .status-incorrect .pinyin { color: #dc2626; }
+ .punctuation { font-size: 1.8rem; color: #cbd5e1; align-self: flex-end; margin: 0 4px 10px 4px; }
+ .recording-pulse { animation: pulse 1.5s infinite; }
+ @keyframes pulse {
+ 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+ 70% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+ 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+ }
+ </style>
 </head>
-<body>
-    <!-- Hamburger -->
-    <div class="hamburger" id="hamburger" onclick="toggleSidebar()">
-        <span class="hamburger-icon"></span>
-        <span class="hamburger-icon"></span>
-        <span class="hamburger-icon"></span>
-    </div>
-
-    <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">App Menu</div>
-        <a href="/geckolab"><span>🦎</span> Geckolab</a>
-        <a href="/cangjie"><span>🔣</span> 倉頡學堂</a>
-        <a href="/news-clipper"><span>📰</span> News Clipper</a>
-        <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
-        <a href="/pronunciation"><span>🗣️</span> 普通話發音練習</a>
-        <a href="/"><span>🏠</span> About</a>
-    </nav>
-    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-    <div class="app-container">
-        <!-- Back link -->
-        <a href="/" class="back-link">← 返回主頁</a>
-
-        <!-- Header -->
-        <header class="app-header">
-            <h1>🗣️ 普通話發音練習 <span class="version-tag">{{ version }}</span></h1>
-            <p class="subtitle">讀出句子，即時睇下邊啲字讀得啱！</p>
-        </header>
-
-        <!-- Passage Selector -->
-        <section class="passage-selector">
-            <label for="passage-select">選擇篇章：</label>
-            <select id="passage-select">
-                {% for p in passages %}
-                <option value="{{ p.id }}" {% if loop.first %}selected{% endif %}>
-                    {{ p.id }}. {{ p.title }}
-                </option>
-                {% endfor %}
-            </select>
-        </section>
-
-        <!-- Score Bar -->
-        <div class="score-bar" id="score-bar" style="display:none;">
-            <div class="score-item correct-count">
-                <span class="score-label">✅ 正確</span>
-                <span class="score-value" id="correct-count">0</span>
-            </div>
-            <div class="score-item wrong-count">
-                <span class="score-label">❌ 錯誤</span>
-                <span class="score-value" id="wrong-count">0</span>
-            </div>
-            <div class="score-item accuracy">
-                <span class="score-label">準確度</span>
-                <span class="score-value" id="accuracy">0%</span>
-            </div>
-        </div>
-
-        <!-- Passage Display -->
-        <section class="passage-display" id="passage-display"></section>
-
-        <!-- Recognized text display -->
-        <div class="recognized-section" id="recognized-section" style="display:none;">
-            <h3>我聽到你讀：</h3>
-            <p class="recognized-text" id="recognized-text"></p>
-        </div>
-
-        <!-- Controls -->
-        <section class="controls">
-            <button id="record-btn" class="btn-record" onclick="toggleRecording()">
-                <span class="btn-icon">🎤</span>
-                <span class="btn-text">開始錄音</span>
-            </button>
-            <button id="play-btn" class="btn-play" onclick="playTTS()" title="聽正確發音">
-                <span class="btn-icon">🔊</span>
-                <span class="btn-text">聽示範</span>
-            </button>
-            <button id="pause-btn" class="btn-pause" onclick="togglePauseTTS()" title="暫停/繼續" style="display:none;">
-                <span class="btn-icon">⏯️</span>
-                <span class="btn-text">暫停</span>
-            </button>
-            <button id="stop-tts-btn" class="btn-stop-tts" onclick="stopTTS()" title="停止播放" style="display:none;">
-                <span class="btn-icon">⏹️</span>
-                <span class="btn-text">停止</span>
-            </button>
-            <button id="reset-btn" class="btn-reset" onclick="resetAll()">
-                <span class="btn-icon">🔄</span>
-                <span class="btn-text">重設</span>
-            </button>
-        </section>
-
-        <!-- Status -->
-        <div class="status-bar" id="status-bar">
-            <span class="status-dot"></span>
-            <span class="status-text">準備就緒 — 選擇篇章後按「開始錄音」</span>
-        </div>
-
-        <!-- Browser warning -->
-        <div class="browser-warning" id="browser-warning" style="display:none;">
-            <p>⚠️ 請使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 瀏覽器開啟此應用程式，先可以使用語音辨識功能。</p>
-        </div>
-    </div>
-
-    <script>
-        const PASSAGES = {{ passages | tojson }};
-
-        // Known polyphone corrections for these passages
-        const PINYIN_FIX = {
-            // 於: wū → yú (形成於, 對...於)
-            // 重: zhòng → chóng (重用 = reuse)
-            // 卷: juàn → juǎn (卷上天空 = sweep up)
-        };
-
-        function fixPolyphone(pinyins, text) {
-            const chars = text.split('');
-            const fixed = [...pinyins];
-            for (let i = 0; i < chars.length; i++) {
-                if (chars[i] === '於' && fixed[i] === 'wū') fixed[i] = 'yú';
-                if (chars[i] === '重' && fixed[i] === 'zhòng') {
-                    if (chars[i+1] === '用' || chars[i+1] === '新') fixed[i] = 'chóng';
-                }
-                if (chars[i] === '卷' && fixed[i] === 'juàn') {
-                    if (chars[i+1] === '上' || chars[i-1] === '席') fixed[i] = 'juǎn';
-                }
-            }
-            return fixed;
-        }
-
-        function getPinyin(text) {
-            try {
-                const raw = pinyinPro.pinyin(text, { toneType: 'symbol', type: 'array' });
-                return fixPolyphone(raw, text);
-            } catch(e) {
-                return text.split('').map(() => '');
-            }
-        }
-
-        let currentPassageId = 1;
-        let recognition = null;
-        let isRecording = false;
-        let interim = '';  // latest interim only (not accumulated)
-        let seenResultIndexes = new Set();  // dedup: track which result indexes we've already processed
-        let finalTranscript = '';
-        let charStatuses = [];
-
-        function setupRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                document.getElementById('browser-warning').style.display = 'block';
-                document.getElementById('record-btn').disabled = true;
-                return;
-            }
-
-            recognition = new SpeechRecognition();
-            recognition.lang = 'zh-CN';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onstart = () => {
-                updateStatus('recording', '🎤 收聽中... 請大聲朗讀！');
-                document.getElementById('record-btn').classList.add('recording');
-                document.getElementById('record-btn').querySelector('.btn-text').textContent = '停止錄音';
-            };
-
-            recognition.onsoundstart = () => {
-                updateStatus('recording', '🔊 聽到聲音...');
-            };
-
-            recognition.onsoundend = () => {
-                updateStatus('recording', '🎤 收聽中... 請繼續朗讀');
-            };
-
-            recognition.onspeechstart = () => {
-                updateStatus('recording', '🗣️ 辨識中...');
-            };
-
-            recognition.onspeechend = () => {
-                updateStatus('recording', '🎤 收聽中...');
-            };
-
-            recognition.onend = () => {
-                // CRITICAL: When Chrome auto-stops due to silence/length limit,
-                // restart immediately if user hasn't manually stopped.
-                // This makes the recording feel "infinitely continuous".
-                if (isRecording) {
-                    setTimeout(() => {
-                        if (!isRecording) return;
-                        try { recognition.start(); } catch(e) {
-                            setTimeout(() => { try { recognition.start(); } catch(e2) {} }, 300);
-                        }
-                    }, 100);  // short delay to let Chrome breathe
-                } else {
-                    document.getElementById('record-btn').classList.remove('recording');
-                    document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
-                    updateStatus('ready', '錄音已停止');
-                    finalizeComparison();
-                }
-            };
-
-            recognition.onerror = (event) => {
-                if (event.error === 'no-speech') {
-                    updateStatus('warning', '聽唔到聲音，請再試下...');
-                } else if (event.error === 'audio-capture') {
-                    updateStatus('error', '❌ 無法使用咪高峰，請檢查權限');
-                } else if (event.error === 'not-allowed') {
-                    updateStatus('error', '❌ 請允許瀏覽器使用咪高峰');
-                } else if (event.error !== 'aborted') {
-                    updateStatus('error', '錯誤: ' + event.error);
-                }
-            };
-
-            recognition.onresult = (event) => {
-                // Reset interim each time — only keep the latest interim result
-                let newInterim = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    // Deduplicate: skip if we've already processed this result index
-                    if (event.results[i].isFinal) {
-                        if (!seenResultIndexes.has(i)) {
-                            seenResultIndexes.add(i);
-                            finalTranscript += event.results[i][0].transcript;
-                        }
-                    } else {
-                        newInterim = event.results[i][0].transcript;  // overwrite, not append
-                    }
-                }
-                interim = newInterim;
-                const currentText = finalTranscript + interim;
-                // Filter out non-Chinese from display too
-                const displayText = currentText.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '');
-                document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
-                document.getElementById('recognized-section').style.display = 'block';
-                // Show live progress only — NO per-character comparison during recording
-                showLiveProgress(currentText);
-            };
-        }
-
-        function cleanText(text) {
-            return text.replace(/[，。！？、！？：；「」『』（）\s\.\,\!\?\:\;\-]/g, '');
-        }
-
-        function isPunct(ch) {
-            return /[，。！？、！？：；「」『』（）\s]/.test(ch);
-        }
-
-        // Remove non-Chinese junk and de-duplicate consecutive repeated chars (common STT artifact)
-        function filterChinese(text) {
-            return text.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '')
-                       .replace(/(.)\1+/g, '$1');  // dedup: "呆呆呆" → "呆"
-        }
-
-        function stripTone(py) {
-            return (py || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        }
-
-        function pinyinMatch(a, b) {
-            if (!a || !b) return a === b;
-            if (a === b) return true;
-            // Strip tone marks and compare (lenient mode for Mandarin practice)
-            return stripTone(a) === stripTone(b);
-        }
-
-        function compareText(recognized, isFinal) {
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            const expected = passage.text;
-
-            const expectedPinyins = getPinyin(expected);
-            const recognizedPinyins = getPinyin(recognized);
-
-            const expItems = [];
-            for (let i = 0; i < expected.length; i++) {
-                if (!isPunct(expected[i])) {
-                    expItems.push({ char: expected[i], pinyin: expectedPinyins[i] || '' });
-                }
-            }
-
-            const recItems = [];
-            for (let i = 0; i < recognized.length; i++) {
-                if (!isPunct(recognized[i])) {
-                    recItems.push({ char: recognized[i], pinyin: recognizedPinyins[i] || '' });
-                }
-            }
-
-            // Linear scan: for each expected char, try to match against current rec position only
-            // Key fix: if no match, mark expected as 'missing' but DO NOT consume rec position
-            // This prevents one misread from cascading into all subsequent 'missing'
-            const statuses = new Array(expItems.length).fill(null).map(() => ({ status: 'missing', recognized: '' }));
-            let ri = 0;
-            let correctCount = 0, wrongCount = 0;
-
-            for (let ei = 0; ei < expItems.length; ei++) {
-                if (ri >= recItems.length) {
-                    // No more recognized chars — all remaining expected are missing
-                    break;
-                }
-
-                const expChar = expItems[ei].char;
-                const expPy = expItems[ei].pinyin;
-                const recChar = recItems[ri].char;
-                const recPy = recItems[ri].pinyin;
-
-                // Direct character match — most reliable
-                if (expChar === recChar) {
-                    statuses[ei] = { status: 'correct', recognized: recChar };
-                    correctCount++;
-                    ri++;
-                }
-                // Pinyin match (ignoring tone) — pronunciation error but valid phoneme
-                else if (pinyinMatch(expPy, recPy)) {
-                    statuses[ei] = { status: 'correct', recognized: recChar };
-                    correctCount++;
-                    ri++;
-                }
-                else {
-                    // No match at current position — mark expected as missing, do NOT advance ri
-                    // This means the current rec char is still pending for the next expected char
-                    // We count it as wrong (the user read something that doesn't correspond)
-                    statuses[ei] = { status: 'missing', recognized: recChar };
-                    wrongCount++;
-                    // DO NOT increment ri — rec[ri] stays for next ei
-                    // This prevents one mismatch from cascading into all subsequent 'missing'
-                }
-            }
-
-            // Remaining rec chars (if any) after matching all expected → still visible as extras
-            // in the recognized-text area, but we don't track them in charStatuses
-
-            charStatuses = statuses;
-            renderPassageWithStatus(expected, expectedPinyins, statuses);
-            updateScore(correctCount, wrongCount);
-        }
-
-        function showLiveProgress(currentText) {
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            const expectedLen = cleanText(passage.text).length;
-            const recognizedLen = cleanText(currentText).length;
-            const pct = expectedLen > 0 ? Math.min(100, Math.round((recognizedLen / expectedLen) * 100)) : 0;
-            if (recognizedLen > 0) {
-                updateStatus('recording', '🗣️ 已辨識約 ' + recognizedLen + ' 字 (' + pct + '%) — 繼續朗讀...');
-            }
-        }
-
-        function renderPassageWithStatus(text, pinyins, statuses) {
-            const display = document.getElementById('passage-display');
-            let html = '<div class="char-grid">';
-            let statusIdx = 0;
-            let readingPos = -1;
-
-            // Find the first pending char as "reading position" indicator
-            for (let s = 0; s < statuses.length; s++) {
-                if (statuses[s].status === 'pending') { readingPos = s; break; }
-            }
-
-            for (let i = 0; i < text.length; i++) {
-                const ch = text[i];
-                const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
-                const rawPinyin = i < pinyins.length ? pinyins[i] : '';
-                const pinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
-
-                if (isPunctuation) {
-                    html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
-                } else {
-                    let status = 'pending', recognizedChar = '';
-                    if (statusIdx < statuses.length) {
-                        status = statuses[statusIdx].status;
-                        recognizedChar = statuses[statusIdx].recognized || '';
-                        statusIdx++;
-                    }
-                    let tooltip = '';
-                    if (status === 'wrong' && recognizedChar) tooltip = ' data-tooltip="你讀咗「' + recognizedChar + '」"';
-                    else if (status === 'missing') tooltip = ' data-tooltip="未讀到"';
-                    // Add reading-position class to first pending char
-                    let posClass = '';
-                    if (status === 'pending' && statusIdx - 1 === readingPos) posClass = ' reading-pos';
-                    html += '<div class="char-cell ' + status + posClass + '" onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
-                }
-            }
-            html += '</div>';
-            display.innerHTML = html;
-        }
-
-        function renderPassageInitial(text) {
-            const pinyins = getPinyin(text);
-            const display = document.getElementById('passage-display');
-            let html = '<div class="char-grid">';
-            let firstChar = true;
-            for (let i = 0; i < text.length; i++) {
-                const ch = text[i];
-                const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
-                const rawPinyin = i < pinyins.length ? pinyins[i] : '';
-                const showPinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
-                let extraClass = '';
-                if (!isPunctuation && firstChar) {
-                    extraClass = ' reading-pos';
-                    firstChar = false;
-                }
-                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + extraClass + '"' + (isPunctuation ? '' : ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"') + '><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
-            }
-            html += '</div>';
-            display.innerHTML = html;
-        }
-
-        function updateScore(correct, wrong) {
-            const total = correct + wrong;
-            const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
-            document.getElementById('correct-count').textContent = correct;
-            document.getElementById('wrong-count').textContent = wrong;
-            document.getElementById('accuracy').textContent = accuracy + '%';
-            document.getElementById('score-bar').style.display = 'flex';
-        }
-
-        function updateStatus(type, message) {
-            const bar = document.getElementById('status-bar');
-            bar.querySelector('.status-dot').className = 'status-dot ' + type;
-            bar.querySelector('.status-text').textContent = message;
-        }
-
-        function finalizeComparison() {
-            // Use only final transcripts — interim is for display only, not for comparison
-            // Also filter out any non-Chinese characters (English, garbled output)
-            const filteredTranscript = filterChinese(finalTranscript);
-            compareText(filteredTranscript, true);
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            const totalExpected = cleanText(passage.text).length;
-            const correctCount = charStatuses.filter(s => s.status === 'correct').length;
-            const accuracy = totalExpected > 0 ? Math.round((correctCount / totalExpected) * 100) : 0;
-            let emoji = accuracy >= 90 ? '🌟' : accuracy >= 70 ? '👍' : accuracy >= 50 ? '💪' : '📚';
-            updateStatus('ready', emoji + ' 完成！準確度: ' + accuracy + '% (' + correctCount + '/' + totalExpected + ')');
-        }
-
-        function toggleRecording() {
-            if (!recognition) setupRecognition();
-            if (!recognition) return;
-            if (!isRecording) {
-                finalTranscript = '';
-                seenResultIndexes = new Set();
-                interim = '';
-                document.getElementById('recognized-text').textContent = '';
-                document.getElementById('recognized-section').style.display = 'none';
-                document.getElementById('score-bar').style.display = 'none';
-                const passage = PASSAGES.find(p => p.id === currentPassageId);
-                renderPassageInitial(passage.text);
-                isRecording = true;
-                seenResultIndexes = new Set();  // reset on each fresh start
-                try { recognition.start(); } catch(e) {}
-            } else {
-                isRecording = false;
-                recognition.stop();
-            }
-        }
-
-        let ttsPlaying = false;
-        let ttsPaused = false;
-        let ttsCharPos = 0;
-        let ttsTracker = null;  // interval timer for position tracking
-
-        function updateTTSButtons(state) {
-            const playBtn = document.getElementById('play-btn');
-            const pauseBtn = document.getElementById('pause-btn');
-            const stopBtn = document.getElementById('stop-tts-btn');
-            if (state === 'playing') {
-                playBtn.style.display = 'none';
-                pauseBtn.style.display = 'inline-flex';
-                stopBtn.style.display = 'inline-flex';
-                pauseBtn.querySelector('.btn-text').textContent = '暫停';
-                pauseBtn.querySelector('.btn-icon').textContent = '⏸️';
-            } else if (state === 'paused') {
-                pauseBtn.querySelector('.btn-text').textContent = '繼續';
-                pauseBtn.querySelector('.btn-icon').textContent = '▶️';
-            } else {
-                playBtn.style.display = 'inline-flex';
-                pauseBtn.style.display = 'none';
-                stopBtn.style.display = 'none';
-            }
-        }
-
-        function speakPassage(text, startPos) {
-            window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
-
-            const toSpeak = startPos > 0 ? text.substring(startPos) : text;
-            const utterance = new SpeechSynthesisUtterance(toSpeak);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 0.85;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-
-            const voices = window.speechSynthesis.getVoices();
-            const mandarinVoice = voices.find(v =>
-                v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
-                v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-') ||
-                v.lang === 'zh-HK' || v.lang.startsWith('zh-HK-')
-            );
-            if (mandarinVoice) utterance.voice = mandarinVoice;
-
-            ttsPlaying = true;
-            ttsPaused = false;
-            updateStatus('playing', '🔊 播放示範中...');
-            updateTTSButtons('playing');
-
-            // Timer-based position tracking (Chrome onboundary unreliable)
-            const startTime = Date.now();
-            const charRate = 3.8;  // chars/sec at 0.85 rate
-            ttsTracker = setInterval(() => {
-                if (!ttsPlaying || ttsPaused) return;
-                const elapsed = (Date.now() - startTime) / 1000;
-                ttsCharPos = startPos + Math.floor(elapsed * charRate);
-            }, 150);
-
-            // Also use onboundary as fine-tuning if available
-            utterance.onboundary = (e) => {
-                if (e.charIndex !== undefined) {
-                    ttsCharPos = startPos + e.charIndex;
-                }
-            };
-
-            utterance.onstart = () => {
-                ttsPlaying = true; ttsPaused = false;
-                updateStatus('playing', '🔊 播放示範中...');
-            };
-            utterance.onend = () => {
-                clearInterval(ttsTracker);
-                ttsPlaying = false; ttsPaused = false;
-                ttsCharPos = 0;
-                updateTTSButtons('stop');
-                updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
-            };
-            utterance.onerror = (e) => {
-                clearInterval(ttsTracker);
-                ttsPlaying = false; ttsPaused = false;
-                ttsCharPos = 0;
-                updateTTSButtons('stop');
-                if (e.error !== 'canceled') {
-                    updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
-                }
-            };
-
-            setTimeout(() => { window.speechSynthesis.speak(utterance); }, 50);
-        }
-
-        function playTTS() {
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            if (!passage) return;
-            if (!window.speechSynthesis) {
-                updateStatus('warning', '⚠️ 你的瀏覽器唔支援語音播放，請用 Chrome');
-                return;
-            }
-
-            // If paused, resume from saved position
-            if (ttsPaused) {
-                clearInterval(ttsTracker);
-                speakPassage(passage.text, ttsCharPos);
-                return;
-            }
-
-            // Fresh start
-            ttsCharPos = 0;
-            clearInterval(ttsTracker);
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length === 0) {
-                updateStatus('playing', '⏳ 載入語音中...');
-                window.speechSynthesis.onvoiceschanged = () => {
-                    window.speechSynthesis.onvoiceschanged = null;
-                    speakPassage(passage.text, 0);
-                };
-            } else {
-                speakPassage(passage.text, 0);
-            }
-        }
-
-        function togglePauseTTS() {
-            if (!window.speechSynthesis) return;
-            if (ttsPaused) {
-                // Resume: re-speak from saved position
-                const passage = PASSAGES.find(p => p.id === currentPassageId);
-                if (passage) { clearInterval(ttsTracker); speakPassage(passage.text, ttsCharPos); }
-            } else if (ttsPlaying) {
-                // Pause: save position (already tracked by timer), cancel
-                window.speechSynthesis.cancel();
-                clearInterval(ttsTracker);
-                ttsPaused = true;
-                ttsPlaying = false;
-                updateStatus('playing', '⏸️ 已暫停 — 按 ▶️ 繼續');
-                updateTTSButtons('paused');
-            }
-        }
-
-        function stopTTS() {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
-            ttsPlaying = false;
-            ttsPaused = false;
-            ttsCharPos = 0;
-            updateTTSButtons('stop');
-            updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
-        }
-
-        function speakChar(ch) {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(ch);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 0.75;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-            const voices = window.speechSynthesis.getVoices();
-            const mandarinVoice = voices.find(v =>
-                v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
-                v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-')
-            );
-            if (mandarinVoice) utterance.voice = mandarinVoice;
-            setTimeout(() => { window.speechSynthesis.speak(utterance); }, 30);
-        }
-
-        function resetAll() {
-            if (isRecording) { isRecording = false; if (recognition) recognition.stop(); }
-            // Stop any TTS
-            if (window.speechSynthesis) window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
-            ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
-            updateTTSButtons('stop');
-            finalTranscript = ''; charStatuses = [];
-            document.getElementById('recognized-text').textContent = '';
-            document.getElementById('recognized-section').style.display = 'none';
-            document.getElementById('score-bar').style.display = 'none';
-            document.getElementById('record-btn').classList.remove('recording');
-            document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            renderPassageInitial(passage.text);
-            updateStatus('ready', '準備就緒 — 選擇篇章後按「開始錄音」');
-        }
-
-        document.getElementById('passage-select').addEventListener('change', function() {
-            currentPassageId = parseInt(this.value);
-            resetAll();
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.code === 'Space' && e.target === document.body) {
-                e.preventDefault();
-                toggleRecording();
-            }
-        });
-
-        function init() {
-            if (window.speechSynthesis) {
-                window.speechSynthesis.getVoices();
-                window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-            }
-            setupRecognition();
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            renderPassageInitial(passage.text);
-        }
-
-        window.addEventListener('DOMContentLoaded', init);
-
-        // Sidebar toggle
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('overlay').classList.toggle('active');
-        }
-    </script>
+<body class="p-4 md:p-8">
+ <div class="max-w-4xl mx-auto bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border-8 border-blue-50">
+ <header class="bg-blue-600 p-8 text-white text-center">
+ <h1 class="text-3xl font-bold">🗣️ 普通話發音練習</h1>
+ <p class="mt-2 opacity-90">錄音時會自動重啟，請放心慢慢讀</p>
+ <p class="mt-1 opacity-70 text-sm">v1.07</p>
+ </header>
+
+ <div class="p-6">
+ <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+ <button onclick="changePassage(0)" class="passage-btn p-3 rounded-xl border-2 border-blue-100 hover:bg-blue-50 transition text-sm font-bold">主題一：餃子</button>
+ <button onclick="changePassage(1)" class="passage-btn p-3 rounded-xl border-2 border-blue-100 hover:bg-blue-50 transition text-sm font-bold">主題二：魚丸</button>
+ <button onclick="changePassage(2)" class="passage-btn p-3 rounded-xl border-2 border-blue-100 hover:bg-blue-50 transition text-sm font-bold">主題三：颱風</button>
+ <button onclick="changePassage(3)" class="passage-btn p-3 rounded-xl border-2 border-blue-100 hover:bg-blue-50 transition text-sm font-bold">主題四：環保</button>
+ </div>
+
+ <div id="display-container" class="bg-slate-50 p-6 md:p-10 rounded-[2rem] min-h-[350px] shadow-inner mb-8 flex flex-wrap justify-center items-end"></div>
+
+ <div class="flex flex-wrap justify-center gap-4">
+ <button id="btn-tts" onclick="playSample()" class="px-8 py-4 bg-orange-400 text-white rounded-full font-bold shadow-lg hover:bg-orange-500 transition active:scale-95">🔊 聽範讀</button>
+ <button id="btn-record" onclick="toggleRecording()" class="px-10 py-4 bg-blue-600 text-white rounded-full font-bold shadow-xl hover:bg-blue-700 transition active:scale-95">
+ <span id="record-icon">🎤</span> <span id="record-text">開始錄音</span>
+ </button>
+ <button onclick="resetText()" class="px-8 py-4 bg-gray-400 text-white rounded-full font-bold shadow-lg hover:bg-gray-500 transition active:scale-95">🔄 重試</button>
+ </div>
+
+ <div id="status-bar" class="text-center mt-8 text-blue-600 font-bold text-lg min-h-[1.5rem]"></div>
+ <div id="live-text" class="text-center mt-2 text-gray-400 italic text-sm"></div>
+ </div>
+ </div>
+
+ <script>
+ const { pinyin } = pinyinPro;
+ const PASSAGES = [
+ "餃子是我婆婆的中餐拿手菜，叫粟米紅蘿蔔豬肉餃子。內裡的豬肉鮮甜多汁和皮很薄，我很喜歡吃，每天早上都會吃它做早餐。",
+ "今天我要介紹的香港街頭小食是魚丸，是一種很常見也很美味的小食，它很軟和彈牙，價錢也很便宜。辣辣的咖哩汁和魚丸簡直是絕配啊！",
+ "我今天要介紹的一種極端天氣就是颱風，它形成於熱帶的海洋，它會一直旋轉直到它化解，並令到它旁邊的各種物件卷上天空，造成人命傷亡，所以很危險的啊！",
+ "我要分享的一個環保好方法，就是會用舊襯衣重用做毛巾，在家中廚房需要經常抹油污，就可以用這些舊襯衣代替即棄紙巾，我覺得這種是很好的一個環保方法。"
+ ];
+
+ let currentIdx = 0;
+ let isRecording = false;
+ let recognition = null;
+ let cumulativeTranscript = "";
+ let charMatched = [];  // track match state for each char
+
+ function setupRecognition() {
+ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+ if (!SpeechRecognition) return alert("請使用 Chrome 瀏覽器以支援語音功能");
+
+ recognition = new SpeechRecognition();
+ recognition.lang = 'zh-CN';
+ recognition.continuous = true;
+ recognition.interimResults = true;
+
+ recognition.onstart = () => updateStatus("👂 正在聽... 請大聲讀出文字");
+
+ recognition.onresult = (event) => {
+ let interim = "";
+ for (let i = event.resultIndex; i < event.results.length; ++i) {
+ if (event.results[i].isFinal) {
+ cumulativeTranscript += event.results[i][0].transcript;
+ } else {
+ interim += event.results[i][0].transcript;
+ }
+ }
+ const fullText = cumulativeTranscript + interim;
+ document.getElementById('live-text').textContent = "偵測到：" + fullText;
+ compareAndHighlight(fullText);
+ };
+
+ recognition.onend = () => {
+ // CRITICAL: auto-restart if user hasn't stopped
+ if (isRecording) {
+ console.log("偵測到中斷，正在自動重啟...");
+ try { recognition.start(); } catch(e) {
+ setTimeout(() => { try { recognition.start(); } catch(e2) {} }, 200);
+ }
+ } else {
+ finalizeResult();
+ }
+ };
+ }
+
+ function renderText() {
+ const container = document.getElementById('display-container');
+ container.innerHTML = '';
+ const units = document.querySelectorAll('.char-unit');
+ charMatched = new Array(units.length).fill(false);
+ const data = pinyin(PASSAGES[currentIdx], { type: 'all', toneType: 'symbol', nonZh: 'consecutive' });
+
+ data.forEach(item => {
+ if (/[，。！？、]/.test(item.origin)) {
+ const span = document.createElement('span');
+ span.className = 'punctuation';
+ span.textContent = item.origin;
+ container.appendChild(span);
+ } else if (item.origin.trim()) {
+ const div = document.createElement('div');
+ div.className = 'char-unit';
+ div.dataset.char = item.origin;
+ div.innerHTML = `<span class="pinyin">${item.pinyin}</span><span class="zh-char">${item.origin}</span>`;
+ container.appendChild(div);
+ }
+ });
+ }
+
+ /**
+ * Linear scan matching — each recognized char advances the pointer sequentially.
+ * This prevents repeated chars (e.g. multiple "的") from being matched out-of-order.
+ */
+ function compareAndHighlight(transcript) {
+ const cleanText = transcript.replace(/[，。！？、\s]/g, '');
+ const units = document.querySelectorAll('.char-unit');
+
+ // Linear scan: walk through expected chars and try to match recognized chars in order
+ let ri = 0;  // read pointer into cleanText
+ for (let ei = 0; ei < units.length && ri < cleanText.length; ei++) {
+ const expectedChar = units[ei].dataset.char;
+ const recChar = cleanText[ri];
+ if (expectedChar === recChar) {
+ // Match — mark green, advance both pointers
+ if (!charMatched[ei]) {
+ charMatched[ei] = true;
+ units[ei].classList.add('status-correct');
+ units[ei].classList.remove('status-incorrect');
+ }
+ ri++;
+ } else {
+ // No match — don't advance ri, leave as pending (could be STT noise or misread)
+ // Don't mark wrong yet during live recording — do it only in finalizeResult
+ ri++;  // skip STT noise char
+ }
+ }
+ // During live recording: also highlight any chars that appear in sequence
+ // (even if some chars were skipped, as long as they're in order)
+ // Reset and re-scan for progressive highlighting
+ ri = 0;
+ for (let ei = 0; ei < units.length; ei++) {
+ if (charMatched[ei]) continue;  // already matched
+ if (ri >= cleanText.length) break;
+ const expectedChar = units[ei].dataset.char;
+ // Find this char somewhere ahead in recognized text (permissive live mode)
+ const ahead = cleanText.indexOf(expectedChar, ri);
+ if (ahead !== -1 && ahead - ri < cleanText.length) {
+ // Found in-sequence, mark it
+ charMatched[ei] = true;
+ units[ei].classList.add('status-correct');
+ units[ei].classList.remove('status-incorrect');
+ ri = ahead + 1;
+ }
+ }
+ }
+
+ function finalizeResult() {
+ const units = document.querySelectorAll('.char-unit');
+ let correct = 0;
+ units.forEach((u, idx) => {
+ if (charMatched[idx]) {
+ correct++;
+ } else {
+ u.classList.remove('status-correct');
+ u.classList.add('status-incorrect');
+ }
+ });
+ const score = Math.round((correct / units.length) * 100);
+ updateStatus(`🏁 完成！準確率：${score}% (${correct}/${units.length})`);
+ }
+
+ function playSample() {
+ window.speechSynthesis.cancel();
+ const utterance = new SpeechSynthesisUtterance(PASSAGES[currentIdx]);
+ utterance.lang = 'zh-CN';
+ utterance.rate = 0.8;
+ window.speechSynthesis.speak(utterance);
+ }
+
+ function updateUI(recording) {
+ const btn = document.getElementById('btn-record');
+ document.getElementById('record-text').textContent = recording ? "停止錄音" : "開始錄音";
+ document.getElementById('record-icon').textContent = recording ? "⏹️" : "🎤";
+ btn.className = recording ?
+ "px-10 py-4 bg-red-600 text-white rounded-full font-bold shadow-xl recording-pulse transition" :
+ "px-10 py-4 bg-blue-600 text-white rounded-full font-bold shadow-xl hover:bg-blue-700 transition";
+ }
+
+ function changePassage(i) {
+ currentIdx = i;
+ resetText();
+ document.querySelectorAll('.passage-btn').forEach((b, idx) => {
+ b.classList.toggle('bg-blue-600', idx === i);
+ b.classList.toggle('text-white', idx === i);
+ });
+ }
+
+ function toggleRecording() {
+ if (!recognition) setupRecognition();
+ if (isRecording) {
+ isRecording = false;
+ try { recognition.stop(); } catch(e) {}
+ updateUI(false);
+ } else {
+ isRecording = true;
+ cumulativeTranscript = "";
+ charMatched = new Array(document.querySelectorAll('.char-unit').length).fill(false);
+ resetHighlights();
+ recognition.start();
+ updateUI(true);
+ }
+ }
+
+ function resetText() {
+ isRecording = false;
+ if(recognition) { try { recognition.stop(); } catch(e) {} }
+ cumulativeTranscript = "";
+ charMatched = [];
+ renderText();
+ updateUI(false);
+ updateStatus("準備就緒");
+ document.getElementById('live-text').textContent = "";
+ }
+
+ function resetHighlights() {
+ document.querySelectorAll('.char-unit').forEach(u => {
+ u.className = 'char-unit';
+ });
+ }
+
+ function updateStatus(msg) { document.getElementById('status-bar').textContent = msg; }
+
+ window.onload = () => {
+ changePassage(0);
+ window.speechSynthesis.getVoices();
+ };
+ </script>
 </body>
 </html>
