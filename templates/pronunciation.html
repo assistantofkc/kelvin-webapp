@@ -686,7 +686,7 @@
                 if (isPunct(ch)) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    html += '<div class="char-cell pending"><span class="pinyin">' + (py === ch ? '' : py) + '</span><span class="char">' + ch + '</span></div>';
+                    html += '<div class="char-cell pending" onclick="speakChar(\'' + ch + '\')"><span class="pinyin">' + (py === ch ? '' : py) + '</span><span class="char">' + ch + '</span></div>';
                 }
             }
             html += '</div>';
