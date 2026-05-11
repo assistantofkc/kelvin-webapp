@@ -180,16 +180,17 @@ body {
     color: #999;
 }
 
-/* Status: pending (default) */
+/* Status: pending — grey (recording, not yet read) */
 .char-cell.pending {
-    background: transparent;
+    background: #f8f8f8;
+    border-color: #ddd;
 }
 
 .char-cell.pending .char {
-    color: #aaa;
+    color: #888;
 }
 
-/* Reading position indicator - first pending char shows where to read next */
+/* Reading position indicator — blue dashed border on first pending char */
 .char-cell.pending.reading-pos {
     background: #dbeafe !important;
     outline: 3px dashed #3b82f6;
@@ -202,9 +203,10 @@ body {
     font-weight: 700;
 }
 
-/* Status: correct */
+/* Status: correct — green */
 .char-cell.correct {
     background: #dcfce7;
+    border-color: #10b981;
     animation: popCorrect 0.3s ease;
 }
 
@@ -217,17 +219,17 @@ body {
     font-weight: 700;
 }
 
-/* Status: wrong */
-.char-cell.wrong {
-    background: #fef2f2;
-    animation: shake 0.3s ease;
+/* Status: incorrect — red (final, not matched) */
+.char-cell.incorrect {
+    background: #fee2e2;
+    border-color: #f87171;
 }
 
-.char-cell.wrong .pinyin {
+.char-cell.incorrect .pinyin {
     color: #dc2626;
 }
 
-.char-cell.wrong .char {
+.char-cell.incorrect .char {
     color: #b91c1c;
     text-decoration: underline wavy #f87171;
 }

@@ -267,40 +267,40 @@
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const expected = passage.text;
             const expectedPinyins = getPinyin(expected);
+
+            // 只保留中文字符進行比對
             const cleanRecText = recognized.replace(/[^\u4e00-\u9fff]/g, '');
 
-            // Build char-by-char list from passage (excluding punctuation)
             const expChars = [];
             for (let i = 0; i < expected.length; i++) {
                 if (!isPunct(expected[i])) expChars.push(expected[i]);
             }
 
-            // Initialize / reset match array every time (live or final)
-            if (charMatched.length !== expChars.length) {
-                charMatched = new Array(expChars.length).fill(false);
+            // 重置或初始化匹配陣列
+            let currentMatch = new Array(expChars.length).fill(false);
+
+            // 嚴格順序比對邏輯
+            let ri = 0; // 辨識文字的指針
+            for (let ei = 0; ei < expChars.length; ei++) {
+                // 在當前指針附近的範圍搜尋，避免遠處的同音字誤判
+                // 搜尋範圍設為當前指針後的 5 個字內
+                const searchRange = cleanRecText.substring(ri, ri + 5);
+                const foundIdx = searchRange.indexOf(expChars[ei]);
+
+                if (foundIdx !== -1) {
+                    currentMatch[ei] = true;
+                    ri += foundIdx + 1; // 移動指針到已匹配字的後面
+                }
             }
 
-            // Gemini's matching: indexOf search with proximity check
-            // For each expected char, find it sequentially in recognized text
-            let ri = 0;
-            for (let ei = 0; ei < expChars.length; ei++) {
-                if (!isFinal && charMatched[ei]) continue;  // already matched (live mode only)
-                // STRICT sequential match: char must appear at or very near current read position
-                const foundIdx = cleanRecText.indexOf(expChars[ei], ri);
-                // Match ONLY if sequential (foundIdx within 1 char of current ri)
-                if (foundIdx !== -1 && foundIdx - ri <= 1) {
-                    charMatched[ei] = true;
-                    ri = foundIdx + 1;
-                }
-                // If found but too far away → DON'T mark as matched (not sequential = didn't actually read it)
-                // If not found → charMatched[ei] stays false (wrong/missing)
-            }
+            charMatched = currentMatch; // 更新全局變量
 
             const correctCount = charMatched.filter(Boolean).length;
+            // 如果是最終結果，未匹配的即為錯誤；若是錄音中，未匹配的顯示為等待
             const wrongCount = isFinal ? expChars.length - correctCount : 0;
+
             updateScore(correctCount, wrongCount);
-            charStatuses = charMatched.map(matched => ({ status: matched ? 'correct' : 'missing', recognized: '' }));
-            renderPassageWithStatus(expected, expectedPinyins, charMatched.map(m => m ? 'correct' : 'pending'), isFinal);
+            renderPassageWithStatus(expected, expectedPinyins, charMatched, isFinal);
         }
 
         function showLiveProgress(currentText) {
@@ -313,33 +313,31 @@
             }
         }
 
-        function renderPassageWithStatus(text, pinyins, charMatched, isFinal) {
+        function renderPassageWithStatus(text, pinyins, matchArray, isFinal) {
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
             let statusIdx = 0;
-            let firstPendingFound = false;
 
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
-                const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
+                const isPunctuation = isPunct(ch);
                 const rawPinyin = i < pinyins.length ? pinyins[i] : '';
                 const pinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
 
                 if (isPunctuation) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    const isCorrect = !!charMatched[statusIdx];
-                    // Live mode: correct → green, unmatched → gray (pending)
-                    // Final mode: correct → green, unmatched → red (incorrect)
-                    const status = isCorrect ? 'correct' : (isFinal ? 'incorrect' : 'pending');
-                    const posClass = (!isCorrect && !firstPendingFound && !isFinal) ? ' reading-pos' : '';
-                    if (!isCorrect) firstPendingFound = true;
-                    let tooltip = '';
-                    if (isFinal && !isCorrect) tooltip = ' data-tooltip="讀錯或未讀到"';
-                    else if (!isCorrect) tooltip = ' data-tooltip="未讀到"';
-                    html += '<div class="char-cell ' + status + posClass + '"' +
-                            ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + ' ' +
-                            '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    const isCorrect = matchArray[statusIdx];
+                    let statusClass = '';
+                    if (isCorrect) {
+                        statusClass = 'correct'; // 綠色
+                    } else {
+                        // 錄音結束後，沒讀對的變紅色 (incorrect)，錄音中則是灰色 (pending)
+                        statusClass = isFinal ? 'incorrect' : 'pending';
+                    }
+                    html += '<div class="char-cell ' + statusClass + '" onclick="speakChar(\'' + ch + '\')" title="按我聽發音">' +
+                            '<span class="pinyin">' + pinyin + '</span>' +
+                            '<span class="char">' + ch + '</span></div>';
                     statusIdx++;
                 }
             }
