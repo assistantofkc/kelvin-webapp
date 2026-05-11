@@ -620,3 +620,105 @@ body {
         font-size: 0.9rem;
     }
 }
+
+/* ==================== EDIT BUTTON & MODAL ==================== */
+.btn-edit-passage {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    margin-left: 8px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #0369a1;
+    transition: all 0.2s;
+}
+.btn-edit-passage:hover {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-content h2 {
+    margin: 0 0 4px 0;
+    font-size: 1.3rem;
+}
+.modal-subtitle {
+    color: #888;
+    font-size: 0.9rem;
+    margin: 0 0 16px 0;
+}
+.modal-content textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-family: 'Noto Sans TC', sans-serif;
+    line-height: 1.8;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.modal-content textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+.modal-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+}
+.btn-save, .btn-cancel, .btn-reset-default {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-save {
+    background: #3b82f6;
+    color: white;
+}
+.btn-save:hover {
+    background: #2563eb;
+}
+.btn-cancel {
+    background: #f1f5f9;
+    color: #475569;
+}
+.btn-cancel:hover {
+    background: #e2e8f0;
+}
+.btn-reset-default {
+    background: #fee2e2;
+    color: #dc2626;
+    margin-right: auto;
+}
+.btn-reset-default:hover {
+    background: #fecaca;
+}
