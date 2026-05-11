@@ -29,8 +29,8 @@ PASSAGES = [
     }
 ]
 
-PRONUNCIATION_VERSION = 'v1.07'
+PRONUNCIATION_VERSION = 'v1.08'
 
 @pronunciation_bp.route('/pronunciation')
 def index():
-    return render_template('pronunciation.html', version=PRONUNCIATION_VERSION)
+    return render_template('pronunciation.html', passages=PASSAGES, version=PRONUNCIATION_VERSION)
