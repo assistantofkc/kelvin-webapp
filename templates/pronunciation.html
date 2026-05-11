@@ -453,28 +453,29 @@
         }
 
         function speakPassage(text, startPos) {
-            // 1. 先徹底停止所有語音
+            // 1. 強制停止當前所有語音
             window.speechSynthesis.cancel();
             clearInterval(ttsTracker);
 
-            // 延遲一小段時間再開始，確保瀏覽器語音引擎已重設
+            // 2. 稍微延遲，確保 Chrome 的語音引擎已重置
             setTimeout(() => {
-                const toSpeak = startPos > 0 ? text.substring(startPos) : text;
+                // 從 startPos 開始切割字串
+                const toSpeak = text.substring(startPos);
                 const utterance = new SpeechSynthesisUtterance(toSpeak);
 
                 utterance.lang = 'zh-CN';
                 utterance.rate = 0.85;
 
-                // 自動選擇普通話女聲 (優選 Google 語音)
+                // 語音選擇
                 const voices = window.speechSynthesis.getVoices();
-                const mandarinVoice = voices.find(v => v.lang.includes('zh-CN') && v.name.includes('Google')) ||
-                                      voices.find(v => v.lang.includes('zh-CN'));
+                const mandarinVoice = voices.find(v => v.lang.includes('zh-CN')) || voices[0];
                 if (mandarinVoice) utterance.voice = mandarinVoice;
 
-                // 追蹤進度：使用原生的 onboundary 最準確
-                utterance.onboundary = (e) => {
-                    if ((e.name === 'word' || e.name === 'sentence') && e.charIndex !== undefined) {
-                        ttsCharPos = startPos + e.charIndex;
+                // 【核心修正】精確紀錄當前讀到的字
+                utterance.onboundary = (event) => {
+                    if (event.name === 'word') {
+                        // 當前總進度 = 這次片段的起始點 + 這次片段讀到的位移
+                        ttsCharPos = startPos + event.charIndex;
                     }
                 };
 
@@ -486,22 +487,12 @@
                 };
 
                 utterance.onend = () => {
-                    if (!ttsPaused) { // 只有在不是因為按下暫停而停止時，才重設狀態
-                        ttsPlaying = false;
-                        ttsCharPos = 0;
-                        updateTTSButtons('stop');
-                        updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
-                    }
-                };
-
-                utterance.onerror = (e) => {
+                    // 如果不是因為按了「暫停」而停止，就重設所有狀態
                     if (!ttsPaused) {
                         ttsPlaying = false;
                         ttsCharPos = 0;
                         updateTTSButtons('stop');
-                        if (e.error !== 'canceled') {
-                            updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
-                        }
+                        updateStatus('ready', '示範完畢');
                     }
                 };
 
@@ -510,34 +501,31 @@
         }
 
         function playTTS() {
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            if (!passage) return;
-
             if (ttsPaused) {
-                togglePauseTTS(); // 如果是暫停中，就呼叫切換函數來恢復
+                togglePauseTTS();
                 return;
             }
-
-            // 全新播放
+            // 全新播放，從 0 開始
             ttsCharPos = 0;
-            updateStatus('playing', '⏳ 載入語音中...');
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
             speakPassage(passage.text, 0);
         }
 
         function togglePauseTTS() {
             if (!window.speechSynthesis) return;
             const passage = PASSAGES.find(p => p.id === currentPassageId);
-            if (!passage) return;
 
             if (ttsPlaying) {
-                // 暫停：直接取消播放，但保留目前的 ttsCharPos 位置
-                window.speechSynthesis.cancel();
+                // 按下暫停：標記為暫停狀態，取消目前語音
                 ttsPaused = true;
                 ttsPlaying = false;
-                updateStatus('playing', '⏸️ 已暫停 — 按「繼續」繼續播放');
+                window.speechSynthesis.cancel();
+
+                updateStatus('playing', '⏸️ 已暫停 — 按「繼續」繼續');
                 updateTTSButtons('paused');
             } else if (ttsPaused) {
-                // 繼續：從上次記錄的字數位置重新開始
+                // 按下繼續：從記錄好的 ttsCharPos 再次呼叫 speakPassage
+                // 此時 speakPassage 內的 substring(startPos) 就會發揮作用
                 speakPassage(passage.text, ttsCharPos);
             }
         }
