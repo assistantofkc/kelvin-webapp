@@ -169,17 +169,20 @@ def assess_pronunciation():
     headers = {
         'Ocp-Apim-Subscription-Key': api_key,
         'Pronunciation-Assessment': pa_config_b64,
-        'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
+        'Content-Type': 'audio/wav',
         'Accept': 'application/json'
     }
 
     try:
         resp = requests.post(url, headers=headers, data=audio_data, timeout=30)
-        result = resp.json()
+        try:
+            result = resp.json()
+        except Exception:
+            result = resp.text
 
         if resp.status_code != 200:
             err_msg = result.get('Message', str(result)) if isinstance(result, dict) else str(result)
-            return jsonify({'status': 'error', 'message': err_msg}), resp.status_code
+            return jsonify({'status': 'error', 'message': f'Azure {resp.status_code}: {err_msg}'}), resp.status_code
 
         # Parse Azure response into phoneme-level feedback
         words_result = []

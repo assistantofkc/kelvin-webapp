@@ -272,6 +272,9 @@
             try {
                 mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                // Use ACTUAL sample rate (browser may ignore the hint)
+                sampleRate = audioContext.sampleRate;
+                console.log('Recording at', sampleRate, 'Hz');
                 const source = audioContext.createMediaStreamSource(mediaStream);
                 // Downsample to 16kHz mono via ScriptProcessor
                 scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
