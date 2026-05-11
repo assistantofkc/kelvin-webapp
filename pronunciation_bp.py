@@ -43,7 +43,7 @@ PASSAGES = [
     }
 ]
 
-PRONUNCIATION_VERSION = 'v2.2'
+PRONUNCIATION_VERSION = 'v2.3'
 
 # Path to custom passages JSON file on PythonAnywhere
 CUSTOM_FILE = os.path.join(os.path.dirname(__file__), 'pronunciation_custom.json')
