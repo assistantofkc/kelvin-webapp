@@ -375,24 +375,31 @@
             }
             const expectedPinyins = getPinyin(expected);
 
-            // Build map: expected char → recognized word info
+            // Use DisplayText (ASR output) for character matching
+            const recText = (data.recognition || '').replace(/[^\u4e00-\u9fff]/g, '');
+
+            // Build score map from Azure Words (reference text words with scores)
             const words = data.words || [];
-            const recChars = [];
+            const scoreMap = {}; // char → { accuracy, errorType, phonemes }
+            let wi = 0;
             for (const w of words) {
                 for (const ch of w.word) {
-                    recChars.push({ char: ch, accuracy: w.accuracy, errorType: w.error_type, phonemes: w.phonemes });
+                    if (!isPunct(ch)) {
+                        scoreMap[wi] = { accuracy: w.accuracy, errorType: w.error_type, phonemes: w.phonemes || [] };
+                        wi++;
+                    }
                 }
             }
 
-            // Match recognized chars to expected chars (greedy sequential)
+            // Greedy sequential match: recognized text vs expected chars
             charMatched = new Array(expectedChars.length).fill(false);
             const matchDetails = new Array(expectedChars.length).fill(null);
             let ri = 0;
             for (let ei = 0; ei < expectedChars.length; ei++) {
-                const foundIdx = recChars.findIndex((rc, idx) => idx >= ri && rc.char === expectedChars[ei]);
+                const foundIdx = recText.indexOf(expectedChars[ei], ri);
                 if (foundIdx !== -1) {
                     charMatched[ei] = true;
-                    matchDetails[ei] = recChars[foundIdx];
+                    matchDetails[ei] = scoreMap[ei] || null; // map by expected char index
                     ri = foundIdx + 1;
                 }
             }
