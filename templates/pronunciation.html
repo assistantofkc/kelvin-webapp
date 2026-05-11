@@ -417,7 +417,7 @@
                 const acc = detail ? Math.round(detail.accuracy) : 0;
                 totalScore += acc;
                 scoredWords++;
-                if (acc >= 80) greenCount++;
+                if (acc >= 85) greenCount++;
                 else if (acc >= 50) yellowCount++;
                 else redCount++;
             }
@@ -425,9 +425,9 @@
 
             // Update score bar with 3-tier data
             document.getElementById('correct-count').textContent = greenCount;
-            document.getElementById('green-label').textContent = '🟢 ≥80%';
+            document.getElementById('green-label').textContent = '🟢 ≥85%';
             document.getElementById('middle-count').textContent = yellowCount;
-            document.getElementById('yellow-label').textContent = '🟡 50-79%';
+            document.getElementById('yellow-label').textContent = '🟡 50-84%';
             document.getElementById('wrong-count').textContent = redCount;
             document.getElementById('red-label').textContent = '🔴 <50%';
             document.getElementById('accuracy').textContent = avgScore + '%';
@@ -462,7 +462,7 @@
                     let tooltip = ' data-tooltip="未讀到或讀錯"';
                     if (matched && detail) {
                         const acc = Math.round(detail.accuracy);
-                        if (acc >= 80) statusClass = 'correct';
+                        if (acc >= 85) statusClass = 'correct';
                         else if (acc >= 50) statusClass = 'correct-medium';
                         else statusClass = 'incorrect';
                         tooltip = ' data-tooltip="分數:' + acc + '%"';
@@ -482,7 +482,7 @@
 
         function tierClass(score) {
             if (score === null || score === undefined) return '';
-            if (score >= 80) return 'good';
+            if (score >= 85) return 'good';
             if (score >= 50) return 'medium';
             return 'bad';
         }
