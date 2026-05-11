@@ -68,6 +68,10 @@
                 <span class="score-label" id="green-label">🟢 優秀</span>
                 <span class="score-value" id="correct-count">0</span>
             </div>
+            <div class="score-item middle-count">
+                <span class="score-label" id="yellow-label">🟡 尚可</span>
+                <span class="score-value" id="middle-count">0</span>
+            </div>
             <div class="score-item wrong-count">
                 <span class="score-label" id="red-label">🔴 須改善</span>
                 <span class="score-value" id="wrong-count">0</span>
@@ -422,6 +426,8 @@
             // Update score bar with 3-tier data
             document.getElementById('correct-count').textContent = greenCount;
             document.getElementById('green-label').textContent = '🟢 ≥80%';
+            document.getElementById('middle-count').textContent = yellowCount;
+            document.getElementById('yellow-label').textContent = '🟡 50-79%';
             document.getElementById('wrong-count').textContent = redCount;
             document.getElementById('red-label').textContent = '🔴 <50%';
             document.getElementById('accuracy').textContent = avgScore + '%';
@@ -726,6 +732,8 @@
             const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
             document.getElementById('correct-count').textContent = correct;
             document.getElementById('green-label').textContent = '🟢 正確';
+            document.getElementById('middle-count').textContent = '—';
+            document.getElementById('yellow-label').textContent = '🟡';
             document.getElementById('wrong-count').textContent = wrong;
             document.getElementById('red-label').textContent = '🔴 錯誤';
             document.getElementById('accuracy').textContent = accuracy + '%';
