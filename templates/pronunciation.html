@@ -147,8 +147,7 @@
         let currentPassageId = 1;
         let recognition = null;
         let isRecording = false;
-        let interim = '';  // latest interim only (not accumulated)
-        let seenResultIndexes = new Set();  // dedup: track which result indexes we've already processed
+        let interim = '';  // latest interim only
         let finalTranscript = '';
         let charMatched = [];  // track match state for each char (per Gemini approach)
 
@@ -219,26 +218,20 @@
             };
 
             recognition.onresult = (event) => {
-                // Reset interim each time — only keep the latest interim result
                 let newInterim = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    // Deduplicate: skip if we've already processed this result index
+                const currentIndex = event.resultIndex;
+                for (let i = currentIndex; i < event.results.length; i++) {
                     if (event.results[i].isFinal) {
-                        if (!seenResultIndexes.has(i)) {
-                            seenResultIndexes.add(i);
-                            finalTranscript += event.results[i][0].transcript;
-                        }
+                        finalTranscript += event.results[i][0].transcript;
                     } else {
-                        newInterim = event.results[i][0].transcript;  // overwrite, not append
+                        newInterim = event.results[i][0].transcript;
                     }
                 }
                 interim = newInterim;
                 const currentText = finalTranscript + interim;
-                // Filter out non-Chinese from display too
                 const displayText = currentText.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '');
                 document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
-                // Show live progress only — NO per-character comparison during recording
                 showLiveProgress(currentText);
             };
         }
@@ -405,7 +398,6 @@
             if (!recognition) return;
             if (!isRecording) {
                 finalTranscript = '';
-                seenResultIndexes = new Set();
                 interim = '';
                 document.getElementById('recognized-text').textContent = '';
                 document.getElementById('recognized-section').style.display = 'none';
@@ -413,7 +405,7 @@
                 const passage = PASSAGES.find(p => p.id === currentPassageId);
                 renderPassageInitial(passage.text);
                 isRecording = true;
-                seenResultIndexes = new Set();  // reset on each fresh start
+                let seenResultIndexes = new Set();
                 try { recognition.start(); } catch(e) {}
             } else {
                 isRecording = false;
