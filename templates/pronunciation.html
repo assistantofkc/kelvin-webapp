@@ -412,7 +412,7 @@
             renderPassageWithPhonemes(expected, expectedPinyins, charMatched, matchDetails);
 
             // Build phoneme panel
-            buildPhonemePanel(expectedChars, expectedPinyins, charMatched, matchDetails);
+            buildPhonemePanel(expectedChars, expectedPinyins, charMatched, matchDetails, data);
 
             const acc = Math.round((correctCount / expectedChars.length) * 100);
             const emoji = acc >= 90 ? '🌟' : acc >= 70 ? '👍' : acc >= 50 ? '💪' : '📚';
@@ -454,13 +454,19 @@
         let allPinyins = [];
         let allMatched = [];
 
-        function buildPhonemePanel(expectedChars, expectedPinyins, matched, details) {
+        function buildPhonemePanel(expectedChars, expectedPinyins, matched, details, data) {
             allChars = expectedChars;
             allPinyins = expectedPinyins;
             allMatched = matched;
             allDetails = details;
             document.getElementById('phoneme-panel').style.display = 'block';
-            document.getElementById('phoneme-detail').innerHTML = '<p class="phoneme-hint">👆 點擊任何中文字查看詳細發音分析</p>';
+            // Show debug: first 2 words raw from Azure
+            let debugHtml = '<p class="phoneme-hint">👆 點擊任何中文字查看詳細發音分析</p>';
+            if (data._debug_raw_words && data._debug_raw_words.length > 0) {
+                debugHtml += '<pre style="font-size:0.7rem;color:#94a3b8;margin-top:8px;max-height:120px;overflow:auto;">' +
+                    JSON.stringify(data._debug_raw_words, null, 2) + '</pre>';
+            }
+            document.getElementById('phoneme-detail').innerHTML = debugHtml;
         }
 
         function showCharDetail(idx) {

@@ -177,7 +177,18 @@ def assess_pronunciation():
         resp = requests.post(url, headers=headers, data=audio_data, timeout=30)
         try:
             result = resp.json()
-        except Exception:
+            # DEBUG: log raw Azure response structure
+            print("AZURE DEBUG - status:", resp.status_code)
+            print("AZURE DEBUG - DisplayText:", result.get('DisplayText', 'N/A')[:80])
+            if resp.status_code == 200 and 'NBest' in result and len(result['NBest']) > 0:
+                nb = result['NBest'][0]
+                if 'Words' in nb and len(nb['Words']) > 0:
+                    w0 = nb['Words'][0]
+                    print("AZURE DEBUG - first word keys:", list(w0.keys()))
+                    if 'PronunciationAssessment' in w0:
+                        print("AZURE DEBUG - PA type:", type(w0['PronunciationAssessment']).__name__, w0['PronunciationAssessment'])
+        except Exception as e:
+            print("AZURE DEBUG - parse error:", e)
             result = resp.text
 
         if resp.status_code != 200:
@@ -213,7 +224,8 @@ def assess_pronunciation():
         return jsonify({
             'status': 'ok',
             'recognition': result.get('DisplayText', ''),
-            'words': words_result
+            'words': words_result,
+            '_debug_raw_words': result.get('NBest', [{}])[0].get('Words', [])[:2] if result.get('NBest') else []
         })
 
     except requests.exceptions.Timeout:
