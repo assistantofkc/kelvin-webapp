@@ -425,9 +425,7 @@
 
         let ttsPlaying = false;
         let ttsPaused = false;
-        let ttsCharPos = 0;       // character offset for substring restart
-        let ttsElapsed = 0;       // elapsed seconds when paused (for accurate restart)
-        let ttsStartTime = 0;     // Date.now() when current speak started
+        let ttsCharPos = 0;       // character offset for subtitle restart
         let ttsTracker = null;    // interval timer for position tracking
 
         function updateTTSButtons(state) {
@@ -451,123 +449,92 @@
         }
 
         function speakPassage(text, startPos) {
+            // 1. 先徹底停止所有語音
             window.speechSynthesis.cancel();
             clearInterval(ttsTracker);
 
-            const toSpeak = startPos > 0 ? text.substring(startPos) : text;
-            const utterance = new SpeechSynthesisUtterance(toSpeak);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 0.85;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
+            // 延遲一小段時間再開始，確保瀏覽器語音引擎已重設
+            setTimeout(() => {
+                const toSpeak = startPos > 0 ? text.substring(startPos) : text;
+                const utterance = new SpeechSynthesisUtterance(toSpeak);
 
-            const voices = window.speechSynthesis.getVoices();
-            const mandarinVoice = voices.find(v =>
-                v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
-                v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-') ||
-                v.lang === 'zh-HK' || v.lang.startsWith('zh-HK-')
-            );
-            if (mandarinVoice) utterance.voice = mandarinVoice;
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.85;
 
-            ttsStartTime = Date.now();
-            ttsElapsed = 0;
-            ttsPlaying = true;
-            ttsPaused = false;
-            updateStatus('playing', '🔊 播放示範中...');
-            updateTTSButtons('playing');
+                // 自動選擇普通話女聲 (優選 Google 語音)
+                const voices = window.speechSynthesis.getVoices();
+                const mandarinVoice = voices.find(v => v.lang.includes('zh-CN') && v.name.includes('Google')) ||
+                                      voices.find(v => v.lang.includes('zh-CN'));
+                if (mandarinVoice) utterance.voice = mandarinVoice;
 
-            // Timer-based position tracking (Chrome onboundary unreliable)
-            const charRate = 3.8;  // chars/sec at 0.85 rate
-            ttsTracker = setInterval(() => {
-                if (!ttsPlaying || ttsPaused) return;
-                const elapsed = (Date.now() - ttsStartTime) / 1000;
-                ttsElapsed = elapsed;
-                ttsCharPos = Math.floor(startPos + elapsed * charRate);
-            }, 150);
+                // 追蹤進度：使用原生的 onboundary 最準確
+                utterance.onboundary = (e) => {
+                    if (e.charIndex !== undefined) {
+                        ttsCharPos = startPos + e.charIndex;
+                    }
+                };
 
-            // Also use onboundary as fine-tuning if available
-            utterance.onboundary = (e) => {
-                if (e.charIndex !== undefined) {
-                    ttsCharPos = startPos + e.charIndex;
-                }
-            };
+                utterance.onstart = () => {
+                    ttsPlaying = true;
+                    ttsPaused = false;
+                    updateStatus('playing', '🔊 播放示範中...');
+                    updateTTSButtons('playing');
+                };
 
-            utterance.onstart = () => {
-                ttsPlaying = true; ttsPaused = false;
-                updateStatus('playing', '🔊 播放示範中...');
-            };
-            utterance.onend = () => {
-                clearInterval(ttsTracker);
-                ttsPlaying = false; ttsPaused = false;
-                ttsCharPos = 0; ttsElapsed = 0;
-                updateTTSButtons('stop');
-                updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
-            };
-            utterance.onerror = (e) => {
-                clearInterval(ttsTracker);
-                ttsPlaying = false; ttsPaused = false;
-                ttsCharPos = 0; ttsElapsed = 0;
-                updateTTSButtons('stop');
-                if (e.error !== 'canceled') {
-                    updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
-                }
-            };
+                utterance.onend = () => {
+                    if (!ttsPaused) { // 只有在不是因為按下暫停而停止時，才重設狀態
+                        ttsPlaying = false;
+                        ttsCharPos = 0;
+                        updateTTSButtons('stop');
+                        updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+                    }
+                };
 
-            setTimeout(() => { window.speechSynthesis.speak(utterance); }, 50);
+                utterance.onerror = (e) => {
+                    if (!ttsPaused) {
+                        ttsPlaying = false;
+                        ttsCharPos = 0;
+                        updateTTSButtons('stop');
+                        if (e.error !== 'canceled') {
+                            updateStatus('warning', '⚠️ 播放失敗，請檢查裝置音量或試多次');
+                        }
+                    }
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }, 100);
         }
 
         function playTTS() {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             if (!passage) return;
-            if (!window.speechSynthesis) {
-                updateStatus('warning', '⚠️ 你的瀏覽器唔支援語音播放，請用 Chrome');
-                return;
-            }
 
-            // If paused, resume from saved elapsed time
             if (ttsPaused) {
-                clearInterval(ttsTracker);
-                const charRate = 3.8;
-                const resumePos = Math.floor(ttsElapsed * charRate);
-                speakPassage(passage.text, resumePos);
+                togglePauseTTS(); // 如果是暫停中，就呼叫切換函數來恢復
                 return;
             }
 
-            // Fresh start — cancel any current speech first
-            window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
+            // 全新播放
             ttsCharPos = 0;
-            ttsElapsed = 0;
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length === 0) {
-                updateStatus('playing', '⏳ 載入語音中...');
-                window.speechSynthesis.onvoiceschanged = () => {
-                    window.speechSynthesis.onvoiceschanged = null;
-                    speakPassage(passage.text, 0);
-                };
-            } else {
-                speakPassage(passage.text, 0);
-            }
+            updateStatus('playing', '⏳ 載入語音中...');
+            speakPassage(passage.text, 0);
         }
 
         function togglePauseTTS() {
             if (!window.speechSynthesis) return;
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             if (!passage) return;
-            if (ttsPaused) {
-                // Resume from saved position using ttsElapsed
-                clearInterval(ttsTracker);
-                const charRate = 3.8;
-                const resumePos = Math.floor(ttsElapsed * charRate);
-                speakPassage(passage.text, resumePos);
-            } else if (ttsPlaying) {
-                // Pause: cancel current speech, position already tracked by timer
+
+            if (ttsPlaying) {
+                // 暫停：直接取消播放，但保留目前的 ttsCharPos 位置
                 window.speechSynthesis.cancel();
-                clearInterval(ttsTracker);
                 ttsPaused = true;
                 ttsPlaying = false;
-                updateStatus('playing', '⏸️ 已暫停 — 按 ▶️ 繼續');
+                updateStatus('playing', '⏸️ 已暫停 — 按「繼續」繼續播放');
                 updateTTSButtons('paused');
+            } else if (ttsPaused) {
+                // 繼續：從上次記錄的字數位置重新開始
+                speakPassage(passage.text, ttsCharPos);
             }
         }
 
@@ -578,7 +545,6 @@
             ttsPlaying = false;
             ttsPaused = false;
             ttsCharPos = 0;
-            ttsElapsed = 0;
             updateTTSButtons('stop');
             updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
         }
@@ -605,7 +571,7 @@
             // Stop any TTS
             if (window.speechSynthesis) window.speechSynthesis.cancel();
             clearInterval(ttsTracker);
-            ttsPlaying = false; ttsPaused = false; ttsCharPos = 0; ttsElapsed = 0;
+            ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
             updateTTSButtons('stop');
             finalTranscript = ''; charStatuses = []; charMatched = [];
             document.getElementById('recognized-text').textContent = '';
