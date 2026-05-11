@@ -175,7 +175,8 @@ def assess_pronunciation():
         result = resp.json()
 
         if resp.status_code != 200:
-            return jsonify({'status': 'error', 'message': result.get('Message', 'Azure API error')}), resp.status_code
+            err_msg = result.get('Message', str(result)) if isinstance(result, dict) else str(result)
+            return jsonify({'status': 'error', 'message': err_msg}), resp.status_code
 
         # Parse Azure response into phoneme-level feedback
         words_result = []
@@ -183,17 +184,23 @@ def assess_pronunciation():
             nbest = result['NBest'][0]
             if 'Words' in nbest:
                 for w in nbest['Words']:
+                    pa = w.get('PronunciationAssessment', {})
+                    if isinstance(pa, str):
+                        pa = {}
                     word_info = {
                         'word': w.get('Word', ''),
-                        'accuracy': w.get('PronunciationAssessment', {}).get('AccuracyScore', 0),
-                        'error_type': w.get('PronunciationAssessment', {}).get('ErrorType', ''),
+                        'accuracy': pa.get('AccuracyScore', 0) if isinstance(pa, dict) else 0,
+                        'error_type': pa.get('ErrorType', '') if isinstance(pa, dict) else '',
                         'phonemes': []
                     }
                     if 'Phonemes' in w:
                         for p in w['Phonemes']:
+                            ph_pa = p.get('PronunciationAssessment', {})
+                            if isinstance(ph_pa, str):
+                                ph_pa = {}
                             word_info['phonemes'].append({
                                 'phoneme': p.get('Phoneme', ''),
-                                'accuracy': p.get('PronunciationAssessment', {}).get('AccuracyScore', 0),
+                                'accuracy': ph_pa.get('AccuracyScore', 0) if isinstance(ph_pa, dict) else 0,
                             })
                     words_result.append(word_info)
 
