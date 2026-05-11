@@ -473,7 +473,7 @@
 
                 // 追蹤進度：使用原生的 onboundary 最準確
                 utterance.onboundary = (e) => {
-                    if (e.charIndex !== undefined) {
+                    if ((e.name === 'word' || e.name === 'sentence') && e.charIndex !== undefined) {
                         ttsCharPos = startPos + e.charIndex;
                     }
                 };
