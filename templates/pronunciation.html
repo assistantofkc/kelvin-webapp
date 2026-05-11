@@ -111,6 +111,16 @@
             </button>
         </section>
 
+        <!-- Mode Toggle -->
+        <section class="mode-toggle">
+            <span class="mode-label">辨識引擎：</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="mode-switch" onchange="toggleMode()">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="mode-name" id="mode-name">Web Speech</span>
+        </section>
+
         <!-- Status -->
         <div class="status-bar" id="status-bar">
             <span class="status-dot"></span>
@@ -135,10 +145,122 @@
 
         let currentPassageId = 1;
         let isRecording = false;
+        let recognitionMode = 'web';  // 'web' or 'azure'
         let finalTranscript = '';
         let charMatched = [];
 
-        // ==================== AUDIO RECORDING ====================
+        // ==================== MODE TOGGLE ====================
+        function toggleMode() {
+            if (isRecording) { isRecording = false; stopRecording(); }
+            recognitionMode = document.getElementById('mode-switch').checked ? 'azure' : 'web';
+            document.getElementById('mode-name').textContent = recognitionMode === 'azure' ? 'Azure AI' : 'Web Speech';
+            document.getElementById('phoneme-panel').style.display = 'none';
+            resetAll();
+        }
+
+        // ==================== WEB SPEECH API (Web mode) ====================
+        let recognition = null;
+
+        function setupRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('mode-switch').checked = true;
+                toggleMode();
+                updateStatus('warning', '⚠️ 瀏覽器不支援 Web Speech，已切換至 Azure 模式');
+                return;
+            }
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-CN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                updateStatus('recording', '🎤 Web Speech 收聽中...');
+                document.getElementById('record-btn').classList.add('recording');
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    try { recognition.start(); } catch(e) {
+                        setTimeout(() => { if(isRecording) recognition.start(); }, 200);
+                    }
+                } else {
+                    finalizeWebResult();
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let newInterim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        newInterim += event.results[i][0].transcript;
+                    }
+                }
+                const displayText = (finalTranscript + newInterim).replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01]/g, '');
+                compareTextWeb(finalTranscript + newInterim, false);
+            };
+        }
+
+        function compareTextWeb(recognized, isFinal) {
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            const expected = passage.text;
+            const cleanRecText = recognized.replace(/[^\u4e00-\u9fff]/g, '');
+            const expChars = [];
+            for (let i = 0; i < expected.length; i++) {
+                if (!isPunct(expected[i])) expChars.push(expected[i]);
+            }
+            if (charMatched.length !== expChars.length) {
+                charMatched = new Array(expChars.length).fill(false);
+            }
+            let streamPtr = 0;
+            for (let i = 0; i < expChars.length; i++) {
+                const foundIdx = cleanRecText.indexOf(expChars[i], streamPtr);
+                if (foundIdx !== -1) { charMatched[i] = true; streamPtr = foundIdx + 1; }
+            }
+            const correctCount = charMatched.filter(Boolean).length;
+            updateScore(correctCount, isFinal ? expChars.length - correctCount : 0);
+            renderPassageWeb(expected, getPinyin(expected), charMatched, isFinal);
+        }
+
+        function renderPassageWeb(text, pinyins, matchArray, isFinal) {
+            const display = document.getElementById('passage-display');
+            let html = '<div class="char-grid">';
+            let charIdx = 0;
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                const py = i < pinyins.length ? pinyins[i] : '';
+                if (isPunct(ch)) {
+                    html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
+                } else {
+                    const isCorrect = matchArray[charIdx];
+                    const status = isCorrect ? 'correct' : (isFinal ? 'incorrect' : 'pending');
+                    html += '<div class="char-cell ' + status + '" onclick="speakChar(\'' + ch + '\')">' +
+                            '<span class="pinyin">' + (py === ch ? '' : py) + '</span><span class="char">' + ch + '</span></div>';
+                    charIdx++;
+                }
+            }
+            html += '</div>';
+            display.innerHTML = html;
+        }
+
+        function finalizeWebResult() {
+            document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('record-text').textContent = '開始錄音';
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            compareTextWeb(finalTranscript, true);
+            const total = cleanText(passage.text).length;
+            const correct = charMatched.filter(Boolean).length;
+            const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+            updateStatus('ready', '✅ 練習完成！準確度：' + acc + '% (' + correct + '/' + total + ')');
+        }
+
+        function cleanText(text) {
+            return text.replace(/[，。！？、！？：；「」『』（）\s\.\,\!\?\:\;\-]/g, '');
+        }
+
+        // ==================== AUDIO RECORDING (Azure mode) ====================
         let audioContext = null;
         let mediaStream = null;
         let scriptNode = null;
@@ -494,6 +616,7 @@
         async function toggleRecording() {
             if (!isRecording) {
                 isRecording = true;
+                finalTranscript = '';
                 charMatched = [];
                 document.getElementById('score-bar').style.display = 'none';
                 document.getElementById('phoneme-panel').style.display = 'none';
@@ -502,14 +625,27 @@
                 renderPassageInitial(passage.text);
                 document.getElementById('record-btn').classList.add('recording');
                 document.getElementById('record-text').textContent = '停止錄音';
-                await startRecording();
+
+                if (recognitionMode === 'web') {
+                    // Web Speech API mode
+                    if (!recognition) setupRecognition();
+                    if (recognition) recognition.start();
+                    updateStatus('recording', '🎤 Web Speech 收聽中...');
+                } else {
+                    // Azure mode
+                    await startRecording();
+                }
             } else {
                 isRecording = false;
-                stopRecording();
                 document.getElementById('record-btn').classList.remove('recording');
                 document.getElementById('record-text').textContent = '開始錄音';
-                // Send to Azure for assessment
-                await assessWithAzure();
+
+                if (recognitionMode === 'web') {
+                    if (recognition) recognition.stop();
+                } else {
+                    stopRecording();
+                    await assessWithAzure();
+                }
             }
         }
 
@@ -585,7 +721,11 @@
         }
 
         function resetAll() {
-            if (isRecording) { isRecording = false; stopRecording(); }
+            if (isRecording) {
+                isRecording = false;
+                if (recognitionMode === 'web' && recognition) recognition.stop();
+                else stopRecording();
+            }
             window.speechSynthesis.cancel(); ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
             updateTTSButtons('stop'); finalTranscript = ''; charMatched = [];
             document.getElementById('score-bar').style.display = 'none';
