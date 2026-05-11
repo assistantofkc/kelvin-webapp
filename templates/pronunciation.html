@@ -465,14 +465,74 @@
             allMatched = matched;
             allDetails = details;
             document.getElementById('phoneme-panel').style.display = 'block';
-            // Show debug: first 2 words raw from Azure
-            let debugHtml = '<p class="phoneme-hint">👆 點擊任何中文字查看詳細發音分析</p>';
-            if (data._debug_raw_words && data._debug_raw_words.length > 0) {
-                debugHtml += '<pre style="font-size:0.7rem;color:#94a3b8;margin-top:8px;max-height:120px;overflow:auto;">' +
-                    JSON.stringify(data._debug_raw_words, null, 2) + '</pre>';
+
+            // Build per-word summary table
+            let html = '<h4 style="margin:0 0 8px 0;">📊 逐字發音分析</h4>';
+            html += '<div class="phoneme-summary-table">';
+            html += '<div class="phoneme-row phoneme-header">' +
+                '<span>字</span><span>拼音</span><span>分數</span><span>聲母</span><span>韻母</span><span>聲調</span>' +
+                '</div>';
+
+            for (let i = 0; i < expectedChars.length; i++) {
+                const ch = expectedChars[i];
+                const py = expectedPinyins[i] || '';
+                const isMatched = matched[i];
+                const detail = details[i];
+
+                if (!isMatched) {
+                    html += '<div class="phoneme-row">' +
+                        '<span class="pw-char">' + ch + '</span>' +
+                        '<span class="pw-py">' + py + '</span>' +
+                        '<span class="pw-score bad">未讀</span>' +
+                        '<span>—</span><span>—</span><span>—</span>' +
+                        '</div>';
+                    continue;
+                }
+
+                if (!detail) {
+                    html += '<div class="phoneme-row">' +
+                        '<span class="pw-char">' + ch + '</span>' +
+                        '<span class="pw-py">' + py + '</span>' +
+                        '<span class="pw-score">讀</span>' +
+                        '<span>—</span><span>—</span><span>—</span>' +
+                        '</div>';
+                    continue;
+                }
+
+                // Parse Azure phoneme data
+                const phonemes = detail.phonemes || [];
+                let initAcc = null, finalAcc = null, toneNum = null, azurePinyin = '';
+                if (phonemes.length > 0) {
+                    const firstPh = phonemes[0].phoneme;
+                    const parts = firstPh.split(' ');
+                    azurePinyin = parts[0] || '';
+                    toneNum = parseInt(parts[1]) || null;
+                    initAcc = Math.round(phonemes[0].accuracy);
+                    if (phonemes.length > 1) {
+                        finalAcc = Math.round(phonemes.slice(1).reduce((s, p) => s + p.accuracy, 0) / (phonemes.length - 1));
+                    } else {
+                        finalAcc = initAcc;
+                    }
+                }
+                const parsed = parsePinyin(py || azurePinyin);
+                const expectedTone = parsed.tone;
+                const toneMatch = (toneNum !== null && expectedTone !== null) ? (toneNum === expectedTone) : null;
+                const wordAcc = Math.round(detail.accuracy);
+
+                html += '<div class="phoneme-row" onclick="speakChar(\'' + ch + '\')">' +
+                    '<span class="pw-char">' + ch + '</span>' +
+                    '<span class="pw-py">' + (py || azurePinyin) + '</span>' +
+                    '<span class="pw-score ' + tierClass(wordAcc) + '">' + wordAcc + '%</span>' +
+                    '<span class="' + tierClass(initAcc) + '">' + (parsed.initial || '—') + ' ' + (initAcc !== null ? initAcc + '%' : '') + '</span>' +
+                    '<span class="' + tierClass(finalAcc) + '">' + (parsed.final || '—') + ' ' + (finalAcc !== null ? finalAcc + '%' : '') + '</span>' +
+                    '<span class="' + tierClass(initAcc) + '">' +
+                        (toneNum !== null ? '第' + toneNum + '聲' : '—') +
+                        (toneMatch === false ? ' ❌' : '') +
+                    '</span>' +
+                    '</div>';
             }
-            document.getElementById('phoneme-detail').innerHTML = debugHtml;
-        }
+            html += '</div>';
+            document.getElementById('phoneme-detail').innerHTML = html;
 
         function showCharDetail(idx) {
             const panel = document.getElementById('phoneme-detail');
@@ -794,6 +854,13 @@
             .phoneme-raw { margin-top:12px; padding-top:8px; border-top:1px solid #e2e8f0; font-size:0.85rem; color:#94a3b8; }
             .phoneme-tag { display:inline-block; padding:2px 6px; border-radius:4px; margin:2px; font-size:0.8rem; font-weight:600; }
             .char-cell { cursor:pointer; }
+            .phoneme-summary-table { display:flex; flex-direction:column; gap:4px; max-height:400px; overflow-y:auto; }
+            .phoneme-row { display:grid; grid-template-columns:40px 80px 55px 70px 80px 70px; align-items:center; gap:4px; padding:6px 8px; border-radius:8px; font-size:0.9rem; background:#fff; }
+            .phoneme-row:hover { background:#f1f5f9; }
+            .phoneme-header { font-weight:700; color:#64748b; font-size:0.8rem; background:#f8fafc !important; }
+            .pw-char { font-weight:700; font-size:1.1rem; }
+            .pw-py { color:#94a3b8; font-size:0.8rem; }
+            .pw-score { font-weight:700; }
         `;
         document.head.appendChild(phonemeStyle);
 
