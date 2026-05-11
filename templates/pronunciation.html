@@ -304,7 +304,7 @@
             const wrongCount = isFinal ? expChars.length - correctCount : 0;
             updateScore(correctCount, wrongCount);
             charStatuses = charMatched.map(matched => ({ status: matched ? 'correct' : 'missing', recognized: '' }));
-            renderPassageWithStatus(expected, expectedPinyins, charMatched.map(m => m ? 'correct' : 'pending'));
+            renderPassageWithStatus(expected, expectedPinyins, charMatched.map(m => m ? 'correct' : 'pending'), isFinal);
         }
 
         function showLiveProgress(currentText) {
@@ -317,7 +317,7 @@
             }
         }
 
-        function renderPassageWithStatus(text, pinyins, charMatched) {
+        function renderPassageWithStatus(text, pinyins, charMatched, isFinal) {
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
             let statusIdx = 0;
@@ -333,15 +333,16 @@
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
                     const isCorrect = !!charMatched[statusIdx];
-                    const status = isCorrect ? 'correct' : 'pending';
-                    // Add reading-pos to the FIRST pending (unmatched) char
-                    const posClass = (!isCorrect && !firstPendingFound) ? ' reading-pos' : '';
+                    // Live mode: correct → green, unmatched → gray (pending)
+                    // Final mode: correct → green, unmatched → red (incorrect)
+                    const status = isCorrect ? 'correct' : (isFinal ? 'incorrect' : 'pending');
+                    const posClass = (!isCorrect && !firstPendingFound && !isFinal) ? ' reading-pos' : '';
                     if (!isCorrect) firstPendingFound = true;
-                    let tooltip = isCorrect ? '' : ' data-tooltip="未讀到"';
-                    const extraStyle = isCorrect ? '' : 'opacity:0.55';
+                    let tooltip = '';
+                    if (isFinal && !isCorrect) tooltip = ' data-tooltip="讀錯或未讀到"';
+                    else if (!isCorrect) tooltip = ' data-tooltip="未讀到"';
                     html += '<div class="char-cell ' + status + posClass + '"' +
                             ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + ' ' +
-                            'style="' + extraStyle + '"' +
                             '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
                     statusIdx++;
                 }
@@ -389,9 +390,17 @@
         function finalizeComparison() {
             // Use only final transcripts — interim is for display only, not for comparison
             const filteredTranscript = filterChinese(finalTranscript);
+            // CRITICAL: reset charMatched fully before re-scanning for final result
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            const expected = passage.text;
+            const expChars = [];
+            for (let i = 0; i < expected.length; i++) {
+                if (!isPunct(expected[i])) expChars.push(expected[i]);
+            }
+            // Force fresh charMatched for final comparison
+            charMatched = new Array(expChars.length).fill(false);
             // Re-run compareText in final mode so wrongCount is calculated
             compareText(filteredTranscript, true);
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
             const totalExpected = cleanText(passage.text).length;
             const correctCount = charMatched.filter(Boolean).length;
             const wrongCount = totalExpected - correctCount;
