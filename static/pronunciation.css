@@ -216,6 +216,8 @@ body {
 
 .char-cell.correct .char {
     color: #15803d;
+    font-weight: 700;
+}
 
 /* Status: correct-medium — yellow (50-79%) */
 .char-cell.correct-medium {
@@ -229,9 +231,6 @@ body {
 
 .char-cell.correct-medium .char {
     color: #854d0e;
-    font-weight: 700;
-}
-
     font-weight: 700;
 }
 
