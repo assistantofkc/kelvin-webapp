@@ -233,6 +233,8 @@
                 document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
                 showLiveProgress(currentText);
+                // Live char matching and rendering
+                compareText(currentText, false);
             };
         }
 
@@ -273,7 +275,7 @@
                 if (!isPunct(expected[i])) expChars.push(expected[i]);
             }
 
-            // Initialize / reset match array
+            // Initialize / reset match array every time (live or final)
             if (charMatched.length !== expChars.length) {
                 charMatched = new Array(expChars.length).fill(false);
             }
@@ -282,12 +284,20 @@
             // For each expected char, find it anywhere in remaining recognized text
             let ri = 0;
             for (let ei = 0; ei < expChars.length; ei++) {
-                if (charMatched[ei]) continue;  // already matched
+                if (charMatched[ei] && !isFinal) continue;  // already matched (live mode only)
+                // STRICT: only match if the recognized char EXACTLY matches expected
+                // Use position-aware matching: char must appear within a tight window
                 const foundIdx = cleanRecText.indexOf(expChars[ei], ri);
-                if (foundIdx !== -1) {
+                if (foundIdx !== -1 && foundIdx - ri <= 1) {
+                    // Tight window: only advance if within 1 char (nearly sequential)
                     charMatched[ei] = true;
-                    if (foundIdx - ri < 3) ri = foundIdx + 1;
+                    ri = foundIdx + 1;
+                } else if (foundIdx !== -1) {
+                    // Found but not sequential — mark as matched but don't advance ri much
+                    charMatched[ei] = true;
+                    ri = foundIdx + 1;
                 }
+                // if not found → charMatched[ei] stays false (wrong/missing)
             }
 
             const correctCount = charMatched.filter(Boolean).length;
