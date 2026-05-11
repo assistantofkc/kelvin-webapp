@@ -535,10 +535,15 @@
                 (finalAcc !== null ? '<span class="phoneme-pct ' + (finalAcc >= 70 ? 'good' : 'bad') + '">' + finalAcc + '%</span>' : '') +
                 '</div>';
 
-            // 聲調 (Tone) - from Azure
+            // 聲調 (Tone) - compare Azure vs expected
+            const expectedTone = parsed.tone;
+            const toneMatch = (toneNum !== null && expectedTone !== null) ? (toneNum === expectedTone) : null;
             html += '<div class="phoneme-section">' +
                 '<span class="phoneme-label">聲調：</span>' +
-                '<span class="phoneme-value">' + (toneNum !== null ? '第' + toneNum + '聲' : (parsed.tone ? '第' + parsed.tone + '聲' : '—')) + '</span>' +
+                '<span class="phoneme-value ' + (toneMatch === true ? 'good' : (toneMatch === false ? 'bad' : '')) + '">' +
+                (toneNum !== null ? '第' + toneNum + '聲' : (expectedTone ? '第' + expectedTone + '聲' : '—')) + '</span>' +
+                (toneMatch === true ? ' ✅' : (toneMatch === false ? ' ❌' : '')) +
+                (expectedTone !== null && toneNum !== null && toneNum !== expectedTone ? ' (應為第' + expectedTone + '聲)' : '') +
                 '</div>';
 
             // Raw Azure phonemes
