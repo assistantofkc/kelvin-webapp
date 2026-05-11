@@ -115,10 +115,10 @@
         <section class="mode-toggle">
             <span class="mode-label">辨識引擎：</span>
             <label class="toggle-switch">
-                <input type="checkbox" id="mode-switch" onchange="toggleMode()">
+                <input type="checkbox" id="mode-switch" onchange="toggleMode()" checked>
                 <span class="toggle-slider"></span>
             </label>
-            <span class="mode-name" id="mode-name">Web Speech</span>
+            <span class="mode-name" id="mode-name">Azure AI</span>
         </section>
 
         <!-- Status -->
@@ -145,7 +145,7 @@
 
         let currentPassageId = 1;
         let isRecording = false;
-        let recognitionMode = 'web';  // 'web' or 'azure'
+        let recognitionMode = 'azure';  // 'web' or 'azure' (default: Azure)
         let finalTranscript = '';
         let charMatched = [];
 
