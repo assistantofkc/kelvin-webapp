@@ -486,7 +486,9 @@
                 ttsPlaying = true; ttsPaused = false;
                 updateStatus('playing', '🔊 播放示範中...');
             };
-            ttsPlaying = false; ttsPaused = false;
+            utterance.onend = () => {
+                clearInterval(ttsTracker);
+                ttsPlaying = false; ttsPaused = false;
                 ttsCharPos = 0; ttsElapsed = 0;
                 updateTTSButtons('stop');
                 updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
