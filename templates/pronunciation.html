@@ -187,20 +187,12 @@
             };
 
             recognition.onend = () => {
-                // CRITICAL: When Chrome auto-stops due to silence/length limit,
-                // restart immediately if user hasn't manually stopped.
-                // This makes the recording feel "infinitely continuous".
+                // Restarts the recognition if the user hasn't manually stopped it
                 if (isRecording) {
-                    setTimeout(() => {
-                        if (!isRecording) return;
-                        try { recognition.start(); } catch(e) {
-                            setTimeout(() => { try { recognition.start(); } catch(e2) {} }, 300);
-                        }
-                    }, 100);  // short delay to let Chrome breathe
+                    try { recognition.start(); } catch(e) {
+                        setTimeout(() => { if(isRecording) recognition.start(); }, 200);
+                    }
                 } else {
-                    document.getElementById('record-btn').classList.remove('recording');
-                    document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
-                    updateStatus('ready', '錄音已停止');
                     finalizeComparison();
                 }
             };
@@ -220,24 +212,20 @@
             recognition.onresult = (event) => {
                 let newInterim = '';
                 for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const result = event.results[i];
-                    const transcript = result[0].transcript;
-                    if (result.isFinal) {
-                        // 當這一段話被判定為「結束」
-                        finalTranscript += transcript;
-                        // 【關鍵】一旦有 Final 結果，立即執行比對（非最終結束）
-                        compareText(finalTranscript, false);
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
                     } else {
-                        newInterim = transcript;
+                        newInterim += event.results[i][0].transcript;
                     }
                 }
                 interim = newInterim;
                 const currentText = finalTranscript + interim;
-                const displayText = filterChinese(currentText);
+
+                // Clean display text
+                const displayText = currentText.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01]/g, '');
                 document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
-                showLiveProgress(currentText);
-                // 同步更新 UI 狀態（讓使用者看到當前正在辨識的字）
+
                 compareText(currentText, false);
             };
         }
@@ -267,12 +255,16 @@
             return stripTone(a) === stripTone(b);
         }
 
+        /**
+         * Optimized Matcher:
+         * Uses a greedy sequential search to allow for pauses or stutters
+         */
         function compareText(recognized, isFinal) {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const expected = passage.text;
             const expectedPinyins = getPinyin(expected);
 
-            // 只保留中文字符進行比對
+            // Remove all non-Chinese characters for the comparison engine
             const cleanRecText = recognized.replace(/[^\u4e00-\u9fff]/g, '');
 
             const expChars = [];
@@ -280,30 +272,24 @@
                 if (!isPunct(expected[i])) expChars.push(expected[i]);
             }
 
-            // 重置或初始化匹配陣列
-            let currentMatch = new Array(expChars.length).fill(false);
+            if (charMatched.length !== expChars.length) {
+                charMatched = new Array(expChars.length).fill(false);
+            }
 
-            // 嚴格順序比對邏輯
-            let ri = 0; // 辨識文字的指針
-            for (let ei = 0; ei < expChars.length; ei++) {
-                // 在當前指針附近的範圍搜尋，避免遠處的同音字誤判
-                // 搜尋範圍設為當前指針後的 5 個字內
-                const searchRange = cleanRecText.substring(ri, ri + 5);
-                const foundIdx = searchRange.indexOf(expChars[ei]);
-
+            // Greedy Sequential Search:
+            // Finds the next required character anywhere further in the recognized stream.
+            let streamPtr = 0;
+            for (let i = 0; i < expChars.length; i++) {
+                const foundIdx = cleanRecText.indexOf(expChars[i], streamPtr);
                 if (foundIdx !== -1) {
-                    currentMatch[ei] = true;
-                    ri += foundIdx + 1; // 移動指針到已匹配字的後面
+                    charMatched[i] = true;
+                    streamPtr = foundIdx + 1; // Move pointer forward
                 }
             }
 
-            charMatched = currentMatch; // 更新全局變量
-
             const correctCount = charMatched.filter(Boolean).length;
-            // 如果是最終結果，未匹配的即為錯誤；若是錄音中，未匹配的顯示為等待
-            const wrongCount = isFinal ? expChars.length - correctCount : 0;
+            updateScore(correctCount, isFinal ? expChars.length - correctCount : 0);
 
-            updateScore(correctCount, wrongCount);
             renderPassageWithStatus(expected, expectedPinyins, charMatched, isFinal);
         }
 
@@ -320,29 +306,22 @@
         function renderPassageWithStatus(text, pinyins, matchArray, isFinal) {
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
-            let statusIdx = 0;
+            let charIdx = 0;
 
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
                 const isPunctuation = isPunct(ch);
-                const rawPinyin = i < pinyins.length ? pinyins[i] : '';
-                const pinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
+                const py = i < pinyins.length ? pinyins[i] : '';
 
                 if (isPunctuation) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    const isCorrect = matchArray[statusIdx];
-                    let statusClass = '';
-                    if (isCorrect) {
-                        statusClass = 'correct'; // 綠色
-                    } else {
-                        // 錄音結束後，沒讀對的變紅色 (incorrect)，錄音中則是灰色 (pending)
-                        statusClass = isFinal ? 'incorrect' : 'pending';
-                    }
-                    html += '<div class="char-cell ' + statusClass + '" onclick="speakChar(\'' + ch + '\')" title="按我聽發音">' +
-                            '<span class="pinyin">' + pinyin + '</span>' +
+                    const isCorrect = matchArray[charIdx];
+                    const status = isCorrect ? 'correct' : (isFinal ? 'incorrect' : 'pending');
+                    html += '<div class="char-cell ' + status + '" onclick="speakChar(\'' + ch + '\')">' +
+                            '<span class="pinyin">' + (py === ch ? '' : py) + '</span>' +
                             '<span class="char">' + ch + '</span></div>';
-                    statusIdx++;
+                    charIdx++;
                 }
             }
             html += '</div>';
@@ -386,41 +365,33 @@
         }
 
         function finalizeComparison() {
-            // Use only final transcripts — interim is for display only, not for comparison
-            const filteredTranscript = filterChinese(finalTranscript);
-            // CRITICAL: reset charMatched fully before re-scanning for final result
             const passage = PASSAGES.find(p => p.id === currentPassageId);
-            const expected = passage.text;
-            const expChars = [];
-            for (let i = 0; i < expected.length; i++) {
-                if (!isPunct(expected[i])) expChars.push(expected[i]);
-            }
-            // Force fresh charMatched for final comparison
-            charMatched = new Array(expChars.length).fill(false);
-            // Re-run compareText in final mode so wrongCount is calculated
-            compareText(filteredTranscript, true);
-            const totalExpected = cleanText(passage.text).length;
-            const correctCount = charMatched.filter(Boolean).length;
-            const wrongCount = totalExpected - correctCount;
-            const accuracy = totalExpected > 0 ? Math.round((correctCount / totalExpected) * 100) : 0;
-            let emoji = accuracy >= 90 ? '🌟' : accuracy >= 70 ? '👍' : accuracy >= 50 ? '💪' : '📚';
-            updateStatus('ready', emoji + ' 完成！準確度: ' + accuracy + '% (' + correctCount + '/' + totalExpected + ')');
+            compareText(finalTranscript, true);
+
+            const total = charMatched.length;
+            const correct = charMatched.filter(Boolean).length;
+            const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+            updateStatus('ready', '✅ 練習完成！準確度：' + acc + '% (' + correct + '/' + total + ')');
+            document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
         }
 
         function toggleRecording() {
             if (!recognition) setupRecognition();
-            if (!recognition) return;
             if (!isRecording) {
+                // Reset for new session
                 finalTranscript = '';
                 interim = '';
-                charMatched = [];  // ALWAYS reset on fresh start
-                document.getElementById('recognized-text').textContent = '';
-                document.getElementById('recognized-section').style.display = 'none';
+                charMatched = [];
+                isRecording = true;
+                recognition.start();
+                document.getElementById('record-btn').querySelector('.btn-text').textContent = '停止錄音';
+                document.getElementById('record-btn').classList.add('recording');
                 document.getElementById('score-bar').style.display = 'none';
                 const passage = PASSAGES.find(p => p.id === currentPassageId);
-                renderPassageInitial(passage.text);
-                isRecording = true;
-                try { recognition.start(); } catch(e) {}
+                renderPassageWithStatus(passage.text, getPinyin(passage.text), [], false);
+                updateStatus('recording', '🎤 收聽中... 請按順序朗讀');
             } else {
                 isRecording = false;
                 recognition.stop();
@@ -588,17 +559,11 @@
             }
         });
 
-        function init() {
-            if (window.speechSynthesis) {
-                window.speechSynthesis.getVoices();
-                window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-            }
+        window.addEventListener('DOMContentLoaded', () => {
             setupRecognition();
             const passage = PASSAGES.find(p => p.id === currentPassageId);
-            renderPassageInitial(passage.text);
-        }
-
-        window.addEventListener('DOMContentLoaded', init);
+            renderPassageWithStatus(passage.text, getPinyin(passage.text), [], false);
+        });
 
         // Sidebar toggle
         function toggleSidebar() {
