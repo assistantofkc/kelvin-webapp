@@ -493,7 +493,8 @@
 
         function buildPhonemePanel(expectedChars, expectedPinyins, matched, details, data) {
             allChars = expectedChars;
-            allPinyins = expectedPinyins;
+            // Filter pinyins to only non-punctuation chars (same indexing as expectedChars)
+            allPinyins = expectedPinyins.filter((_, i) => !isPunct(PASSAGES[currentPassageId-1].text[i]));
             allMatched = matched;
             allDetails = details;
             document.getElementById('phoneme-panel').style.display = 'block';
