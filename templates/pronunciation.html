@@ -355,10 +355,11 @@
                     finalTranscript = data.recognition || '';
                     renderResults(data);
                 } else {
-                    updateStatus('error', '❌ Azure 錯誤：' + (data.message || 'unknown'));
+                    const msg = data.message || 'unknown';
+                    updateStatus('error', '❌ Azure 錯誤：' + msg + '｜建議切換至 Web Speech 模式');
                 }
             } catch(e) {
-                updateStatus('error', '❌ 無法連接伺服器：' + e.message);
+                updateStatus('error', '❌ 無法連接伺服器：' + e.message + '｜建議切換至 Web Speech 模式');
             }
         }
 
