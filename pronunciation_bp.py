@@ -2,7 +2,9 @@
 Pronunciation Practice Blueprint - 普通話發音練習
 Adds /pronunciation route to the existing kelvin-webapp
 """
-from flask import Blueprint, render_template
+import json
+import os
+from flask import Blueprint, render_template, request, jsonify
 
 pronunciation_bp = Blueprint('pronunciation', __name__, template_folder='templates')
 
@@ -29,8 +31,90 @@ PASSAGES = [
     }
 ]
 
-PRONUNCIATION_VERSION = 'v1.22'
+PRONUNCIATION_VERSION = 'v1.24'
+
+# Path to custom passages JSON file on PythonAnywhere
+CUSTOM_FILE = os.path.join(os.path.dirname(__file__), 'pronunciation_custom.json')
+
+def load_custom_passages():
+    """Load custom passages from JSON file, merge with defaults."""
+    passages = [dict(p) for p in PASSAGES]  # Copy defaults
+    try:
+        if os.path.exists(CUSTOM_FILE):
+            with open(CUSTOM_FILE, 'r', encoding='utf-8') as f:
+                customs = json.load(f)
+                for c in customs:
+                    idx = c.get('id', 0) - 1
+                    if 0 <= idx < len(passages):
+                        if c.get('title'):
+                            passages[idx]['title'] = c['title']
+                        if c.get('text'):
+                            passages[idx]['text'] = c['text']
+    except Exception as e:
+        print(f"Error loading custom passages: {e}")
+    return passages
 
 @pronunciation_bp.route('/pronunciation')
 def index():
-    return render_template('pronunciation.html', passages=PASSAGES, version=PRONUNCIATION_VERSION)
+    passages = load_custom_passages()
+    return render_template('pronunciation.html', passages=passages, version=PRONUNCIATION_VERSION)
+
+@pronunciation_bp.route('/pronunciation/save-passage', methods=['POST'])
+def save_passage():
+    """Save a custom passage edit from the frontend."""
+    data = request.get_json()
+    passage_id = data.get('id')
+    title = data.get('title', '')
+    text = data.get('text', '')
+
+    # Load existing customs
+    customs = []
+    try:
+        if os.path.exists(CUSTOM_FILE):
+            with open(CUSTOM_FILE, 'r', encoding='utf-8') as f:
+                customs = json.load(f)
+    except Exception:
+        customs = []
+
+    # Update or add the entry
+    updated = False
+    for c in customs:
+        if c.get('id') == passage_id:
+            c['title'] = title
+            c['text'] = text
+            updated = True
+            break
+    if not updated:
+        customs.append({'id': passage_id, 'title': title, 'text': text})
+
+    # Save to file
+    try:
+        with open(CUSTOM_FILE, 'w', encoding='utf-8') as f:
+            json.dump(customs, f, ensure_ascii=False, indent=2)
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@pronunciation_bp.route('/pronunciation/reset-passage', methods=['POST'])
+def reset_passage():
+    """Reset a passage back to default."""
+    data = request.get_json()
+    passage_id = data.get('id')
+
+    customs = []
+    try:
+        if os.path.exists(CUSTOM_FILE):
+            with open(CUSTOM_FILE, 'r', encoding='utf-8') as f:
+                customs = json.load(f)
+    except Exception:
+        customs = []
+
+    # Remove the entry for this passage
+    customs = [c for c in customs if c.get('id') != passage_id]
+
+    try:
+        with open(CUSTOM_FILE, 'w', encoding='utf-8') as f:
+            json.dump(customs, f, ensure_ascii=False, indent=2)
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500

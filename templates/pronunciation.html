@@ -584,31 +584,6 @@
         }
 
         // ==================== PASSAGE EDITING ====================
-        // Load saved passages from localStorage on init
-        function loadSavedPassages() {
-            const saved = localStorage.getItem('pronunciation_passages');
-            if (saved) {
-                try {
-                    const edits = JSON.parse(saved);
-                    for (let i = 0; i < PASSAGES.length; i++) {
-                        if (edits[i] && edits[i].text) {
-                            PASSAGES[i].text = edits[i].text;
-                            if (edits[i].title) PASSAGES[i].title = edits[i].title;
-                        }
-                    }
-                } catch(e) {}
-            }
-            // Update dropdown titles
-            updateDropdownTitles();
-        }
-
-        function updateDropdownTitles() {
-            const select = document.getElementById('passage-select');
-            for (let i = 0; i < select.options.length; i++) {
-                select.options[i].text = (i+1) + '. ' + PASSAGES[i].title;
-            }
-        }
-
         function openEditModal() {
             const idx = currentPassageId - 1;
             document.getElementById('edit-modal-title').textContent = '主題：' + PASSAGES[idx].title;
@@ -620,47 +595,56 @@
             document.getElementById('edit-modal-overlay').style.display = 'none';
         }
 
-        function saveEdit() {
+        async function saveEdit() {
             const idx = currentPassageId - 1;
             const newText = document.getElementById('edit-passage-textarea').value.trim();
             if (!newText) { alert('文字不能為空！'); return; }
-            PASSAGES[idx].text = newText;
-            // Save to localStorage
-            const edits = {};
-            for (let i = 0; i < PASSAGES.length; i++) {
-                edits[i] = { title: PASSAGES[i].title, text: PASSAGES[i].text };
+            // Save to PythonAnywhere server
+            try {
+                const res = await fetch('/pronunciation/save-passage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentPassageId, title: PASSAGES[idx].title, text: newText })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    PASSAGES[idx].text = newText;
+                    closeEditModal();
+                    resetAll();
+                    updateStatus('ready', '✅ 已儲存到伺服器！');
+                } else {
+                    alert('儲存失敗：' + (data.message || '未知錯誤'));
+                }
+            } catch(e) {
+                alert('無法連接伺服器：' + e.message);
             }
-            localStorage.setItem('pronunciation_passages', JSON.stringify(edits));
-            closeEditModal();
-            resetAll();
-            updateStatus('ready', '✅ 篇章已儲存！');
         }
 
-        function resetToDefault() {
+        async function resetToDefault() {
             const idx = currentPassageId - 1;
             if (!confirm('確定要還原「' + PASSAGES[idx].title + '」為預設文字？')) return;
-            const defaults = {{ passages | tojson }};
-            PASSAGES[idx].text = defaults[idx].text;
-            PASSAGES[idx].title = defaults[idx].title;
-            // Update localStorage
-            const edits = {};
-            for (let i = 0; i < PASSAGES.length; i++) {
-                edits[i] = { title: PASSAGES[i].title, text: PASSAGES[i].text };
+            try {
+                const res = await fetch('/pronunciation/reset-passage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentPassageId })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    location.reload();
+                } else {
+                    alert('還原失敗：' + (data.message || '未知錯誤'));
+                }
+            } catch(e) {
+                // Fallback: reload the page
+                location.reload();
             }
-            localStorage.setItem('pronunciation_passages', JSON.stringify(edits));
-            closeEditModal();
-            resetText();
-            updateDropdownTitles();
-            updateStatus('ready', '🔄 已還原為預設文字');
         }
 
         function onPassageChange() {
             currentPassageId = parseInt(document.getElementById('passage-select').value);
             resetAll();
         }
-
-        // Load saved passages on page load
-        loadSavedPassages();
     </script>
 </body>
 </html>
