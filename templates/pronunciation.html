@@ -561,6 +561,7 @@
 
             // Parse pinyin into initial/final/tone
             // Azure phonemes are like "jiao 3" (pinyin + tone number)
+            const phonemes = detail.phonemes || [];
             let initAcc = null, finalAcc = null, toneNum = null;
             let azurePinyin = '';
 
@@ -617,7 +618,6 @@
                 '</div>';
 
             // Raw Azure phonemes
-            const phonemes = detail.phonemes || [];
             if (phonemes.length > 0) {
                 html += '<div class="phoneme-raw">Azure phonemes: ';
                 phonemes.forEach(p => {
