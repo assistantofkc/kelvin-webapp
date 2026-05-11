@@ -311,12 +311,7 @@
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
             let statusIdx = 0;
-            let readingPos = -1;
-
-            // Find the first pending char as "reading position" indicator
-            for (let s = 0; s < charMatched.length; s++) {
-                if (charMatched[s] === 'pending') { readingPos = s; break; }
-            }
+            let firstPendingFound = false;
 
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
@@ -327,9 +322,11 @@
                 if (isPunctuation) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    const status = charMatched[statusIdx] || 'pending';
-                    const isCorrect = status === 'correct';
-                    let posClass = (status === 'pending' && statusIdx === readingPos) ? ' reading-pos' : '';
+                    const isCorrect = !!charMatched[statusIdx];
+                    const status = isCorrect ? 'correct' : 'pending';
+                    // Add reading-pos to the FIRST pending (unmatched) char
+                    const posClass = (!isCorrect && !firstPendingFound) ? ' reading-pos' : '';
+                    if (!isCorrect) firstPendingFound = true;
                     let tooltip = isCorrect ? '' : ' data-tooltip="未讀到"';
                     const extraStyle = isCorrect ? '' : 'opacity:0.55';
                     html += '<div class="char-cell ' + status + posClass + '"' +
