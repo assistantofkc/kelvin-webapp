@@ -219,21 +219,25 @@
 
             recognition.onresult = (event) => {
                 let newInterim = '';
-                const currentIndex = event.resultIndex;
-                for (let i = currentIndex; i < event.results.length; i++) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const transcript = result[0].transcript;
+                    if (result.isFinal) {
+                        // 當這一段話被判定為「結束」
+                        finalTranscript += transcript;
+                        // 【關鍵】一旦有 Final 結果，立即執行比對（非最終結束）
+                        compareText(finalTranscript, false);
                     } else {
-                        newInterim = event.results[i][0].transcript;
+                        newInterim = transcript;
                     }
                 }
                 interim = newInterim;
                 const currentText = finalTranscript + interim;
-                const displayText = currentText.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '');
+                const displayText = filterChinese(currentText);
                 document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
                 document.getElementById('recognized-section').style.display = 'block';
                 showLiveProgress(currentText);
-                // Live char matching and rendering
+                // 同步更新 UI 狀態（讓使用者看到當前正在辨識的字）
                 compareText(currentText, false);
             };
         }
