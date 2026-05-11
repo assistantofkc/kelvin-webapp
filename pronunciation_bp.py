@@ -162,10 +162,13 @@ def assess_pronunciation():
         "Granularity": "Phoneme",
         "EnableMiscue": True
     })
+    # MUST be base64 encoded for REST API
+    import base64
+    pa_config_b64 = base64.b64encode(pa_config.encode('utf-8')).decode('ascii')
 
     headers = {
         'Ocp-Apim-Subscription-Key': api_key,
-        'Pronunciation-Assessment': pa_config,
+        'Pronunciation-Assessment': pa_config_b64,
         'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
         'Accept': 'application/json'
     }
