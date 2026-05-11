@@ -164,10 +164,6 @@
             recognition.lang = 'zh-CN';
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.maxAlternatives = 1;  // reduce to just the best result
-            // Increase timeouts so long passages don't get cut off
-            recognition.timeout = 60000;  // 60s total session timeout
-            recognition.pauseThreshold = 30;  // seconds of silence before considered done
 
             recognition.onstart = () => {
                 updateStatus('recording', '🎤 收聽中... 請大聲朗讀！');
@@ -192,18 +188,16 @@
             };
 
             recognition.onend = () => {
+                // CRITICAL: When Chrome auto-stops due to silence/length limit,
+                // restart immediately if user hasn't manually stopped.
+                // This makes the recording feel "infinitely continuous".
                 if (isRecording) {
                     setTimeout(() => {
                         if (!isRecording) return;
                         try { recognition.start(); } catch(e) {
-                            setTimeout(() => {
-                                if (!isRecording) return;
-                                try { recognition.start(); } catch(e2) {
-                                    console.log('Recognition restart failed:', e2);
-                                }
-                            }, 300);
+                            setTimeout(() => { try { recognition.start(); } catch(e2) {} }, 300);
                         }
-                    }, 250);
+                    }, 100);  // short delay to let Chrome breathe
                 } else {
                     document.getElementById('record-btn').classList.remove('recording');
                     document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
@@ -268,15 +262,9 @@
         }
 
         function pinyinMatch(a, b) {
-            // Exact match including tone — tone matters for Mandarin pronunciation practice
-            // Using stripped pinyin only when tone is absent (already legacy behavior)
             if (!a || !b) return a === b;
             if (a === b) return true;
-            // Only allow stripped match if both inputs lack tone info (i.e., both are unaccented)
-            // This prevents homophones with different tones from matching incorrectly
-            const aHasTone = /[\u0300-\u036f]/.test(a);
-            const bHasTone = /[\u0300-\u036f]/.test(b);
-            if (aHasTone || bHasTone) return false;  // tone mismatch → no match
+            // Strip tone marks and compare (lenient mode for Mandarin practice)
             return stripTone(a) === stripTone(b);
         }
 
