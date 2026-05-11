@@ -150,7 +150,7 @@
         let interim = '';  // latest interim only (not accumulated)
         let seenResultIndexes = new Set();  // dedup: track which result indexes we've already processed
         let finalTranscript = '';
-        let charStatuses = [];
+        let charMatched = [];  // track match state for each char (per Gemini approach)
 
         function setupRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -271,71 +271,37 @@
         function compareText(recognized, isFinal) {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const expected = passage.text;
-
             const expectedPinyins = getPinyin(expected);
-            const recognizedPinyins = getPinyin(recognized);
+            const cleanRecText = recognized.replace(/[^\u4e00-\u9fff]/g, '');
 
-            const expItems = [];
+            // Build char-by-char list from passage (excluding punctuation)
+            const expChars = [];
             for (let i = 0; i < expected.length; i++) {
-                if (!isPunct(expected[i])) {
-                    expItems.push({ char: expected[i], pinyin: expectedPinyins[i] || '' });
-                }
+                if (!isPunct(expected[i])) expChars.push(expected[i]);
             }
 
-            const recItems = [];
-            for (let i = 0; i < recognized.length; i++) {
-                if (!isPunct(recognized[i])) {
-                    recItems.push({ char: recognized[i], pinyin: recognizedPinyins[i] || '' });
-                }
+            // Initialize / reset match array
+            if (charMatched.length !== expChars.length) {
+                charMatched = new Array(expChars.length).fill(false);
             }
 
-            // Linear scan: for each expected char, try to match against current rec position only
-            // Key fix: if no match, mark expected as 'missing' but DO NOT consume rec position
-            // This prevents one misread from cascading into all subsequent 'missing'
-            const statuses = new Array(expItems.length).fill(null).map(() => ({ status: 'missing', recognized: '' }));
+            // Gemini's matching: indexOf search with proximity check
+            // For each expected char, find it anywhere in remaining recognized text
             let ri = 0;
-            let correctCount = 0, wrongCount = 0;
-
-            for (let ei = 0; ei < expItems.length; ei++) {
-                if (ri >= recItems.length) {
-                    // No more recognized chars — all remaining expected are missing
-                    break;
-                }
-
-                const expChar = expItems[ei].char;
-                const expPy = expItems[ei].pinyin;
-                const recChar = recItems[ri].char;
-                const recPy = recItems[ri].pinyin;
-
-                // Direct character match — most reliable
-                if (expChar === recChar) {
-                    statuses[ei] = { status: 'correct', recognized: recChar };
-                    correctCount++;
-                    ri++;
-                }
-                // Pinyin match (ignoring tone) — pronunciation error but valid phoneme
-                else if (pinyinMatch(expPy, recPy)) {
-                    statuses[ei] = { status: 'correct', recognized: recChar };
-                    correctCount++;
-                    ri++;
-                }
-                else {
-                    // No match at current position — mark expected as missing, do NOT advance ri
-                    // This means the current rec char is still pending for the next expected char
-                    // We count it as wrong (the user read something that doesn't correspond)
-                    statuses[ei] = { status: 'missing', recognized: recChar };
-                    wrongCount++;
-                    // DO NOT increment ri — rec[ri] stays for next ei
-                    // This prevents one mismatch from cascading into all subsequent 'missing'
+            for (let ei = 0; ei < expChars.length; ei++) {
+                if (charMatched[ei]) continue;  // already matched
+                const foundIdx = cleanRecText.indexOf(expChars[ei], ri);
+                if (foundIdx !== -1) {
+                    charMatched[ei] = true;
+                    if (foundIdx - ri < 3) ri = foundIdx + 1;
                 }
             }
 
-            // Remaining rec chars (if any) after matching all expected → still visible as extras
-            // in the recognized-text area, but we don't track them in charStatuses
-
-            charStatuses = statuses;
-            renderPassageWithStatus(expected, expectedPinyins, statuses);
+            const correctCount = charMatched.filter(Boolean).length;
+            const wrongCount = isFinal ? expChars.length - correctCount : 0;
             updateScore(correctCount, wrongCount);
+            charStatuses = charMatched.map(matched => ({ status: matched ? 'correct' : 'missing', recognized: '' }));
+            renderPassageWithStatus(expected, expectedPinyins, charMatched.map(m => m ? 'correct' : 'pending'));
         }
 
         function showLiveProgress(currentText) {
@@ -348,15 +314,15 @@
             }
         }
 
-        function renderPassageWithStatus(text, pinyins, statuses) {
+        function renderPassageWithStatus(text, pinyins, charMatched) {
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
             let statusIdx = 0;
             let readingPos = -1;
 
             // Find the first pending char as "reading position" indicator
-            for (let s = 0; s < statuses.length; s++) {
-                if (statuses[s].status === 'pending') { readingPos = s; break; }
+            for (let s = 0; s < charMatched.length; s++) {
+                if (charMatched[s] === 'pending') { readingPos = s; break; }
             }
 
             for (let i = 0; i < text.length; i++) {
@@ -368,19 +334,16 @@
                 if (isPunctuation) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    let status = 'pending', recognizedChar = '';
-                    if (statusIdx < statuses.length) {
-                        status = statuses[statusIdx].status;
-                        recognizedChar = statuses[statusIdx].recognized || '';
-                        statusIdx++;
-                    }
-                    let tooltip = '';
-                    if (status === 'wrong' && recognizedChar) tooltip = ' data-tooltip="你讀咗「' + recognizedChar + '」"';
-                    else if (status === 'missing') tooltip = ' data-tooltip="未讀到"';
-                    // Add reading-position class to first pending char
-                    let posClass = '';
-                    if (status === 'pending' && statusIdx - 1 === readingPos) posClass = ' reading-pos';
-                    html += '<div class="char-cell ' + status + posClass + '" onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    const status = charMatched[statusIdx] || 'pending';
+                    const isCorrect = status === 'correct';
+                    let posClass = (status === 'pending' && statusIdx === readingPos) ? ' reading-pos' : '';
+                    let tooltip = isCorrect ? '' : ' data-tooltip="未讀到"';
+                    const extraStyle = isCorrect ? '' : 'opacity:0.55';
+                    html += '<div class="char-cell ' + status + posClass + '"' +
+                            ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"' + tooltip + ' ' +
+                            'style="' + extraStyle + '"' +
+                            '><span class="pinyin">' + pinyin + '</span><span class="char">' + ch + '</span></div>';
+                    statusIdx++;
                 }
             }
             html += '</div>';
@@ -425,12 +388,13 @@
 
         function finalizeComparison() {
             // Use only final transcripts — interim is for display only, not for comparison
-            // Also filter out any non-Chinese characters (English, garbled output)
             const filteredTranscript = filterChinese(finalTranscript);
+            // Re-run compareText in final mode so wrongCount is calculated
             compareText(filteredTranscript, true);
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const totalExpected = cleanText(passage.text).length;
-            const correctCount = charStatuses.filter(s => s.status === 'correct').length;
+            const correctCount = charMatched.filter(Boolean).length;
+            const wrongCount = totalExpected - correctCount;
             const accuracy = totalExpected > 0 ? Math.round((correctCount / totalExpected) * 100) : 0;
             let emoji = accuracy >= 90 ? '🌟' : accuracy >= 70 ? '👍' : accuracy >= 50 ? '💪' : '📚';
             updateStatus('ready', emoji + ' 完成！準確度: ' + accuracy + '% (' + correctCount + '/' + totalExpected + ')');
@@ -628,7 +592,7 @@
             clearInterval(ttsTracker);
             ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
             updateTTSButtons('stop');
-            finalTranscript = ''; charStatuses = [];
+            finalTranscript = ''; charStatuses = []; charMatched = [];
             document.getElementById('recognized-text').textContent = '';
             document.getElementById('recognized-section').style.display = 'none';
             document.getElementById('score-bar').style.display = 'none';
