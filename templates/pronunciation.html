@@ -431,12 +431,18 @@
                 } else {
                     const matched = matchArray[charIdx];
                     const detail = details[charIdx];
-                    let statusClass = matched ? 'correct' : 'incorrect';
-                    let tooltip = matched ? '' : ' data-tooltip="未讀到或讀錯"';
+                    // 3-tier color by word accuracy score
+                    let statusClass = 'incorrect';
+                    let tooltip = ' data-tooltip="未讀到或讀錯"';
                     if (matched && detail) {
                         const acc = Math.round(detail.accuracy);
-                        const errLabel = detail.errorType || '';
-                        tooltip = ' data-tooltip="' + (errLabel ? '⚠️' + errLabel + '｜' : '') + '分數:' + acc + '%"';
+                        if (acc >= 80) statusClass = 'correct';
+                        else if (acc >= 50) statusClass = 'correct-medium';
+                        else statusClass = 'incorrect';
+                        tooltip = ' data-tooltip="分數:' + acc + '%"';
+                    } else if (matched) {
+                        statusClass = 'correct';
+                        tooltip = '';
                     }
                     html += '<div class="char-cell ' + statusClass + '" onclick="speakChar(\'' + ch + '\');showCharDetail(' + charIdx + ')" ' + tooltip + '>' +
                             '<span class="pinyin">' + (py === ch ? '' : py) + '</span>' +

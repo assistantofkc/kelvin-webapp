@@ -216,6 +216,22 @@ body {
 
 .char-cell.correct .char {
     color: #15803d;
+
+/* Status: correct-medium — yellow (50-79%) */
+.char-cell.correct-medium {
+    background: #fef9c3;
+    border-color: #eab308;
+}
+
+.char-cell.correct-medium .pinyin {
+    color: #a16207;
+}
+
+.char-cell.correct-medium .char {
+    color: #854d0e;
+    font-weight: 700;
+}
+
     font-weight: 700;
 }
 
