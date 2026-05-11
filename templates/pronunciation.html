@@ -489,35 +489,45 @@
             }
 
             // Parse pinyin into initial/final/tone
-            const parsed = parsePinyin(py);
-            const phonemes = detail.phonemes || [];
+            // Azure phonemes are like "jiao 3" (pinyin + tone number)
+            let initAcc = null, finalAcc = null, toneNum = null;
+            let azurePinyin = '';
+
+            if (phonemes.length > 0) {
+                // First phoneme from Azure typically includes the full syllable
+                const firstPh = phonemes[0].phoneme;
+                // Parse "jiao 3" → initial="j", final="iao", tone=3
+                const parts = firstPh.split(' ');
+                azurePinyin = parts[0] || '';
+                toneNum = parseInt(parts[1]) || null;
+                initAcc = Math.round(phonemes[0].accuracy);
+
+                // Other phonemes are finals/vowels
+                if (phonemes.length > 1) {
+                    finalAcc = Math.round(phonemes.slice(1).reduce((s, p) => s + p.accuracy, 0) / (phonemes.length - 1));
+                } else {
+                    finalAcc = initAcc; // Single phoneme covers both
+                }
+            }
+
+            const parsed = parsePinyin(py || azurePinyin);
             const wordAcc = Math.round(detail.accuracy);
-            const errorType = detail.errorType || 'None';
 
             let html = '<div class="phoneme-char-box">' +
                 '<span class="phoneme-big-char">' + ch + '</span>' +
-                '<span class="phoneme-pinyin">' + py + '</span>' +
+                '<span class="phoneme-pinyin">' + (py || azurePinyin || '') + '</span>' +
                 '<span class="phoneme-score">分數：' + wordAcc + '%</span>' +
-                (errorType !== 'None' ? '<span class="phoneme-error-tag">⚠️ ' + errorType + '</span>' : '') +
                 '</div>';
 
-            // 聲母 (Initial)
-            const initial = parsed.initial;
-            const initPhoneme = phonemes.length > 0 ? phonemes[0] : null;
-            const initAcc = initPhoneme ? Math.round(initPhoneme.accuracy) : null;
+            // 聲母 (Initial) - from Azure phonemes
             html += '<div class="phoneme-section">' +
                 '<span class="phoneme-label">聲母：</span>' +
                 '<span class="phoneme-value ' + (initAcc !== null && initAcc >= 70 ? 'good' : 'bad') + '">' +
-                (initial || '—') + '</span>' +
+                (parsed.initial || '—') + '</span>' +
                 (initAcc !== null ? '<span class="phoneme-pct ' + (initAcc >= 70 ? 'good' : 'bad') + '">' + initAcc + '%</span>' : '') +
                 '</div>';
 
-            // 韻母 (Final) — remaining phonemes
-            const finalPhonemes = phonemes.slice(1);
-            const finalStr = finalPhonemes.map(p => p.phoneme).join('');
-            const finalAcc = finalPhonemes.length > 0
-                ? Math.round(finalPhonemes.reduce((s, p) => s + p.accuracy, 0) / finalPhonemes.length)
-                : null;
+            // 韻母 (Final)
             html += '<div class="phoneme-section">' +
                 '<span class="phoneme-label">韻母：</span>' +
                 '<span class="phoneme-value ' + (finalAcc !== null && finalAcc >= 70 ? 'good' : 'bad') + '">' +
@@ -525,14 +535,14 @@
                 (finalAcc !== null ? '<span class="phoneme-pct ' + (finalAcc >= 70 ? 'good' : 'bad') + '">' + finalAcc + '%</span>' : '') +
                 '</div>';
 
-            // 聲調 (Tone)
-            const tone = parsed.tone;
+            // 聲調 (Tone) - from Azure
             html += '<div class="phoneme-section">' +
                 '<span class="phoneme-label">聲調：</span>' +
-                '<span class="phoneme-value">' + (tone !== null ? '第' + tone + '聲' : '—') + '</span>' +
+                '<span class="phoneme-value">' + (toneNum !== null ? '第' + toneNum + '聲' : (parsed.tone ? '第' + parsed.tone + '聲' : '—')) + '</span>' +
                 '</div>';
 
-            // Raw phonemes from Azure
+            // Raw Azure phonemes
+            const phonemes = detail.phonemes || [];
             if (phonemes.length > 0) {
                 html += '<div class="phoneme-raw">Azure phonemes: ';
                 phonemes.forEach(p => {

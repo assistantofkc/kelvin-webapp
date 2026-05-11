@@ -201,23 +201,17 @@ def assess_pronunciation():
             nbest = result['NBest'][0]
             if 'Words' in nbest:
                 for w in nbest['Words']:
-                    pa = w.get('PronunciationAssessment', {})
-                    if isinstance(pa, str):
-                        pa = {}
                     word_info = {
                         'word': w.get('Word', ''),
-                        'accuracy': pa.get('AccuracyScore', 0) if isinstance(pa, dict) else 0,
-                        'error_type': pa.get('ErrorType', '') if isinstance(pa, dict) else '',
+                        'accuracy': w.get('AccuracyScore', 0),
+                        'error_type': '',
                         'phonemes': []
                     }
                     if 'Phonemes' in w:
                         for p in w['Phonemes']:
-                            ph_pa = p.get('PronunciationAssessment', {})
-                            if isinstance(ph_pa, str):
-                                ph_pa = {}
                             word_info['phonemes'].append({
                                 'phoneme': p.get('Phoneme', ''),
-                                'accuracy': ph_pa.get('AccuracyScore', 0) if isinstance(ph_pa, dict) else 0,
+                                'accuracy': p.get('AccuracyScore', 0),
                             })
                     words_result.append(word_info)
 
