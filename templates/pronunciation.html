@@ -438,7 +438,7 @@
                         const errLabel = detail.errorType || '';
                         tooltip = ' data-tooltip="' + (errLabel ? '⚠️' + errLabel + '｜' : '') + '分數:' + acc + '%"';
                     }
-                    html += '<div class="char-cell ' + statusClass + '" onclick="showCharDetail(' + charIdx + ')" ' + tooltip + '>' +
+                    html += '<div class="char-cell ' + statusClass + '" onclick="speakChar(\'' + ch + '\');showCharDetail(' + charIdx + ')" ' + tooltip + '>' +
                             '<span class="pinyin">' + (py === ch ? '' : py) + '</span>' +
                             '<span class="char">' + ch + '</span></div>';
                     charIdx++;
