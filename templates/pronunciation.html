@@ -28,13 +28,11 @@
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
     <div class="app-container">
-        <!-- Back link -->
         <a href="/" class="back-link">← 返回主頁</a>
 
-        <!-- Header -->
         <header class="app-header">
             <h1>🗣️ 普通話發音練習 <span class="version-tag">{{ version }}</span></h1>
-            <p class="subtitle">讀出句子，即時睇下邊啲字讀得啱！</p>
+            <p class="subtitle">錄音後由 Azure AI 分析聲母、韻母、聲調</p>
         </header>
 
         <!-- Passage Selector -->
@@ -55,7 +53,7 @@
             <div class="modal-content" onclick="event.stopPropagation()">
                 <h2>✏️ 編輯篇章文字</h2>
                 <p class="modal-subtitle" id="edit-modal-title"></p>
-                <textarea id="edit-passage-textarea" rows="6" placeholder="請輸入篇章文字..."></textarea>
+                <textarea id="edit-passage-textarea" rows="6"></textarea>
                 <div class="modal-buttons">
                     <button class="btn-save" onclick="saveEdit()">💾 儲存</button>
                     <button class="btn-cancel" onclick="closeEditModal()">取消</button>
@@ -83,17 +81,17 @@
         <!-- Passage Display -->
         <section class="passage-display" id="passage-display"></section>
 
-        <!-- Recognized text display -->
-        <div class="recognized-section" id="recognized-section" style="display:none;">
-            <h3>我聽到你讀：</h3>
-            <p class="recognized-text" id="recognized-text"></p>
+        <!-- Phoneme detail panel -->
+        <div class="phoneme-panel" id="phoneme-panel" style="display:none;">
+            <h3>🔍 發音分析</h3>
+            <div id="phoneme-detail"></div>
         </div>
 
         <!-- Controls -->
         <section class="controls">
             <button id="record-btn" class="btn-record" onclick="toggleRecording()">
                 <span class="btn-icon">🎤</span>
-                <span class="btn-text">開始錄音</span>
+                <span class="btn-text" id="record-text">開始錄音</span>
             </button>
             <button id="play-btn" class="btn-play" onclick="playTTS()" title="聽正確發音">
                 <span class="btn-icon">🔊</span>
@@ -116,224 +114,198 @@
         <!-- Status -->
         <div class="status-bar" id="status-bar">
             <span class="status-dot"></span>
-            <span class="status-text">準備就緒 — 選擇篇章後按「開始錄音」</span>
-        </div>
-
-        <!-- Browser warning -->
-        <div class="browser-warning" id="browser-warning" style="display:none;">
-            <p>⚠️ 請使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 瀏覽器開啟此應用程式，先可以使用語音辨識功能。</p>
+            <span class="status-text">準備就緒 — 按「開始錄音」練習</span>
         </div>
     </div>
 
     <script>
         const PASSAGES = {{ passages | tojson }};
 
-        // Known polyphone corrections for these passages
-        const PINYIN_FIX = {
-            // 於: wū → yú (形成於, 對...於)
-            // 重: zhòng → chóng (重用 = reuse)
-            // 卷: juàn → juǎn (卷上天空 = sweep up)
-        };
-
-        function fixPolyphone(pinyins, text) {
-            const chars = text.split('');
-            const fixed = [...pinyins];
-            for (let i = 0; i < chars.length; i++) {
-                if (chars[i] === '於' && fixed[i] === 'wū') fixed[i] = 'yú';
-                if (chars[i] === '重' && fixed[i] === 'zhòng') {
-                    if (chars[i+1] === '用' || chars[i+1] === '新') fixed[i] = 'chóng';
-                }
-                if (chars[i] === '卷' && fixed[i] === 'juàn') {
-                    if (chars[i+1] === '上' || chars[i-1] === '席') fixed[i] = 'juǎn';
-                }
-            }
-            return fixed;
-        }
-
         function getPinyin(text) {
             try {
-                const raw = pinyinPro.pinyin(text, { toneType: 'symbol', type: 'array' });
-                return fixPolyphone(raw, text);
+                return pinyinPro.pinyin(text, { toneType: 'symbol', type: 'array' });
             } catch(e) {
                 return text.split('').map(() => '');
             }
-        }
-
-        let currentPassageId = 1;
-        let recognition = null;
-        let isRecording = false;
-        let interim = '';  // latest interim only
-        let finalTranscript = '';
-        let charMatched = [];  // track match state for each char (per Gemini approach)
-
-        function setupRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                document.getElementById('browser-warning').style.display = 'block';
-                document.getElementById('record-btn').disabled = true;
-                return;
-            }
-
-            recognition = new SpeechRecognition();
-            recognition.lang = 'zh-CN';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onstart = () => {
-                updateStatus('recording', '🎤 收聽中... 請大聲朗讀！');
-                document.getElementById('record-btn').classList.add('recording');
-                document.getElementById('record-btn').querySelector('.btn-text').textContent = '停止錄音';
-            };
-
-            recognition.onsoundstart = () => {
-                updateStatus('recording', '🔊 聽到聲音...');
-            };
-
-            recognition.onsoundend = () => {
-                updateStatus('recording', '🎤 收聽中... 請繼續朗讀');
-            };
-
-            recognition.onspeechstart = () => {
-                updateStatus('recording', '🗣️ 辨識中...');
-            };
-
-            recognition.onspeechend = () => {
-                updateStatus('recording', '🎤 收聽中...');
-            };
-
-            recognition.onend = () => {
-                // Restarts the recognition if the user hasn't manually stopped it
-                if (isRecording) {
-                    try { recognition.start(); } catch(e) {
-                        setTimeout(() => { if(isRecording) recognition.start(); }, 200);
-                    }
-                } else {
-                    finalizeComparison();
-                }
-            };
-
-            recognition.onerror = (event) => {
-                if (event.error === 'no-speech') {
-                    updateStatus('warning', '聽唔到聲音，請再試下...');
-                } else if (event.error === 'audio-capture') {
-                    updateStatus('error', '❌ 無法使用咪高峰，請檢查權限');
-                } else if (event.error === 'not-allowed') {
-                    updateStatus('error', '❌ 請允許瀏覽器使用咪高峰');
-                } else if (event.error !== 'aborted') {
-                    updateStatus('error', '錯誤: ' + event.error);
-                }
-            };
-
-            recognition.onresult = (event) => {
-                let newInterim = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        newInterim += event.results[i][0].transcript;
-                    }
-                }
-                interim = newInterim;
-                const currentText = finalTranscript + interim;
-
-                // Clean display text
-                const displayText = currentText.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01]/g, '');
-                document.getElementById('recognized-text').textContent = displayText || '(等待中...)';
-                document.getElementById('recognized-section').style.display = 'block';
-
-                compareText(currentText, false);
-            };
-        }
-
-        function cleanText(text) {
-            return text.replace(/[，。！？、！？：；「」『』（）\s\.\,\!\?\:\;\-]/g, '');
         }
 
         function isPunct(ch) {
             return /[，。！？、！？：；「」『』（）\s]/.test(ch);
         }
 
-        // Remove non-Chinese junk and de-duplicate consecutive repeated chars (common STT artifact)
-        function filterChinese(text) {
-            return text.replace(/[^\u4e00-\u9fff\u3002\uff0c\uff1f\uff01\u3001\uff1a\uff1b\u201c\u201d\u2018\u2019\uff08\uff09\s]/g, '')
-                       .replace(/(.)\1+/g, '$1');  // dedup: "呆呆呆" → "呆"
+        let currentPassageId = 1;
+        let isRecording = false;
+        let finalTranscript = '';
+        let charMatched = [];
+
+        // ==================== AUDIO RECORDING ====================
+        let audioContext = null;
+        let mediaStream = null;
+        let scriptNode = null;
+        let audioChunks = [];
+        let sampleRate = 16000;
+
+        async function startRecording() {
+            audioChunks = [];
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                // Downsample to 16kHz mono via ScriptProcessor
+                scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
+                scriptNode.onaudioprocess = (e) => {
+                    if (!isRecording) return;
+                    const input = e.inputBuffer.getChannelData(0);
+                    // Convert float32 [-1,1] to int16 PCM
+                    const pcm = new Int16Array(input.length);
+                    for (let i = 0; i < input.length; i++) {
+                        let s = Math.max(-1, Math.min(1, input[i]));
+                        pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    audioChunks.push(pcm);
+                };
+                source.connect(scriptNode);
+                scriptNode.connect(audioContext.destination);
+                updateStatus('recording', '🎤 錄音中...');
+            } catch(e) {
+                updateStatus('error', '❌ 無法使用咪高峰：' + e.message);
+                isRecording = false;
+            }
         }
 
-        function stripTone(py) {
-            return (py || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        function stopRecording() {
+            if (scriptNode) { scriptNode.disconnect(); scriptNode = null; }
+            if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+            if (audioContext) { audioContext.close(); audioContext = null; }
         }
 
-        function pinyinMatch(a, b) {
-            if (!a || !b) return a === b;
-            if (a === b) return true;
-            // Strip tone marks and compare (lenient mode for Mandarin practice)
-            return stripTone(a) === stripTone(b);
+        function buildWavBlob(chunks, rate) {
+            // Concatenate all PCM chunks
+            let totalLen = 0;
+            chunks.forEach(c => { totalLen += c.length; });
+            const pcm = new Int16Array(totalLen);
+            let offset = 0;
+            chunks.forEach(c => { pcm.set(c, offset); offset += c.length; });
+
+            // WAV header
+            const dataLen = pcm.length * 2;
+            const buf = new ArrayBuffer(44 + dataLen);
+            const view = new DataView(buf);
+            const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+            writeStr(0, 'RIFF');
+            view.setUint32(4, 36 + dataLen, true);
+            writeStr(8, 'WAVE');
+            writeStr(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);     // PCM
+            view.setUint16(22, 1, true);     // mono
+            view.setUint32(24, rate, true);
+            view.setUint32(28, rate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeStr(36, 'data');
+            view.setUint32(40, dataLen, true);
+            // Write PCM data
+            const pcm8 = new Uint8Array(buf, 44);
+            const pcmView = new DataView(pcm.buffer);
+            for (let i = 0; i < pcm.length; i++) {
+                view.setInt16(44 + i * 2, pcm[i], true);
+            }
+            return new Blob([buf], { type: 'audio/wav' });
         }
 
-        /**
-         * Optimized Matcher:
-         * Uses a greedy sequential search to allow for pauses or stutters
-         */
-        function compareText(recognized, isFinal) {
+        async function assessWithAzure() {
+            if (audioChunks.length === 0) {
+                updateStatus('warning', '⚠️ 冇錄到音，請再試');
+                return;
+            }
+            updateStatus('assessing', '⏳ Azure AI 分析發音中...');
+            const blob = buildWavBlob(audioChunks, sampleRate);
+            const form = new FormData();
+            form.append('audio', blob, 'recording.wav');
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            form.append('reference', passage.text);
+
+            try {
+                const res = await fetch('/pronunciation/assess', { method: 'POST', body: form });
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    finalTranscript = data.recognition || '';
+                    renderResults(data);
+                } else {
+                    updateStatus('error', '❌ Azure 錯誤：' + (data.message || 'unknown'));
+                }
+            } catch(e) {
+                updateStatus('error', '❌ 無法連接伺服器：' + e.message);
+            }
+        }
+
+        function renderResults(data) {
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             const expected = passage.text;
+            const expectedChars = [];
+            for (let i = 0; i < expected.length; i++) {
+                if (!isPunct(expected[i])) expectedChars.push(expected[i]);
+            }
             const expectedPinyins = getPinyin(expected);
 
-            // Remove all non-Chinese characters for the comparison engine
-            const cleanRecText = recognized.replace(/[^\u4e00-\u9fff]/g, '');
-
-            const expChars = [];
-            for (let i = 0; i < expected.length; i++) {
-                if (!isPunct(expected[i])) expChars.push(expected[i]);
+            // Build map: expected char → recognized word info
+            const words = data.words || [];
+            const recChars = [];
+            for (const w of words) {
+                for (const ch of w.word) {
+                    recChars.push({ char: ch, accuracy: w.accuracy, errorType: w.error_type, phonemes: w.phonemes });
+                }
             }
 
-            if (charMatched.length !== expChars.length) {
-                charMatched = new Array(expChars.length).fill(false);
-            }
-
-            // Greedy Sequential Search:
-            // Finds the next required character anywhere further in the recognized stream.
-            let streamPtr = 0;
-            for (let i = 0; i < expChars.length; i++) {
-                const foundIdx = cleanRecText.indexOf(expChars[i], streamPtr);
+            // Match recognized chars to expected chars (greedy sequential)
+            charMatched = new Array(expectedChars.length).fill(false);
+            const matchDetails = new Array(expectedChars.length).fill(null);
+            let ri = 0;
+            for (let ei = 0; ei < expectedChars.length; ei++) {
+                const foundIdx = recChars.findIndex((rc, idx) => idx >= ri && rc.char === expectedChars[ei]);
                 if (foundIdx !== -1) {
-                    charMatched[i] = true;
-                    streamPtr = foundIdx + 1; // Move pointer forward
+                    charMatched[ei] = true;
+                    matchDetails[ei] = recChars[foundIdx];
+                    ri = foundIdx + 1;
                 }
             }
 
             const correctCount = charMatched.filter(Boolean).length;
-            updateScore(correctCount, isFinal ? expChars.length - correctCount : 0);
+            const wrongCount = expectedChars.length - correctCount;
+            updateScore(correctCount, wrongCount);
 
-            renderPassageWithStatus(expected, expectedPinyins, charMatched, isFinal);
+            // Render chars with color + phoneme details as title tooltip
+            renderPassageWithPhonemes(expected, expectedPinyins, charMatched, matchDetails);
+
+            // Build phoneme panel
+            buildPhonemePanel(expectedChars, expectedPinyins, charMatched, matchDetails);
+
+            const acc = Math.round((correctCount / expectedChars.length) * 100);
+            const emoji = acc >= 90 ? '🌟' : acc >= 70 ? '👍' : acc >= 50 ? '💪' : '📚';
+            updateStatus('ready', emoji + ' 完成！準確度：' + acc + '%');
         }
 
-        function showLiveProgress(currentText) {
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            const expectedLen = cleanText(passage.text).length;
-            const recognizedLen = cleanText(currentText).length;
-            const pct = expectedLen > 0 ? Math.min(100, Math.round((recognizedLen / expectedLen) * 100)) : 0;
-            if (recognizedLen > 0) {
-                updateStatus('recording', '🗣️ 已辨識約 ' + recognizedLen + ' 字 (' + pct + '%) — 繼續朗讀...');
-            }
-        }
-
-        function renderPassageWithStatus(text, pinyins, matchArray, isFinal) {
+        function renderPassageWithPhonemes(text, pinyins, matchArray, details) {
             const display = document.getElementById('passage-display');
             let html = '<div class="char-grid">';
             let charIdx = 0;
-
             for (let i = 0; i < text.length; i++) {
                 const ch = text[i];
-                const isPunctuation = isPunct(ch);
                 const py = i < pinyins.length ? pinyins[i] : '';
-
-                if (isPunctuation) {
+                if (isPunct(ch)) {
                     html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
                 } else {
-                    const isCorrect = matchArray[charIdx];
-                    const status = isCorrect ? 'correct' : (isFinal ? 'incorrect' : 'pending');
-                    html += '<div class="char-cell ' + status + '" onclick="speakChar(\'' + ch + '\')">' +
+                    const matched = matchArray[charIdx];
+                    const detail = details[charIdx];
+                    let statusClass = matched ? 'correct' : 'incorrect';
+                    let tooltip = matched ? '' : ' data-tooltip="未讀到或讀錯"';
+                    if (matched && detail) {
+                        const acc = Math.round(detail.accuracy);
+                        const errLabel = detail.errorType || '';
+                        tooltip = ' data-tooltip="' + (errLabel ? '⚠️' + errLabel + '｜' : '') + '分數:' + acc + '%"';
+                    }
+                    html += '<div class="char-cell ' + statusClass + '" onclick="showCharDetail(' + charIdx + ')" ' + tooltip + '>' +
                             '<span class="pinyin">' + (py === ch ? '' : py) + '</span>' +
                             '<span class="char">' + ch + '</span></div>';
                     charIdx++;
@@ -343,27 +315,167 @@
             display.innerHTML = html;
         }
 
-        function renderPassageInitial(text) {
-            const pinyins = getPinyin(text);
-            const display = document.getElementById('passage-display');
-            let html = '<div class="char-grid">';
-            let firstChar = true;
-            for (let i = 0; i < text.length; i++) {
-                const ch = text[i];
-                const isPunctuation = /[，。！？、！？：；「」『』（）\s]/.test(ch);
-                const rawPinyin = i < pinyins.length ? pinyins[i] : '';
-                const showPinyin = isPunctuation ? '' : (rawPinyin === ch ? '' : rawPinyin);
-                let extraClass = '';
-                if (!isPunctuation && firstChar) {
-                    extraClass = ' reading-pos';
-                    firstChar = false;
-                }
-                html += '<div class="char-cell ' + (isPunctuation ? 'punctuation' : 'pending') + extraClass + '"' + (isPunctuation ? '' : ' onclick="speakChar(\'' + ch + '\')" title="撳我聽發音"') + '><span class="pinyin">' + showPinyin + '</span><span class="char">' + ch + '</span></div>';
-            }
-            html += '</div>';
-            display.innerHTML = html;
+        // ==================== PHONEME DETAIL PANEL ====================
+        let allDetails = null;
+        let allChars = [];
+        let allPinyins = [];
+        let allMatched = [];
+
+        function buildPhonemePanel(expectedChars, expectedPinyins, matched, details) {
+            allChars = expectedChars;
+            allPinyins = expectedPinyins;
+            allMatched = matched;
+            allDetails = details;
+            document.getElementById('phoneme-panel').style.display = 'block';
+            document.getElementById('phoneme-detail').innerHTML = '<p class="phoneme-hint">👆 點擊任何中文字查看詳細發音分析</p>';
         }
 
+        function showCharDetail(idx) {
+            const panel = document.getElementById('phoneme-detail');
+            const ch = allChars[idx];
+            const py = allPinyins[idx] || '';
+            const matched = allMatched[idx];
+            const detail = allDetails[idx];
+
+            if (!matched) {
+                panel.innerHTML = '<div class="phoneme-char-box"><span class="phoneme-big-char">' + ch + '</span>' +
+                    '<span class="phoneme-pinyin">' + py + '</span></div>' +
+                    '<p style="color:#dc2626;margin-top:8px;">⚠️ 未讀到 —— 請再試一次</p>';
+                return;
+            }
+
+            if (!detail) {
+                panel.innerHTML = '<p>無詳細資料</p>';
+                return;
+            }
+
+            // Parse pinyin into initial/final/tone
+            const parsed = parsePinyin(py);
+            const phonemes = detail.phonemes || [];
+            const wordAcc = Math.round(detail.accuracy);
+            const errorType = detail.errorType || 'None';
+
+            let html = '<div class="phoneme-char-box">' +
+                '<span class="phoneme-big-char">' + ch + '</span>' +
+                '<span class="phoneme-pinyin">' + py + '</span>' +
+                '<span class="phoneme-score">分數：' + wordAcc + '%</span>' +
+                (errorType !== 'None' ? '<span class="phoneme-error-tag">⚠️ ' + errorType + '</span>' : '') +
+                '</div>';
+
+            // 聲母 (Initial)
+            const initial = parsed.initial;
+            const initPhoneme = phonemes.length > 0 ? phonemes[0] : null;
+            const initAcc = initPhoneme ? Math.round(initPhoneme.accuracy) : null;
+            html += '<div class="phoneme-section">' +
+                '<span class="phoneme-label">聲母：</span>' +
+                '<span class="phoneme-value ' + (initAcc !== null && initAcc >= 70 ? 'good' : 'bad') + '">' +
+                (initial || '—') + '</span>' +
+                (initAcc !== null ? '<span class="phoneme-pct ' + (initAcc >= 70 ? 'good' : 'bad') + '">' + initAcc + '%</span>' : '') +
+                '</div>';
+
+            // 韻母 (Final) — remaining phonemes
+            const finalPhonemes = phonemes.slice(1);
+            const finalStr = finalPhonemes.map(p => p.phoneme).join('');
+            const finalAcc = finalPhonemes.length > 0
+                ? Math.round(finalPhonemes.reduce((s, p) => s + p.accuracy, 0) / finalPhonemes.length)
+                : null;
+            html += '<div class="phoneme-section">' +
+                '<span class="phoneme-label">韻母：</span>' +
+                '<span class="phoneme-value ' + (finalAcc !== null && finalAcc >= 70 ? 'good' : 'bad') + '">' +
+                (parsed.final || '—') + '</span>' +
+                (finalAcc !== null ? '<span class="phoneme-pct ' + (finalAcc >= 70 ? 'good' : 'bad') + '">' + finalAcc + '%</span>' : '') +
+                '</div>';
+
+            // 聲調 (Tone)
+            const tone = parsed.tone;
+            html += '<div class="phoneme-section">' +
+                '<span class="phoneme-label">聲調：</span>' +
+                '<span class="phoneme-value">' + (tone !== null ? '第' + tone + '聲' : '—') + '</span>' +
+                '</div>';
+
+            // Raw phonemes from Azure
+            if (phonemes.length > 0) {
+                html += '<div class="phoneme-raw">Azure phonemes: ';
+                phonemes.forEach(p => {
+                    html += '<span class="phoneme-tag ' + (p.accuracy >= 70 ? 'good' : 'bad') + '">' +
+                        p.phoneme + ' ' + Math.round(p.accuracy) + '%</span> ';
+                });
+                html += '</div>';
+            }
+
+            panel.innerHTML = html;
+        }
+
+        function parsePinyin(py) {
+            // Split pinyin into initial, final, tone
+            if (!py) return { initial: '', final: '', tone: null };
+            const toneMap = { 'ā':1,'á':2,'ǎ':3,'à':4,'ē':1,'é':2,'ě':3,'è':4,
+                            'ī':1,'í':2,'ǐ':3,'ì':4,'ō':1,'ó':2,'ǒ':3,'ò':4,
+                            'ū':1,'ú':2,'ǔ':3,'ù':4,'ǖ':1,'ǘ':2,'ǚ':3,'ǜ':4 };
+            let tone = null;
+            let stripped = '';
+            for (const c of py) {
+                if (toneMap[c]) { tone = toneMap[c]; stripped += c.normalize('NFD')[0]; }
+                else stripped += c;
+            }
+            // Initials list
+            const initials = ['zh','ch','sh','b','p','m','f','d','t','n','l','g','k','h','j','q','x','r','z','c','s','y','w'];
+            let initial = '';
+            let final = stripped;
+            for (const ini of initials) {
+                if (stripped.startsWith(ini)) {
+                    initial = ini;
+                    final = stripped.substring(ini.length);
+                    break;
+                }
+            }
+            return { initial, final, tone };
+        }
+
+        // (Passage change handled by inline onchange)
+        // ==================== PASSAGE EDITING ====================
+        function openEditModal() {
+            const idx = currentPassageId - 1;
+            document.getElementById('edit-modal-title').textContent = '主題：' + PASSAGES[idx].title;
+            document.getElementById('edit-passage-textarea').value = PASSAGES[idx].text;
+            document.getElementById('edit-modal-overlay').style.display = 'flex';
+        }
+        function closeEditModal() {
+            document.getElementById('edit-modal-overlay').style.display = 'none';
+        }
+        async function saveEdit() {
+            const idx = currentPassageId - 1;
+            const newText = document.getElementById('edit-passage-textarea').value.trim();
+            if (!newText) { alert('文字不能為空！'); return; }
+            try {
+                const res = await fetch('/pronunciation/save-passage', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentPassageId, title: PASSAGES[idx].title, text: newText })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') { PASSAGES[idx].text = newText; closeEditModal(); resetAll(); updateStatus('ready', '✅ 已儲存到伺服器！'); }
+                else alert('儲存失敗：' + (data.message || '未知錯誤'));
+            } catch(e) { alert('無法連接伺服器：' + e.message); }
+        }
+        async function resetToDefault() {
+            const idx = currentPassageId - 1;
+            if (!confirm('確定要還原「' + PASSAGES[idx].title + '」為預設文字？')) return;
+            try {
+                const res = await fetch('/pronunciation/reset-passage', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentPassageId })
+                });
+                const data = await res.json();
+                if (data.status === 'ok') location.reload();
+                else alert('還原失敗：' + (data.message || '未知錯誤'));
+            } catch(e) { location.reload(); }
+        }
+        function onPassageChange() {
+            currentPassageId = parseInt(document.getElementById('passage-select').value);
+            resetAll();
+        }
+
+        // ==================== UI HELPERS ====================
         function updateScore(correct, wrong) {
             const total = correct + wrong;
             const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -372,210 +484,141 @@
             document.getElementById('accuracy').textContent = accuracy + '%';
             document.getElementById('score-bar').style.display = 'flex';
         }
-
         function updateStatus(type, message) {
             const bar = document.getElementById('status-bar');
             bar.querySelector('.status-dot').className = 'status-dot ' + type;
             bar.querySelector('.status-text').textContent = message;
         }
 
-        function finalizeComparison() {
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            compareText(finalTranscript, true);
-
-            const total = charMatched.length;
-            const correct = charMatched.filter(Boolean).length;
-            const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
-
-            updateStatus('ready', '✅ 練習完成！準確度：' + acc + '% (' + correct + '/' + total + ')');
-            document.getElementById('record-btn').classList.remove('recording');
-            document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
-        }
-
-        function toggleRecording() {
-            if (!recognition) setupRecognition();
+        // ==================== RECORDING ====================
+        async function toggleRecording() {
             if (!isRecording) {
-                // Reset for new session
-                finalTranscript = '';
-                interim = '';
-                charMatched = [];
                 isRecording = true;
-                recognition.start();
-                document.getElementById('record-btn').querySelector('.btn-text').textContent = '停止錄音';
-                document.getElementById('record-btn').classList.add('recording');
+                charMatched = [];
                 document.getElementById('score-bar').style.display = 'none';
+                document.getElementById('phoneme-panel').style.display = 'none';
+                document.getElementById('phoneme-detail').innerHTML = '';
                 const passage = PASSAGES.find(p => p.id === currentPassageId);
-                renderPassageWithStatus(passage.text, getPinyin(passage.text), [], false);
-                updateStatus('recording', '🎤 收聽中... 請按順序朗讀');
+                renderPassageInitial(passage.text);
+                document.getElementById('record-btn').classList.add('recording');
+                document.getElementById('record-text').textContent = '停止錄音';
+                await startRecording();
             } else {
                 isRecording = false;
-                recognition.stop();
+                stopRecording();
+                document.getElementById('record-btn').classList.remove('recording');
+                document.getElementById('record-text').textContent = '開始錄音';
+                // Send to Azure for assessment
+                await assessWithAzure();
             }
         }
 
-        let ttsPlaying = false;
-        let ttsPaused = false;
-        let ttsCharPos = 0;       // character offset for subtitle restart
-        let ttsTracker = null;    // interval timer for position tracking
+        function renderPassageInitial(text) {
+            const pinyins = getPinyin(text);
+            const display = document.getElementById('passage-display');
+            let html = '<div class="char-grid">';
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                const py = i < pinyins.length ? pinyins[i] : '';
+                if (isPunct(ch)) {
+                    html += '<div class="char-cell punctuation"><span class="pinyin"></span><span class="char">' + ch + '</span></div>';
+                } else {
+                    html += '<div class="char-cell pending"><span class="pinyin">' + (py === ch ? '' : py) + '</span><span class="char">' + ch + '</span></div>';
+                }
+            }
+            html += '</div>';
+            display.innerHTML = html;
+        }
 
+        // ==================== TTS ====================
+        let ttsPlaying = false, ttsPaused = false, ttsCharPos = 0;
         function updateTTSButtons(state) {
             const playBtn = document.getElementById('play-btn');
             const pauseBtn = document.getElementById('pause-btn');
             const stopBtn = document.getElementById('stop-tts-btn');
             if (state === 'playing') {
-                playBtn.style.display = 'none';
-                pauseBtn.style.display = 'inline-flex';
-                stopBtn.style.display = 'inline-flex';
+                playBtn.style.display = 'none'; pauseBtn.style.display = 'inline-flex'; stopBtn.style.display = 'inline-flex';
                 pauseBtn.querySelector('.btn-text').textContent = '暫停';
-                pauseBtn.querySelector('.btn-icon').textContent = '⏸️';
             } else if (state === 'paused') {
                 pauseBtn.querySelector('.btn-text').textContent = '繼續';
-                pauseBtn.querySelector('.btn-icon').textContent = '▶️';
             } else {
-                playBtn.style.display = 'inline-flex';
-                pauseBtn.style.display = 'none';
-                stopBtn.style.display = 'none';
+                playBtn.style.display = 'inline-flex'; pauseBtn.style.display = 'none'; stopBtn.style.display = 'none';
             }
         }
-
         function speakPassage(text, startPos) {
-            // 1. 強制停止當前所有語音
             window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
-
-            // 2. 稍微延遲，確保 Chrome 的語音引擎已重置
             setTimeout(() => {
-                // 從 startPos 開始切割字串
-                const toSpeak = text.substring(startPos);
-                const utterance = new SpeechSynthesisUtterance(toSpeak);
-
-                utterance.lang = 'zh-CN';
-                utterance.rate = 0.85;
-
-                // 語音選擇
+                const utterance = new SpeechSynthesisUtterance(text.substring(startPos));
+                utterance.lang = 'zh-CN'; utterance.rate = 0.85;
                 const voices = window.speechSynthesis.getVoices();
-                const mandarinVoice = voices.find(v => v.lang.includes('zh-CN')) || voices[0];
-                if (mandarinVoice) utterance.voice = mandarinVoice;
-
-                // 【核心修正】精確紀錄當前讀到的字
-                utterance.onboundary = (event) => {
-                    if (event.name === 'word') {
-                        // 當前總進度 = 這次片段的起始點 + 這次片段讀到的位移
-                        ttsCharPos = startPos + event.charIndex;
-                    }
-                };
-
-                utterance.onstart = () => {
-                    ttsPlaying = true;
-                    ttsPaused = false;
-                    updateStatus('playing', '🔊 播放示範中...');
-                    updateTTSButtons('playing');
-                };
-
-                utterance.onend = () => {
-                    // 如果不是因為按了「暫停」而停止，就重設所有狀態
-                    if (!ttsPaused) {
-                        ttsPlaying = false;
-                        ttsCharPos = 0;
-                        updateTTSButtons('stop');
-                        updateStatus('ready', '示範完畢');
-                    }
-                };
-
+                const voice = voices.find(v => v.lang.includes('zh-CN')) || voices[0];
+                if (voice) utterance.voice = voice;
+                utterance.onboundary = (e) => { if (e.name === 'word') ttsCharPos = startPos + e.charIndex; };
+                utterance.onstart = () => { ttsPlaying = true; ttsPaused = false; updateStatus('playing', '🔊 播放示範中...'); updateTTSButtons('playing'); };
+                utterance.onend = () => { if (!ttsPaused) { ttsPlaying = false; ttsCharPos = 0; updateTTSButtons('stop'); updateStatus('ready', '示範完畢'); } };
                 window.speechSynthesis.speak(utterance);
             }, 100);
         }
-
         function playTTS() {
-            if (ttsPaused) {
-                togglePauseTTS();
-                return;
-            }
-            // 全新播放，從 0 開始
+            if (ttsPaused) { togglePauseTTS(); return; }
             ttsCharPos = 0;
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            speakPassage(passage.text, 0);
+            speakPassage(PASSAGES.find(p => p.id === currentPassageId).text, 0);
         }
-
         function togglePauseTTS() {
-            if (!window.speechSynthesis) return;
             const passage = PASSAGES.find(p => p.id === currentPassageId);
-
             if (ttsPlaying) {
-                // 按下暫停：標記為暫停狀態，取消目前語音
-                ttsPaused = true;
-                ttsPlaying = false;
-                window.speechSynthesis.cancel();
-
-                updateStatus('playing', '⏸️ 已暫停 — 按「繼續」繼續');
-                updateTTSButtons('paused');
+                ttsPaused = true; ttsPlaying = false; window.speechSynthesis.cancel();
+                updateStatus('playing', '⏸️ 已暫停'); updateTTSButtons('paused');
             } else if (ttsPaused) {
-                // 按下繼續：從記錄好的 ttsCharPos 再次呼叫 speakPassage
-                // 此時 speakPassage 內的 substring(startPos) 就會發揮作用
                 speakPassage(passage.text, ttsCharPos);
             }
         }
-
         function stopTTS() {
-            if (!window.speechSynthesis) return;
-            window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
-            ttsPlaying = false;
-            ttsPaused = false;
-            ttsCharPos = 0;
-            updateTTSButtons('stop');
-            updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
+            window.speechSynthesis.cancel(); ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
+            updateTTSButtons('stop'); updateStatus('ready', '準備就緒 — 按「開始錄音」練習');
         }
-
         function speakChar(ch) {
             if (!window.speechSynthesis) return;
             window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(ch);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 0.75;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-            const voices = window.speechSynthesis.getVoices();
-            const mandarinVoice = voices.find(v =>
-                v.lang === 'zh-CN' || v.lang.startsWith('zh-CN-') ||
-                v.lang === 'zh-TW' || v.lang.startsWith('zh-TW-')
-            );
-            if (mandarinVoice) utterance.voice = mandarinVoice;
-            setTimeout(() => { window.speechSynthesis.speak(utterance); }, 30);
+            const u = new SpeechSynthesisUtterance(ch); u.lang = 'zh-CN'; u.rate = 0.75;
+            setTimeout(() => window.speechSynthesis.speak(u), 30);
         }
 
         function resetAll() {
-            if (isRecording) { isRecording = false; if (recognition) recognition.stop(); }
-            // Stop any TTS
-            if (window.speechSynthesis) window.speechSynthesis.cancel();
-            clearInterval(ttsTracker);
-            ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
-            updateTTSButtons('stop');
-            finalTranscript = ''; charStatuses = []; charMatched = [];
-            document.getElementById('recognized-text').textContent = '';
-            document.getElementById('recognized-section').style.display = 'none';
+            if (isRecording) { isRecording = false; stopRecording(); }
+            window.speechSynthesis.cancel(); ttsPlaying = false; ttsPaused = false; ttsCharPos = 0;
+            updateTTSButtons('stop'); finalTranscript = ''; charMatched = [];
             document.getElementById('score-bar').style.display = 'none';
+            document.getElementById('phoneme-panel').style.display = 'none';
             document.getElementById('record-btn').classList.remove('recording');
-            document.getElementById('record-btn').querySelector('.btn-text').textContent = '開始錄音';
+            document.getElementById('record-text').textContent = '開始錄音';
             const passage = PASSAGES.find(p => p.id === currentPassageId);
             renderPassageInitial(passage.text);
-            updateStatus('ready', '準備就緒 — 選擇篇章後按「開始錄音」');
+            updateStatus('ready', '準備就緒');
         }
 
-        // (passage change handled by inline onchange="onPassageChange()")
-
-        document.addEventListener('keydown', function(e) {
-            if (e.code === 'Space' && e.target === document.body) {
-                e.preventDefault();
-                toggleRecording();
-            }
-        });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            setupRecognition();
-            const passage = PASSAGES.find(p => p.id === currentPassageId);
-            renderPassageWithStatus(passage.text, getPinyin(passage.text), [], false);
-        });
+        // ==================== PHONEME PANEL CSS injection ====================
+        const phonemeStyle = document.createElement('style');
+        phonemeStyle.textContent = `
+            .phoneme-panel { background:#f8fafc; border-radius:16px; padding:20px; margin-top:16px; border:2px solid #e2e8f0; }
+            .phoneme-panel h3 { margin:0 0 8px 0; font-size:1.1rem; }
+            .phoneme-hint { color:#94a3b8; font-size:0.9rem; }
+            .phoneme-char-box { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+            .phoneme-big-char { font-size:2.5rem; font-weight:700; }
+            .phoneme-pinyin { font-size:1.1rem; color:#64748b; }
+            .phoneme-score { font-size:1.2rem; font-weight:700; color:#2563eb; margin-left:auto; }
+            .phoneme-error-tag { background:#fee2e2; color:#dc2626; padding:2px 8px; border-radius:6px; font-size:0.85rem; }
+            .phoneme-section { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:1rem; }
+            .phoneme-label { color:#64748b; min-width:50px; }
+            .phoneme-value { font-weight:700; font-size:1.1rem; }
+            .phoneme-pct { margin-left:8px; font-weight:600; font-size:0.9rem; padding:2px 6px; border-radius:4px; }
+            .good { color:#16a34a; background:#dcfce7; }
+            .bad { color:#dc2626; background:#fee2e2; }
+            .phoneme-raw { margin-top:12px; padding-top:8px; border-top:1px solid #e2e8f0; font-size:0.85rem; color:#94a3b8; }
+            .phoneme-tag { display:inline-block; padding:2px 6px; border-radius:4px; margin:2px; font-size:0.8rem; font-weight:600; }
+            .char-cell { cursor:pointer; }
+        `;
+        document.head.appendChild(phonemeStyle);
 
         // Sidebar toggle
         function toggleSidebar() {
@@ -583,68 +626,12 @@
             document.getElementById('overlay').classList.toggle('active');
         }
 
-        // ==================== PASSAGE EDITING ====================
-        function openEditModal() {
-            const idx = currentPassageId - 1;
-            document.getElementById('edit-modal-title').textContent = '主題：' + PASSAGES[idx].title;
-            document.getElementById('edit-passage-textarea').value = PASSAGES[idx].text;
-            document.getElementById('edit-modal-overlay').style.display = 'flex';
-        }
-
-        function closeEditModal() {
-            document.getElementById('edit-modal-overlay').style.display = 'none';
-        }
-
-        async function saveEdit() {
-            const idx = currentPassageId - 1;
-            const newText = document.getElementById('edit-passage-textarea').value.trim();
-            if (!newText) { alert('文字不能為空！'); return; }
-            // Save to PythonAnywhere server
-            try {
-                const res = await fetch('/pronunciation/save-passage', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: currentPassageId, title: PASSAGES[idx].title, text: newText })
-                });
-                const data = await res.json();
-                if (data.status === 'ok') {
-                    PASSAGES[idx].text = newText;
-                    closeEditModal();
-                    resetAll();
-                    updateStatus('ready', '✅ 已儲存到伺服器！');
-                } else {
-                    alert('儲存失敗：' + (data.message || '未知錯誤'));
-                }
-            } catch(e) {
-                alert('無法連接伺服器：' + e.message);
-            }
-        }
-
-        async function resetToDefault() {
-            const idx = currentPassageId - 1;
-            if (!confirm('確定要還原「' + PASSAGES[idx].title + '」為預設文字？')) return;
-            try {
-                const res = await fetch('/pronunciation/reset-passage', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: currentPassageId })
-                });
-                const data = await res.json();
-                if (data.status === 'ok') {
-                    location.reload();
-                } else {
-                    alert('還原失敗：' + (data.message || '未知錯誤'));
-                }
-            } catch(e) {
-                // Fallback: reload the page
-                location.reload();
-            }
-        }
-
-        function onPassageChange() {
-            currentPassageId = parseInt(document.getElementById('passage-select').value);
-            resetAll();
-        }
+        // Init
+        window.addEventListener('DOMContentLoaded', () => {
+            const passage = PASSAGES.find(p => p.id === currentPassageId);
+            renderPassageInitial(passage.text);
+            window.speechSynthesis.getVoices();
+        });
     </script>
 </body>
 </html>

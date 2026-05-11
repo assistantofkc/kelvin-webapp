@@ -5,8 +5,20 @@ Adds /pronunciation route to the existing kelvin-webapp
 import json
 import os
 from flask import Blueprint, render_template, request, jsonify
+import requests
 
 pronunciation_bp = Blueprint('pronunciation', __name__, template_folder='templates')
+
+# Load .env file for local dev / PythonAnywhere
+ENV_FILE = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(ENV_FILE):
+    with open(ENV_FILE) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, val = line.split('=', 1)
+                if key not in os.environ:
+                    os.environ[key] = val
 
 PASSAGES = [
     {
@@ -31,7 +43,7 @@ PASSAGES = [
     }
 ]
 
-PRONUNCIATION_VERSION = 'v1.24'
+PRONUNCIATION_VERSION = 'v2.0'
 
 # Path to custom passages JSON file on PythonAnywhere
 CUSTOM_FILE = os.path.join(os.path.dirname(__file__), 'pronunciation_custom.json')
@@ -116,5 +128,82 @@ def reset_passage():
         with open(CUSTOM_FILE, 'w', encoding='utf-8') as f:
             json.dump(customs, f, ensure_ascii=False, indent=2)
         return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@pronunciation_bp.route('/pronunciation/assess', methods=['POST'])
+def assess_pronunciation():
+    """
+    Azure Pronunciation Assessment endpoint.
+    Receives audio (WAV) + reference text, returns phoneme-level scores.
+    """
+    api_key = os.environ.get('AZURE_SPEECH_KEY', '')
+    region = os.environ.get('AZURE_SPEECH_REGION', 'eastasia')
+    if not api_key:
+        return jsonify({'status': 'error', 'message': 'Azure key not configured'}), 500
+
+    reference_text = request.form.get('reference', '')
+    if 'audio' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No audio file'}), 400
+
+    audio_file = request.files['audio']
+    audio_data = audio_file.read()
+
+    if len(audio_data) < 100:
+        return jsonify({'status': 'error', 'message': 'Audio too short'}), 400
+
+    # Call Azure Pronunciation Assessment API
+    url = f"https://{region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=zh-CN"
+
+    pa_config = json.dumps({
+        "ReferenceText": reference_text,
+        "GradingSystem": "HundredMark",
+        "Granularity": "Phoneme",
+        "EnableMiscue": True
+    })
+
+    headers = {
+        'Ocp-Apim-Subscription-Key': api_key,
+        'Pronunciation-Assessment': pa_config,
+        'Content-Type': 'audio/wav; codecs=audio/pcm; samplerate=16000',
+        'Accept': 'application/json'
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, data=audio_data, timeout=30)
+        result = resp.json()
+
+        if resp.status_code != 200:
+            return jsonify({'status': 'error', 'message': result.get('Message', 'Azure API error')}), resp.status_code
+
+        # Parse Azure response into phoneme-level feedback
+        words_result = []
+        if 'NBest' in result and len(result['NBest']) > 0:
+            nbest = result['NBest'][0]
+            if 'Words' in nbest:
+                for w in nbest['Words']:
+                    word_info = {
+                        'word': w.get('Word', ''),
+                        'accuracy': w.get('PronunciationAssessment', {}).get('AccuracyScore', 0),
+                        'error_type': w.get('PronunciationAssessment', {}).get('ErrorType', ''),
+                        'phonemes': []
+                    }
+                    if 'Phonemes' in w:
+                        for p in w['Phonemes']:
+                            word_info['phonemes'].append({
+                                'phoneme': p.get('Phoneme', ''),
+                                'accuracy': p.get('PronunciationAssessment', {}).get('AccuracyScore', 0),
+                            })
+                    words_result.append(word_info)
+
+        return jsonify({
+            'status': 'ok',
+            'recognition': result.get('DisplayText', ''),
+            'words': words_result
+        })
+
+    except requests.exceptions.Timeout:
+        return jsonify({'status': 'error', 'message': 'Azure API timeout'}), 504
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
