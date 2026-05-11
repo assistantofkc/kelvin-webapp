@@ -396,13 +396,13 @@
             if (!isRecording) {
                 finalTranscript = '';
                 interim = '';
+                charMatched = [];  // ALWAYS reset on fresh start
                 document.getElementById('recognized-text').textContent = '';
                 document.getElementById('recognized-section').style.display = 'none';
                 document.getElementById('score-bar').style.display = 'none';
                 const passage = PASSAGES.find(p => p.id === currentPassageId);
                 renderPassageInitial(passage.text);
                 isRecording = true;
-                let seenResultIndexes = new Set();
                 try { recognition.start(); } catch(e) {}
             } else {
                 isRecording = false;
