@@ -79,12 +79,30 @@ def random_recipes():
     
     count = min(int(data.get('count', 3)), 10)
     
+    # Existing ingredients - parse and score recipes by ingredient overlap
+    have_ingredients = data.get('ingredients', '').strip()
+    have_list = []
+    if have_ingredients:
+        have_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', have_ingredients) if x.strip()]
+    
     c.execute(query, params)
     all_candidates = [dict(r) for r in c.fetchall()]
     
     if not all_candidates:
         conn.close()
         return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
+    
+    # Score & sort by ingredient overlap if user provided ingredients
+    if have_list:
+        for r in all_candidates:
+            recipe_ingredients = r['ingredients'].lower()
+            score = sum(1 for item in have_list if item in recipe_ingredients)
+            r['_score'] = score
+        all_candidates.sort(key=lambda r: r.get('_score', 0), reverse=True)
+        # Only keep recipes that match at least 1 ingredient (if >0 matches exist)
+        has_matches = [r for r in all_candidates if r.get('_score', 0) > 0]
+        if has_matches:
+            all_candidates = has_matches
     
     selected = []
     remaining = list(all_candidates)
@@ -113,7 +131,7 @@ def random_recipes():
         selected.append(chosen)
         remaining.remove(chosen)
     
-    result = [{k: r[k] for k in r.keys()} for r in selected]
+    result = [{k: r[k] for k in r.keys() if not k.startswith('_')} for r in selected]
     conn.close()
     return jsonify({'success': True, 'dishes': result})
 

@@ -523,7 +523,8 @@
                 prep_early: document.querySelector('#prep-chips .chip.active')?.dataset.val,
                 include_soup: document.getElementById('include-soup').checked,
                 include_cold: document.getElementById('include-cold').checked,
-                count: dishCount
+                count: dishCount,
+                ingredients: document.getElementById('have-ingredients').value.trim()
             };
             
             const allergyChip = document.querySelector('#allergy-chips .chip.active');
