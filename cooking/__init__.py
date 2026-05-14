@@ -182,10 +182,12 @@ Rules:
             'max_tokens': 2000
         }
         
-        response = req.post(MINIMAX_URL, headers=headers, json=payload, timeout=60)
+        response = req.post(MINIMAX_URL, headers=headers, json=payload, timeout=25)
         
         if response.status_code != 200:
-            return jsonify({'success': False, 'error': f'AI API error: {response.status_code}'})
+            err_msg = f'AI API 錯誤 ({response.status_code})。請稍後再試或嘗試其他菜式名稱。'
+            print(f'[Cooking] AI search error: {response.status_code} - {response.text[:200]}')
+            return jsonify({'success': False, 'error': err_msg})
         
         result = response.json()
         content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
@@ -206,6 +208,10 @@ Rules:
         
         return jsonify({'success': True, 'recipe': recipe})
         
+    except req.exceptions.Timeout:
+        return jsonify({'success': False, 'error': 'AI 搜尋超時（25秒），請用更簡單嘅菜式名再試。'})
+    except req.exceptions.RequestException as e:
+        return jsonify({'success': False, 'error': f'網絡錯誤，請再試。'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
