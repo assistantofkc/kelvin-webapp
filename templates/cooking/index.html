@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>🍳 Cooking Ideas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --card-bg: #1a1a2e;
+            --card-border: #2a2a4a;
+            --text: #e0e0e0;
+            --text-secondary: #888;
+            --accent: #f97316;
+            --accent-hover: #ea580c;
+            --input-bg: #252540;
+            --input-border: #3a3a5a;
+            --chip-bg: #252540;
+            --chip-active-bg: #f97316;
+            --chip-active-text: #fff;
+            --shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .light {
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --card-border: #e0e0e0;
+            --text: #1a1a2e;
+            --text-secondary: #666;
+            --input-bg: #f0f0f0;
+            --input-border: #ccc;
+            --chip-bg: #e8e8e8;
+            --chip-active-bg: #f97316;
+            --chip-active-text: #fff;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background 0.2s, color 0.2s;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        h1 { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
+        
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+        
+        /* Settings Panel */
+        .settings-toggle {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; border-radius: 8px;
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            cursor: pointer; font-size: 0.9rem; color: var(--text);
+            width: 100%; justify-content: space-between;
+        }
+        .settings-panel { 
+            display: none; 
+            margin-top: 12px;
+        }
+        .settings-panel.open { display: block; }
+        
+        /* Chips */
+        .chip-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .chip {
+            padding: 6px 12px; border-radius: 20px; border: 1px solid var(--input-border);
+            background: var(--chip-bg); color: var(--text-secondary);
+            font-size: 0.8rem; cursor: pointer; user-select: none;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .chip.active {
+            background: var(--chip-active-bg); color: var(--chip-active-text);
+            border-color: var(--chip-active-bg);
+        }
+        .chip:hover { opacity: 0.85; }
+        
+        /* Range slider */
+        input[type="range"] { width: 100%; accent-color: var(--accent); }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 10px 20px; border-radius: 10px; border: none;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 14px; font-size: 1rem; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--input-bg); color: var(--text); border: 1px solid var(--input-border); }
+        .btn-secondary:hover { opacity: 0.8; }
+        
+        /* Inputs */
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 10px 14px; border-radius: 8px;
+            border: 1px solid var(--input-border); background: var(--input-bg);
+            color: var(--text); font-size: 0.9rem;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        
+        /* Recipe Card */
+        .recipe-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            box-shadow: var(--shadow);
+        }
+        .recipe-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
+        .recipe-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .recipe-tag {
+            padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;
+            background: var(--chip-bg); color: var(--text-secondary);
+        }
+        .recipe-steps { font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); white-space: pre-line; }
+        .recipe-ingredients { font-size: 0.85rem; color: var(--text); margin-bottom: 8px; }
+        .recipe-tips { font-size: 0.8rem; color: var(--accent); margin-top: 8px; font-style: italic; }
+        
+        /* AI result section */
+        .ai-result { display: none; }
+        .ai-result.show { display: block; }
+        
+        /* Loading */
+        .spinner {
+            display: none; width: 20px; height: 20px; border: 2px solid var(--card-border);
+            border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+        .spinner.show { display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #333; color: #fff; padding: 10px 24px; border-radius: 24px;
+            font-size: 0.85rem; z-index: 9999; transition: transform 0.3s; pointer-events: none;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        
+        /* Mobile adjustments */
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            h1 { font-size: 1.3rem; }
+            .card { padding: 12px; }
+            .chip { padding: 4px 8px; font-size: 0.75rem; }
+        }
+        
+        /* Accordion chevron */
+        .chevron { transition: transform 0.2s; }
+        .open .chevron { transform: rotate(180deg); }
+        
+        /* Counter */
+        .counter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .counter-row label { min-width: 70px; font-size: 0.85rem; color: var(--text-secondary); }
+        .counter-row button {
+            width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--input-border);
+            background: var(--input-bg); color: var(--text); font-size: 1.1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .counter-row span.counter-value { font-size: 1.1rem; font-weight: 600; min-width: 24px; text-align: center; }
+        
+        /* Checkbox toggle */
+        .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; }
+        input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h1>🍳 Cooking Ideas</h1>
+        </div>
+        
+        <!-- Settings Panel -->
+        <div class="card">
+            <div class="settings-toggle" onclick="toggleSettings()" id="settings-toggle">
+                <span>⚙️ 晚餐設定</span>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="settings-panel open" id="settings-panel">
+                <!-- People count -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">人數</div>
+                    <div class="counter-row">
+                        <label>大人</label>
+                        <button onclick="adjustCounter('adults', -1)">−</button>
+                        <span class="counter-value" id="adults-count">2</span>
+                        <button onclick="adjustCounter('adults', 1)">+</button>
+                    </div>
+                    <div class="counter-row" id="kids-row" style="display:none;">
+                        <label>小孩</label>
+                        <button onclick="adjustCounter('kids', -1)">−</button>
+                        <span class="counter-value" id="kids-count">0</span>
+                        <button onclick="adjustCounter('kids', 1)">+</button>
+                        <span style="font-size:0.75rem;color:var(--text-secondary);">歲</span>
+                        <input type="number" id="kids-age" value="5" min="1" max="17" style="width:50px;padding:4px;text-align:center;">
+                    </div>
+                    <div class="toggle-row">
+                        <input type="checkbox" id="has-kids" onchange="toggleKids()">
+                        <label>有小孩</label>
+                    </div>
+                </div>
+                
+                <!-- Taste -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">口味</div>
+                    <div class="chip-group" id="taste-chips">
+                        <span class="chip" data-val="清淡" onclick="toggleChip(this)">清淡</span>
+                        <span class="chip" data-val="濃味" onclick="toggleChip(this)">濃味</span>
+                        <span class="chip" data-val="辣" onclick="toggleChip(this)">辣</span>
+                    </div>
+                </div>
+                
+                <!-- Cuisine -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">菜式</div>
+                    <div class="chip-group" id="cuisine-chips">
+                        <span class="chip active" data-val="中式" onclick="toggleChip(this)">中式</span>
+                        <span class="chip active" data-val="西式" onclick="toggleChip(this)">西式</span>
+                        <span class="chip active" data-val="日式" onclick="toggleChip(this)">日式</span>
+                        <span class="chip active" data-val="東南亞" onclick="toggleChip(this)">東南亞</span>
+                    </div>
+                </div>
+                
+                <!-- Cooking method -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">煮法</div>
+                    <div class="chip-group" id="method-chips">
+                        <span class="chip" data-val="蒸" onclick="toggleChip(this)">蒸</span>
+                        <span class="chip" data-val="炒" onclick="toggleChip(this)">炒</span>
+                        <span class="chip" data-val="炆" onclick="toggleChip(this)">炆</span>
+                        <span class="chip" data-val="燉" onclick="toggleChip(this)">燉</span>
+                        <span class="chip" data-val="煎" onclick="toggleChip(this)">煎</span>
+                        <span class="chip" data-val="焗" onclick="toggleChip(this)">焗</span>
+                        <span class="chip" data-val="炸" onclick="toggleChip(this)">炸</span>
+                    </div>
+                </div>
+                
+                <!-- Nutrition -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">營養考慮</div>
+                    <div class="chip-group" id="nutrition-chips">
+                        <span class="chip" data-val="菜" onclick="toggleChip(this)">🥬 菜</span>
+                        <span class="chip" data-val="魚" onclick="toggleChip(this)">🐟 魚</span>
+                        <span class="chip" data-val="白肉" onclick="toggleChip(this)">🍗 白肉</span>
+                        <span class="chip" data-val="紅肉" onclick="toggleChip(this)">🥩 紅肉</span>
+                        <span class="chip" data-val="澱粉質" onclick="toggleChip(this)">🍚 澱粉質</span>
+                    </div>
+                </div>
+                
+                <!-- Prep early -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">提前準備</div>
+                    <div class="chip-group" id="prep-chips">
+                        <span class="chip" data-val="yes" onclick="selectOne(this, 'prep-chips')">可早一晚/假期準備</span>
+                        <span class="chip" data-val="no" onclick="selectOne(this, 'prep-chips')">當天現做</span>
+                    </div>
+                </div>
+                
+                <!-- Available ingredients -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">已有材料</div>
+                    <input type="text" id="have-ingredients" placeholder="例如：雞蛋、洋蔥、番茄..." style="margin-bottom:4px;">
+                    <div id="ingredient-tags" class="chip-group" style="margin-bottom:4px;"></div>
+                </div>
+                
+                <!-- Time -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">
+                        時間：<span id="time-label">60分鐘內</span>
+                    </div>
+                    <input type="range" id="max-time" min="15" max="120" value="60" step="5" oninput="updateTimeLabel(this.value)">
+                </div>
+                
+                <!-- Count + Soup/Cold dish -->
+                <div style="margin-bottom:8px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">菜式數目</div>
+                    <div class="counter-row">
+                        <button onclick="adjustCounter('dishCount', -1)">−</button>
+                        <span class="counter-value" id="dish-count">3</span>
+                        <button onclick="adjustCounter('dishCount', 1)">+</button>
+                    </div>
+                    <div class="toggle-row">
+                        <input type="checkbox" id="include-soup">
+                        <label>包括湯</label>
+                    </div>
+                    <div class="toggle-row">
+                        <input type="checkbox" id="include-cold">
+                        <label>包括冷盤</label>
+                    </div>
+                </div>
+                
+                <!-- Allergy -->
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">食物敏感</div>
+                    <div class="chip-group" id="allergy-chips">
+                        <span class="chip active" data-val="no" onclick="selectOne(this, 'allergy-chips')">沒有</span>
+                        <span class="chip" data-val="yes" onclick="selectOne(this, 'allergy-chips')">有</span>
+                    </div>
+                    <input type="text" id="allergy-details" placeholder="請註明敏感食物..." style="display:none;margin-top:8px;">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <button class="btn btn-primary" onclick="generateDishes()" id="generate-btn">
+            <span class="spinner" id="generate-spinner"></span>
+            🎲 隨機生成菜式
+        </button>
+        
+        <div style="text-align:center;margin:12px 0;color:var(--text-secondary);font-size:0.85rem;">或</div>
+        
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <input type="text" id="custom-dish" placeholder="自訂菜式 (例如：清蒸石斑)" style="flex:1;">
+            <button class="btn btn-secondary" onclick="aiSearchRecipe()" id="ai-search-btn">
+                <span class="spinner" id="ai-spinner"></span>
+                🤖 AI 搜尋食譜
+            </button>
+        </div>
+        
+        <!-- AI Search Result -->
+        <div class="ai-result card" id="ai-result"></div>
+        
+        <!-- Results -->
+        <div id="results"></div>
+        <div style="text-align:center;margin-top:8px;" id="regenerate-btn" style="display:none;">
+            <button class="btn btn-secondary" onclick="generateDishes()">🔄 重新生成</button>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Sidebar -->
+    {% include '_sidebar.html' %}
+    
+    <script>
+        // Settings state
+        let adults = 2, kids = 0, dishCount = 3;
+        
+        function toggleSettings() {
+            document.getElementById('settings-panel').classList.toggle('open');
+            document.getElementById('settings-toggle').classList.toggle('open');
+        }
+        
+        function toggleChip(el) {
+            el.classList.toggle('active');
+        }
+        
+        function selectOne(el, groupId) {
+            document.querySelectorAll('#' + groupId + ' .chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            if (groupId === 'allergy-chips') {
+                document.getElementById('allergy-details').style.display = el.dataset.val === 'yes' ? 'block' : 'none';
+            }
+        }
+        
+        function toggleKids() {
+            document.getElementById('kids-row').style.display = document.getElementById('has-kids').checked ? 'flex' : 'none';
+        }
+        
+        function adjustCounter(key, delta) {
+            if (key === 'adults') { adults = Math.max(1, adults + delta); document.getElementById('adults-count').textContent = adults; }
+            if (key === 'kids') { kids = Math.max(0, kids + delta); document.getElementById('kids-count').textContent = kids; }
+            if (key === 'dishCount') { dishCount = Math.max(1, Math.min(10, dishCount + delta)); document.getElementById('dish-count').textContent = dishCount; }
+        }
+        
+        function updateTimeLabel(v) { document.getElementById('time-label').textContent = v + '分鐘內'; }
+        
+        function getSelected(groupId) {
+            return [...document.querySelectorAll('#' + groupId + ' .chip.active')].map(c => c.dataset.val);
+        }
+        
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+        
+        async function generateDishes() {
+            const btn = document.getElementById('generate-btn');
+            const spinner = document.getElementById('generate-spinner');
+            spinner.classList.add('show');
+            
+            const data = {
+                cuisines: getSelected('cuisine-chips'),
+                methods: getSelected('method-chips').length ? getSelected('method-chips') : undefined,
+                tastes: getSelected('taste-chips'),
+                nutrition: getSelected('nutrition-chips'),
+                max_time: parseInt(document.getElementById('max-time').value),
+                prep_early: document.querySelector('#prep-chips .chip.active')?.dataset.val,
+                include_soup: document.getElementById('include-soup').checked,
+                include_cold: document.getElementById('include-cold').checked,
+                count: dishCount
+            };
+            
+            const allergyChip = document.querySelector('#allergy-chips .chip.active');
+            if (allergyChip?.dataset.val === 'yes') data.spicy = 'yes'; // placeholder
+            
+            try {
+                const res = await fetch('/cooking-ideas/api/random', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    renderResults(result.dishes);
+                    document.getElementById('regenerate-btn').style.display = 'block';
+                } else {
+                    showToast(result.error || '找不到合適食譜');
+                }
+            } catch(e) {
+                showToast('網絡錯誤，請重試');
+            }
+            spinner.classList.remove('show');
+        }
+        
+        function renderResults(dishes) {
+            const container = document.getElementById('results');
+            container.innerHTML = dishes.map(r => `
+                <div class="recipe-card">
+                    <h3>${r.name}</h3>
+                    <div class="recipe-meta">
+                        <span class="recipe-tag">${r.cuisine}</span>
+                        <span class="recipe-tag">${r.cooking_method}</span>
+                        <span class="recipe-tag">${r.taste}</span>
+                        <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
+                        ${r.can_prep_early ? '<span class="recipe-tag">✅ 可提前準備</span>' : ''}
+                    </div>
+                    <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
+                    <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
+                    ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                </div>
+            `).join('');
+            window.scrollTo({top: container.offsetTop - 20, behavior: 'smooth'});
+        }
+        
+        async function aiSearchRecipe() {
+            const dishName = document.getElementById('custom-dish').value.trim();
+            if (!dishName) { showToast('請輸入菜式名稱'); return; }
+            
+            const spinner = document.getElementById('ai-spinner');
+            const btn = document.getElementById('ai-search-btn');
+            const resultDiv = document.getElementById('ai-result');
+            spinner.classList.add('show');
+            
+            try {
+                const res = await fetch('/cooking-ideas/api/search', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({dish_name: dishName})
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    const r = result.recipe;
+                    resultDiv.classList.add('show');
+                    resultDiv.innerHTML = `
+                        <div class="recipe-card">
+                            <div style="display:flex;justify-content:space-between;align-items:start;">
+                                <h3>🤖 ${r.name}</h3>
+                                <button class="btn btn-secondary" onclick="saveAiRecipe()" style="padding:6px 12px;font-size:0.8rem;">💾 儲存</button>
+                            </div>
+                            <div class="recipe-meta">
+                                <span class="recipe-tag">${r.cuisine || ''}</span>
+                                <span class="recipe-tag">${r.cooking_method || ''}</span>
+                                <span class="recipe-tag">${r.taste || ''}</span>
+                                <span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span>
+                            </div>
+                            <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients || ''}</div>
+                            <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || ''}</div>
+                            ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                        </div>
+                    `;
+                    window._aiRecipe = r;
+                    resultDiv.scrollIntoView({behavior: 'smooth'});
+                } else {
+                    showToast(result.error || 'AI搜尋失敗');
+                }
+            } catch(e) {
+                showToast('網絡錯誤或AI搜尋失敗');
+            }
+            spinner.classList.remove('show');
+        }
+        
+        async function saveAiRecipe() {
+            if (!window._aiRecipe) return;
+            try {
+                const res = await fetch('/cooking-ideas/api/save', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(window._aiRecipe)
+                });
+                const result = await res.json();
+                showToast(result.success ? '已儲存到食譜庫！' : (result.error || '儲存失敗'));
+            } catch(e) {
+                showToast('儲存失敗');
+            }
+        }
+        
+        // Enter key to search
+        document.getElementById('custom-dish').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') aiSearchRecipe();
+        });
+    </script>
+    
+    <!-- Sidebar toggle script (matches other webapps) -->
+    <script>
+        const hamburger = document.getElementById('hamburger');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        if (hamburger) hamburger.onclick = () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); };
+        if (overlay) overlay.onclick = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); };
+        
+        // Theme toggle (matches sidebar)
+        window.toggleTheme = function() {
+            document.body.classList.toggle('light');
+            const isLight = document.body.classList.contains('light');
+            document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
+            document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        };
+        
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light');
+            const ti = document.getElementById('theme-icon');
+            const tt = document.getElementById('theme-text');
+            if (ti) ti.textContent = '☀️';
+            if (tt) tt.textContent = 'Light Mode';
+        }
+    </script>
+</body>
+</html>

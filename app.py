@@ -212,6 +212,14 @@ try:
 except Exception as e:
     print(f"[INFO] Pronunciation blueprint not loaded: {e}")
 
+# === Cooking Ideas Blueprint ===
+try:
+    from cooking import cooking_bp
+    app.register_blueprint(cooking_bp, url_prefix='/cooking-ideas')
+    print("[INFO] Cooking Ideas blueprint loaded")
+except Exception as e:
+    print(f"[INFO] Cooking Ideas blueprint not loaded: {e}")
+
 
 @app.route('/')
 def index():
