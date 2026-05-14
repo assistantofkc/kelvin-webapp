@@ -176,6 +176,99 @@
         /* Checkbox toggle */
         .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; }
         input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+        
+        /* Hamburger */
+        .hamburger {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .hamburger:hover { background: var(--card-border); }
+        .hamburger-icon {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: var(--text);
+            margin: 5px 0;
+            border-radius: 2px;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100vh;
+            background: var(--card-bg);
+            padding-top: 80px;
+            padding-left: 30px;
+            transition: left 0.3s ease;
+            z-index: 999;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+        .sidebar.active { left: 0; }
+        .sidebar a {
+            display: block;
+            color: var(--text);
+            text-decoration: none;
+            padding: 15px 0;
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .sidebar a:hover { color: var(--accent); }
+        .sidebar a span { margin-right: 10px; }
+        .sidebar-header { padding: 12px 0 12px; font-size: 1.1rem; font-weight: bold; color: var(--text); border-bottom: 2px solid var(--card-border); margin-bottom: 10px; }
+        
+        /* Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 998;
+        }
+        .overlay.active { opacity: 1; visibility: visible; }
+        
+        /* Theme Switch */
+        .theme-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .theme-switch:hover { opacity: 0.8; }
+        
+        /* Light mode hamburger fix */
+        .light .hamburger {
+            background: #ffffff !important;
+            border: 1px solid #ddd !important;
+        }
+        .light .hamburger-icon {
+            background: #1a1a2e !important;
+        }
     </style>
 </head>
 <body>
@@ -345,7 +438,34 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <!-- Hamburger Menu -->
+    <div class="hamburger" onclick="toggleSidebar()">
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+        <span class="hamburger-icon"></span>
+    </div>
+
     <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="theme-switch" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-text">Dark Mode</span>
+        </div>
+        <div class="sidebar-header">📋 App Menu</div>
+        <a href="/news-clipper"><span>📰</span> News Clipper</a>
+        <a href="/vocab-test"><span>📝</span> 中文詞彙測試</a>
+        <a href="/pronunciation"><span>🗣️</span> 普通話發音練習</a>
+        <a href="https://gemini.google.com/share/b200771ce08e" target="_blank"><span>🧩</span> 中文詞彙測試 (Gemini)</a>
+        <a href="/geckolab"><span>🦎</span> Geckolab</a>
+        <a href="/cooking-ideas"><span>🍳</span> Cooking Ideas</a>
+        <a href="/cangjie"><span>🔣</span> 倉頡學堂</a>
+        <a href="https://gemini.google.com/share/97151a39e237" target="_blank"><span>🎭</span> Slide Translator (Gemini)</a>
+        <a href="/"><span>🏠</span> About</a>
+    </nav>
+
+    <!-- Overlay -->
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
     {% include '_sidebar.html' %}
     
     <script>
@@ -518,11 +638,23 @@
     
     <!-- Sidebar toggle script (matches other webapps) -->
     <script>
-        const hamburger = document.getElementById('hamburger');
+        const hamburger = document.querySelector('.hamburger');
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
-        if (hamburger) hamburger.onclick = () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); };
-        if (overlay) overlay.onclick = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); };
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+        if (hamburger) hamburger.onclick = toggleSidebar;
+        if (overlay) overlay.onclick = toggleSidebar;
+        
+        document.addEventListener('click', function(event) {
+            if (sidebar.classList.contains('active') && !sidebar.contains(event.target) && event.target !== hamburger && !hamburger.contains(event.target)) {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+        });
         
         // Theme toggle (matches sidebar)
         window.toggleTheme = function() {
