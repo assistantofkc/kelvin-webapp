@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 3
+DB_VERSION = 4
 
 def init_db():
     conn = get_db()
@@ -31,6 +31,7 @@ def init_db():
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
             c.execute('DROP TABLE IF EXISTS bookmarks')
+            c.execute('DROP TABLE IF EXISTS user_recipes')
             need_reinit = True
     else:
         # Check if tables exist but no version table (old DB)
@@ -39,6 +40,7 @@ def init_db():
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
             c.execute('DROP TABLE IF EXISTS bookmarks')
+            c.execute('DROP TABLE IF EXISTS user_recipes')
             need_reinit = True
     
     c.execute('''
@@ -82,6 +84,27 @@ def init_db():
             recipe_id INTEGER NOT NULL UNIQUE,
             created_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_recipes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            cuisine TEXT DEFAULT '中式',
+            cooking_method TEXT DEFAULT '炒',
+            taste TEXT DEFAULT '清淡',
+            nutrition_tags TEXT DEFAULT '',
+            prep_time_min INTEGER DEFAULT 30,
+            ingredients TEXT DEFAULT '',
+            steps TEXT DEFAULT '',
+            tips TEXT DEFAULT '',
+            servings INTEGER DEFAULT 4,
+            creator TEXT DEFAULT '',
+            image_base64 TEXT DEFAULT '',
+            is_spicy INTEGER DEFAULT 0,
+            can_prep_early INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now'))
         )
     ''')
     

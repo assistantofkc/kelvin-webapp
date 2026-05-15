@@ -477,3 +477,118 @@ Example format:
             pass
     
     return jsonify({'success': True, 'images': images})
+
+# ===== USER RECIPES (創建菜式) =====
+
+@cooking_bp.route('/api/user-recipes', methods=['GET', 'POST'])
+def user_recipes():
+    if request.method == 'GET':
+        conn = _get_db()
+        c = conn.cursor()
+        c.execute('SELECT * FROM user_recipes ORDER BY created_at DESC')
+        recipes = [dict(r) for r in c.fetchall()]
+        conn.close()
+        return jsonify({'success': True, 'recipes': recipes})
+    elif request.method == 'POST':
+        data = request.get_json() or {}
+        if not data.get('name'):
+            return jsonify({'success': False, 'error': 'Recipe name required.'})
+        conn = _get_db()
+        c = conn.cursor()
+        try:
+            c.execute('''
+                INSERT INTO user_recipes (name, cuisine, cooking_method, taste, nutrition_tags,
+                    prep_time_min, ingredients, steps, tips, servings, creator, image_base64, is_spicy, can_prep_early)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data['name'], data.get('cuisine', '中式'), data.get('cooking_method', '炒'),
+                data.get('taste', '清淡'), data.get('nutrition_tags', ''),
+                data.get('prep_time_min', 30), data.get('ingredients', ''),
+                data.get('steps', ''), data.get('tips', ''),
+                data.get('servings', 4), data.get('creator', ''),
+                data.get('image_base64', ''), data.get('is_spicy', 0), data.get('can_prep_early', 0)
+            ))
+            conn.commit()
+            new_id = c.lastrowid
+            conn.close()
+            return jsonify({'success': True, 'id': new_id, 'message': '已創建！'})
+        except Exception as e:
+            conn.close()
+            return jsonify({'success': False, 'error': str(e)})
+
+@cooking_bp.route('/api/user-recipes/<int:recipe_id>/edit', methods=['POST'])
+def edit_user_recipe(recipe_id):
+    data = request.get_json() or {}
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT id FROM user_recipes WHERE id = ?', [recipe_id])
+    if not c.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    try:
+        fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
+                  'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'creator', 'image_base64', 'is_spicy', 'can_prep_early']
+        updates = []
+        params = []
+        for f in fields:
+            if f in data:
+                updates.append(f'{f} = ?')
+                params.append(data[f])
+        if not updates:
+            conn.close()
+            return jsonify({'success': False, 'error': 'No fields to update.'})
+        params.append(recipe_id)
+        sql = f'UPDATE user_recipes SET {", ".join(updates)} WHERE id = ?'
+        c.execute(sql, params)
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': '已更新！'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+@cooking_bp.route('/api/user-recipes/<int:recipe_id>/delete', methods=['POST'])
+def delete_user_recipe(recipe_id):
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM user_recipes WHERE id = ?', [recipe_id])
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    try:
+        c.execute('DELETE FROM user_recipes WHERE id = ?', [recipe_id])
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'已刪除「{r["name"]}」'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+@cooking_bp.route('/api/user-recipes/<int:recipe_id>/add-to-db', methods=['POST'])
+def add_user_recipe_to_db(recipe_id):
+    """Copy a user recipe into the main recipes table."""
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM user_recipes WHERE id = ?', [recipe_id])
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    try:
+        c.execute('''
+            INSERT INTO recipes (name, cuisine, cooking_method, taste, nutrition_tags,
+                prep_time_min, can_prep_early, is_spicy, ingredients, steps, tips, source, servings)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?)
+        ''', (
+            r['name'], r['cuisine'], r['cooking_method'], r['taste'],
+            r['nutrition_tags'], r['prep_time_min'], r['can_prep_early'],
+            r['is_spicy'], r['ingredients'], r['steps'], r['tips'], r['servings']
+        ))
+        conn.commit()
+        new_id = c.lastrowid
+        conn.close()
+        return jsonify({'success': True, 'id': new_id, 'message': f'「{r["name"]}」已加入食譜庫！'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})

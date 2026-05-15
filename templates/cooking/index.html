@@ -233,6 +233,28 @@
             color: var(--text-primary);
         }
         
+        /* Circle Add Button */
+        .circle-add-btn {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: var(--accent); color: #fff;
+            border: none; font-size: 2rem; font-weight: 300;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+            transition: all 0.2s;
+        }
+        .circle-add-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(102,126,234,0.5); }
+        
+        /* Image upload preview */
+        .img-upload-area {
+            width: 100%; min-height: 120px; border: 2px dashed var(--input-border);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: border-color 0.2s;
+            overflow: hidden; position: relative;
+        }
+        .img-upload-area:hover { border-color: var(--accent); }
+        .img-upload-area img { max-width: 100%; max-height: 200px; object-fit: contain; }
+        .img-upload-area .placeholder { color: var(--text-secondary); font-size: 0.85rem; }
+        
         /* Mobile adjustments */
         @media (max-width: 768px) {
             .container { padding: calc(80px + env(safe-area-inset-top)) 12px calc(110px + env(safe-area-inset-bottom)) 12px; }
@@ -559,12 +581,67 @@
             </div>
         </div>
         
-        <!-- ===== TAB 3: 收藏 ===== -->
+        <!-- ===== TAB 3: 創建菜式 ===== -->
+        <div class="tab-content" id="tab-create">
+            <!-- Circle Add Button -->
+            <div style="text-align:center;margin-bottom:20px;">
+                <button class="circle-add-btn" onclick="openCreateForm()" title="創建新食譜">
+                    <span>+</span>
+                </button>
+                <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">創建新食譜</div>
+            </div>
+            <!-- User Recipes List -->
+            <div id="user-recipes-list">
+                <div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>
+            </div>
+        </div>
+        
+        <!-- ===== TAB 4: 收藏 ===== -->
         <div class="tab-content" id="tab-bookmarks">
             <div id="bookmarks-section">
                 <div style="text-align:center;padding:40px;color:var(--text-secondary);">
                     📑 載入中...
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Recipe Modal -->
+    <div class="modal-overlay" id="create-modal" onclick="if(event.target===this)closeCreateForm()">
+        <div class="modal-content">
+            <h3>✨ 創建食譜</h3>
+            <!-- Image Upload -->
+            <label>相片</label>
+            <div class="img-upload-area" onclick="document.getElementById('create-img-input').click()">
+                <img id="create-img-preview" style="display:none;">
+                <span class="placeholder" id="create-img-placeholder">📷 點擊上傳相片</span>
+            </div>
+            <input type="file" id="create-img-input" accept="image/*" onchange="handleImageUpload(this)" style="display:none;">
+            <label>菜式名</label>
+            <input type="text" id="create-name">
+            <label>創作者</label>
+            <input type="text" id="create-creator" placeholder="你的名字">
+            <label>菜系</label>
+            <input type="text" id="create-cuisine">
+            <label>煮法</label>
+            <input type="text" id="create-method">
+            <label>口味</label>
+            <input type="text" id="create-taste">
+            <label>營養標籤 (逗號分隔)</label>
+            <input type="text" id="create-nutrition">
+            <label>烹調時間 (分鐘)</label>
+            <input type="number" id="create-time" min="5" max="180">
+            <label>材料</label>
+            <textarea id="create-ingredients"></textarea>
+            <label>步驟</label>
+            <textarea id="create-steps"></textarea>
+            <label>小貼士</label>
+            <textarea id="create-tips"></textarea>
+            <label>份量</label>
+            <input type="number" id="create-servings" min="1" max="20">
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn btn-primary" onclick="saveUserRecipe()">💾 儲存</button>
+                <button class="btn btn-secondary" onclick="closeCreateForm()">取消</button>
             </div>
         </div>
     </div>
@@ -609,6 +686,10 @@
         <button class="nav-btn" onclick="switchTab('ai')" data-tab="ai">
             <span class="nav-icon">🔍</span>
             <span>搜尋菜式</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('create')" data-tab="create">
+            <span class="nav-icon">✨</span>
+            <span>創建菜式</span>
         </button>
         <button class="nav-btn" onclick="switchTab('bookmarks')" data-tab="bookmarks">
             <span class="nav-icon">📑</span>
@@ -695,6 +776,7 @@
             document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('.bottom-nav .nav-btn[data-tab="' + tab + '"]').classList.add('active');
             if (tab === 'bookmarks') loadBookmarks();
+            if (tab === 'create') loadUserRecipes();
             // Re-show any recipe images that were loaded
             setTimeout(() => {
                 document.querySelectorAll('#tab-' + tab + ' .recipe-img[src^="http"]').forEach(img => {
@@ -1097,6 +1179,179 @@
         async function removeBookmark(recipeId, btn) {
             await toggleBookmark(recipeId, btn);
             loadBookmarks();
+        }
+        
+        // ===== USER RECIPES (創建菜式) =====
+        let _editUserRecipeId = null;
+        let _userImageBase64 = '';
+        
+        function openCreateForm(recipe) {
+            _editUserRecipeId = recipe ? recipe.id : null;
+            _userImageBase64 = recipe ? (recipe.image_base64 || '') : '';
+            
+            const modal = document.getElementById('create-modal');
+            document.getElementById('create-name').value = recipe ? recipe.name : '';
+            document.getElementById('create-cuisine').value = recipe ? recipe.cuisine : '中式';
+            document.getElementById('create-method').value = recipe ? recipe.cooking_method : '炒';
+            document.getElementById('create-taste').value = recipe ? recipe.taste : '清淡';
+            document.getElementById('create-nutrition').value = recipe ? recipe.nutrition_tags : '';
+            document.getElementById('create-time').value = recipe ? recipe.prep_time_min : 30;
+            document.getElementById('create-ingredients').value = recipe ? recipe.ingredients : '';
+            document.getElementById('create-steps').value = recipe ? recipe.steps : '';
+            document.getElementById('create-tips').value = recipe ? recipe.tips : '';
+            document.getElementById('create-servings').value = recipe ? recipe.servings : 4;
+            document.getElementById('create-creator').value = recipe ? (recipe.creator || '') : '';
+            
+            const preview = document.getElementById('create-img-preview');
+            const placeholder = document.getElementById('create-img-placeholder');
+            if (_userImageBase64) {
+                preview.src = _userImageBase64;
+                preview.style.display = '';
+                placeholder.style.display = 'none';
+            } else {
+                preview.style.display = 'none';
+                placeholder.style.display = '';
+            }
+            
+            modal.classList.add('show');
+        }
+        
+        function closeCreateForm() {
+            document.getElementById('create-modal').classList.remove('show');
+            _editUserRecipeId = null;
+            _userImageBase64 = '';
+        }
+        
+        function handleImageUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Resize to max 400px to keep base64 small
+                const img = new Image();
+                img.onload = function() {
+                    const maxW = 400;
+                    let w = img.width, h = img.height;
+                    if (w > maxW) { h = h * maxW / w; w = maxW; }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    _userImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('create-img-preview').src = _userImageBase64;
+                    document.getElementById('create-img-preview').style.display = '';
+                    document.getElementById('create-img-placeholder').style.display = 'none';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        async function saveUserRecipe() {
+            const data = {
+                name: document.getElementById('create-name').value.trim(),
+                cuisine: document.getElementById('create-cuisine').value.trim(),
+                cooking_method: document.getElementById('create-method').value.trim(),
+                taste: document.getElementById('create-taste').value.trim(),
+                nutrition_tags: document.getElementById('create-nutrition').value.trim(),
+                prep_time_min: parseInt(document.getElementById('create-time').value) || 30,
+                ingredients: document.getElementById('create-ingredients').value.trim(),
+                steps: document.getElementById('create-steps').value.trim(),
+                tips: document.getElementById('create-tips').value.trim(),
+                servings: parseInt(document.getElementById('create-servings').value) || 4,
+                creator: document.getElementById('create-creator').value.trim(),
+                image_base64: _userImageBase64
+            };
+            if (!data.name) { showToast('請輸入菜式名'); return; }
+            
+            const url = _editUserRecipeId 
+                ? '/cooking-ideas/api/user-recipes/' + _editUserRecipeId + '/edit'
+                : '/cooking-ideas/api/user-recipes';
+            
+            try {
+                const res = await fetch(url, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeCreateForm();
+                    showToast(result.message);
+                    loadUserRecipes();
+                } else {
+                    showToast(result.error || '儲存失敗');
+                }
+            } catch(e) { showToast('儲存失敗'); }
+        }
+        
+        async function loadUserRecipes() {
+            const container = document.getElementById('user-recipes-list');
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>';
+            try {
+                const res = await fetch('/cooking-ideas/api/user-recipes');
+                const result = await res.json();
+                if (result.success) {
+                    if (result.recipes.length === 0) {
+                        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);">✨ 未有自創食譜<br><span style="font-size:0.85rem;">點擊 + 按鈕創建第一個食譜</span></div>';
+                    } else {
+                        container.innerHTML = result.recipes.map(r => `
+                            <div class="recipe-card">
+                                ${r.image_base64 ? `<img src="${r.image_base64}" class="recipe-img" style="display:block;float:right;width:120px;height:120px;object-fit:cover;border-radius:8px;margin:8px 0 8px 12px;">` : ''}
+                                <div class="recipe-body">
+                                    <div style="display:flex;justify-content:space-between;align-items:start;">
+                                        <h3 style="margin:0;">${r.name}</h3>
+                                        <div style="display:flex;gap:4px;">
+                                            <button class="btn btn-secondary" onclick="editUserRecipe(${r.id})" style="padding:3px 8px;font-size:0.7rem;">✏️</button>
+                                            <button class="btn btn-secondary" onclick="addUserRecipeToDb(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="加入食譜庫">💾</button>
+                                            <button class="btn btn-secondary" onclick="deleteUserRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;">🗑️</button>
+                                        </div>
+                                    </div>
+                                    ${r.creator ? `<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">👤 ${r.creator}</div>` : ''}
+                                    <div class="recipe-meta">
+                                        <span class="recipe-tag">${r.cuisine}</span>
+                                        <span class="recipe-tag">${r.cooking_method}</span>
+                                        <span class="recipe-tag">${r.taste}</span>
+                                        <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
+                                    </div>
+                                    <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
+                                    <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
+                                    ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch(e) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入失敗</div>';
+            }
+        }
+        
+        async function editUserRecipe(id) {
+            try {
+                const res = await fetch('/cooking-ideas/api/user-recipes');
+                const result = await res.json();
+                if (result.success) {
+                    const recipe = result.recipes.find(r => r.id === id);
+                    if (recipe) openCreateForm(recipe);
+                }
+            } catch(e) { showToast('載入失敗'); }
+        }
+        
+        async function deleteUserRecipe(id, name) {
+            if (!confirm(`確定要刪除「${name}」？`)) return;
+            try {
+                const res = await fetch('/cooking-ideas/api/user-recipes/' + id + '/delete', { method: 'POST' });
+                const result = await res.json();
+                showToast(result.success ? result.message : (result.error || '刪除失敗'));
+                if (result.success) loadUserRecipes();
+            } catch(e) { showToast('刪除失敗'); }
+        }
+        
+        async function addUserRecipeToDb(id) {
+            try {
+                const res = await fetch('/cooking-ideas/api/user-recipes/' + id + '/add-to-db', { method: 'POST' });
+                const result = await res.json();
+                showToast(result.success ? result.message : (result.error || '加入失敗'));
+            } catch(e) { showToast('加入失敗'); }
         }
     </script>
     
