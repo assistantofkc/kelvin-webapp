@@ -137,6 +137,8 @@ def random_recipes():
         if soups:
             soups.sort(key=lambda r: r.get('_score', 0), reverse=True)
             selected.append(soups[0])
+            # Don't pick another soup for remaining slots
+            all_candidates = [r for r in all_candidates if r['has_soup'] == 0 or r['id'] == soups[0]['id']]
     
     # Step 2: Pick cold dish if requested
     if wants_cold:
@@ -144,6 +146,8 @@ def random_recipes():
         if colds:
             colds.sort(key=lambda r: r.get('_score', 0), reverse=True)
             selected.append(colds[0])
+            # Don't pick another cold dish for remaining slots
+            all_candidates = [r for r in all_candidates if r['has_cold_dish'] == 0 or r['id'] == colds[0]['id']]
     
     # Step 3: Fill remaining slots with dishes covering remaining nutrition needs
     dishes_needed = count - len(selected)
