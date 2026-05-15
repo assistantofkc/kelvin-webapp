@@ -51,7 +51,7 @@
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: 140px 16px 16px;
+            padding: 24px 16px 16px;
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
@@ -154,8 +154,8 @@
         .toast.show { transform: translateX(-50%) translateY(0); }
         
         /* Mobile adjustments */
-        @media (max-width: 480px) {
-            .container { padding: 10px; }
+        @media (max-width: 768px) {
+            .container { padding: 80px 12px 12px; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
@@ -275,7 +275,6 @@
 </head>
 <body>
     <div class="container">
-        <div style="height:48px"></div>
         <!-- Header -->
         <div style="display:flex;align-items:center;justify-content:center;width:100%;margin-bottom:16px;position:relative;">
             <h1 style="margin:0;text-align:center;font-size:1.875rem;">🍳 Cooking Ideas</h1>
