@@ -64,6 +64,7 @@
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         body.light-mode h1 { text-shadow: 0 0 12px rgba(255,255,255,0.9), 0 0 24px rgba(255,255,255,0.6), 0 0 36px rgba(255,255,255,0.3); }
+        body.light-mode .header-logo { filter: drop-shadow(0 0 10px rgba(255,255,255,0.7)); }
         h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
         
         .card {
@@ -404,9 +405,9 @@
 <body>
     <div class="container">
         <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:center;width:100%;margin-bottom:16px;position:relative;">
-            <h1 style="margin:0;text-align:center;font-size:1.875rem;">🍳 Cooking Ideas</h1>
-            <span style="position:absolute;right:0;font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.40</span>
+        <div style="text-align:center;margin-bottom:16px;">
+            <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:280px;height:auto;display:block;margin:0 auto;">
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.40</span>
         </div>
         
         <!-- ===== TAB 1: 隨機生成菜式 ===== -->
