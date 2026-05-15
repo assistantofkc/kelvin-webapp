@@ -235,14 +235,16 @@
         
         /* Circle Add Button */
         .circle-add-btn {
-            width: 64px; height: 64px; border-radius: 50%;
+            position: fixed; bottom: calc(80px + env(safe-area-inset-bottom));
+            right: 20px; z-index: 996;
+            width: 56px; height: 56px; border-radius: 50%;
             background: var(--accent); color: #fff;
-            border: none; font-size: 2rem; font-weight: 300;
-            cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+            border: none; font-size: 1.8rem; font-weight: 300;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 20px rgba(102,126,234,0.5);
             transition: all 0.2s;
         }
-        .circle-add-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(102,126,234,0.5); }
+        .circle-add-btn:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(102,126,234,0.6); }
         
         /* Image upload preview */
         .img-upload-area {
@@ -583,14 +585,7 @@
         
         <!-- ===== TAB 3: 創建菜式 ===== -->
         <div class="tab-content" id="tab-create">
-            <!-- Circle Add Button -->
-            <div style="text-align:center;margin-bottom:20px;">
-                <button class="circle-add-btn" onclick="openCreateForm()" title="創建新食譜">
-                    <span>+</span>
-                </button>
-                <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">創建新食譜</div>
-            </div>
-            <!-- User Recipes List -->
+            <button class="circle-add-btn" onclick="openCreateForm()" title="創建新食譜">+</button>
             <div id="user-recipes-list">
                 <div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>
             </div>
@@ -777,6 +772,9 @@
             document.querySelector('.bottom-nav .nav-btn[data-tab="' + tab + '"]').classList.add('active');
             if (tab === 'bookmarks') loadBookmarks();
             if (tab === 'create') loadUserRecipes();
+            // Show/hide floating add button
+            const addBtn = document.querySelector('.circle-add-btn');
+            if (addBtn) addBtn.style.display = (tab === 'create') ? 'flex' : 'none';
             // Re-show any recipe images that were loaded
             setTimeout(() => {
                 document.querySelectorAll('#tab-' + tab + ' .recipe-img[src^="http"]').forEach(img => {
