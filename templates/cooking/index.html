@@ -621,15 +621,32 @@
             <label>創作者</label>
             <input type="text" id="create-creator" placeholder="你的名字">
             <label>菜系</label>
-            <input type="text" id="create-cuisine">
+            <div class="chip-group" id="create-cuisine-chips">
+                <span class="chip active" data-val="中式" onclick="selectOne(this, 'create-cuisine-chips')">中式</span>
+                <span class="chip" data-val="西式" onclick="selectOne(this, 'create-cuisine-chips')">西式</span>
+                <span class="chip" data-val="日式" onclick="selectOne(this, 'create-cuisine-chips')">日式</span>
+                <span class="chip" data-val="東南亞" onclick="selectOne(this, 'create-cuisine-chips')">東南亞</span>
+            </div>
             <label>煮法</label>
-            <input type="text" id="create-method">
+            <div class="chip-group" id="create-method-chips">
+                <span class="chip active" data-val="蒸" onclick="selectOne(this, 'create-method-chips')">蒸</span>
+                <span class="chip" data-val="炒" onclick="selectOne(this, 'create-method-chips')">炒</span>
+                <span class="chip" data-val="炆" onclick="selectOne(this, 'create-method-chips')">炆</span>
+                <span class="chip" data-val="燉" onclick="selectOne(this, 'create-method-chips')">燉</span>
+                <span class="chip" data-val="煎" onclick="selectOne(this, 'create-method-chips')">煎</span>
+                <span class="chip" data-val="焗" onclick="selectOne(this, 'create-method-chips')">焗</span>
+                <span class="chip" data-val="炸" onclick="selectOne(this, 'create-method-chips')">炸</span>
+            </div>
             <label>口味</label>
-            <input type="text" id="create-taste">
+            <div class="chip-group" id="create-taste-chips">
+                <span class="chip active" data-val="清淡" onclick="selectOne(this, 'create-taste-chips')">清淡</span>
+                <span class="chip" data-val="濃味" onclick="selectOne(this, 'create-taste-chips')">濃味</span>
+                <span class="chip" data-val="辣" onclick="selectOne(this, 'create-taste-chips')">辣</span>
+            </div>
             <label>營養標籤 (逗號分隔)</label>
             <input type="text" id="create-nutrition">
-            <label>烹調時間 (分鐘)</label>
-            <input type="number" id="create-time" min="5" max="180">
+            <label>烹調時間：<span id="create-time-label">30分鐘</span></label>
+            <input type="range" id="create-time" min="5" max="180" value="30" step="5" oninput="document.getElementById('create-time-label').textContent=this.value+'分鐘'">
             <label>材料</label>
             <textarea id="create-ingredients"></textarea>
             <label>步驟</label>
@@ -666,15 +683,32 @@
             <label>菜式名</label>
             <input type="text" id="edit-name">
             <label>菜系</label>
-            <input type="text" id="edit-cuisine">
+            <div class="chip-group" id="edit-cuisine-chips">
+                <span class="chip active" data-val="中式" onclick="selectOne(this, 'edit-cuisine-chips')">中式</span>
+                <span class="chip" data-val="西式" onclick="selectOne(this, 'edit-cuisine-chips')">西式</span>
+                <span class="chip" data-val="日式" onclick="selectOne(this, 'edit-cuisine-chips')">日式</span>
+                <span class="chip" data-val="東南亞" onclick="selectOne(this, 'edit-cuisine-chips')">東南亞</span>
+            </div>
             <label>煮法</label>
-            <input type="text" id="edit-method">
+            <div class="chip-group" id="edit-method-chips">
+                <span class="chip active" data-val="蒸" onclick="selectOne(this, 'edit-method-chips')">蒸</span>
+                <span class="chip" data-val="炒" onclick="selectOne(this, 'edit-method-chips')">炒</span>
+                <span class="chip" data-val="炆" onclick="selectOne(this, 'edit-method-chips')">炆</span>
+                <span class="chip" data-val="燉" onclick="selectOne(this, 'edit-method-chips')">燉</span>
+                <span class="chip" data-val="煎" onclick="selectOne(this, 'edit-method-chips')">煎</span>
+                <span class="chip" data-val="焗" onclick="selectOne(this, 'edit-method-chips')">焗</span>
+                <span class="chip" data-val="炸" onclick="selectOne(this, 'edit-method-chips')">炸</span>
+            </div>
             <label>口味</label>
-            <input type="text" id="edit-taste">
+            <div class="chip-group" id="edit-taste-chips">
+                <span class="chip active" data-val="清淡" onclick="selectOne(this, 'edit-taste-chips')">清淡</span>
+                <span class="chip" data-val="濃味" onclick="selectOne(this, 'edit-taste-chips')">濃味</span>
+                <span class="chip" data-val="辣" onclick="selectOne(this, 'edit-taste-chips')">辣</span>
+            </div>
             <label>營養標籤 (逗號分隔)</label>
             <input type="text" id="edit-nutrition">
-            <label>烹調時間 (分鐘)</label>
-            <input type="number" id="edit-time" min="5" max="180">
+            <label>烹調時間：<span id="edit-time-label">30分鐘</span></label>
+            <input type="range" id="edit-time-slider" min="5" max="180" value="30" step="5" oninput="document.getElementById('edit-time-label').textContent=this.value+'分鐘'">
             <label>材料</label>
             <textarea id="edit-ingredients"></textarea>
             <label>步驟</label>
@@ -1033,11 +1067,13 @@
                     const r = result.recipe;
                     _editRecipeId = recipeId;
                     document.getElementById('edit-name').value = r.name || '';
-                    document.getElementById('edit-cuisine').value = r.cuisine || '';
-                    document.getElementById('edit-method').value = r.cooking_method || '';
-                    document.getElementById('edit-taste').value = r.taste || '';
+                    setChipValue('edit-cuisine-chips', r.cuisine || '中式');
+                    setChipValue('edit-method-chips', r.cooking_method || '蒸');
+                    setChipValue('edit-taste-chips', r.taste || '清淡');
                     document.getElementById('edit-nutrition').value = r.nutrition_tags || '';
-                    document.getElementById('edit-time').value = r.prep_time_min || 30;
+                    const etSlider = document.getElementById('edit-time-slider');
+                    etSlider.value = r.prep_time_min || 30;
+                    document.getElementById('edit-time-label').textContent = etSlider.value + '分鐘';
                     document.getElementById('edit-ingredients').value = r.ingredients || '';
                     document.getElementById('edit-steps').value = r.steps || '';
                     document.getElementById('edit-tips').value = r.tips || '';
@@ -1058,11 +1094,11 @@
             if (!_editRecipeId) return;
             const data = {
                 name: document.getElementById('edit-name').value.trim(),
-                cuisine: document.getElementById('edit-cuisine').value.trim(),
-                cooking_method: document.getElementById('edit-method').value.trim(),
-                taste: document.getElementById('edit-taste').value.trim(),
+                cuisine: getChipValue('edit-cuisine-chips'),
+                cooking_method: getChipValue('edit-method-chips'),
+                taste: getChipValue('edit-taste-chips'),
                 nutrition_tags: document.getElementById('edit-nutrition').value.trim(),
-                prep_time_min: parseInt(document.getElementById('edit-time').value) || 30,
+                prep_time_min: parseInt(document.getElementById('edit-time-slider').value) || 30,
                 ingredients: document.getElementById('edit-ingredients').value.trim(),
                 steps: document.getElementById('edit-steps').value.trim(),
                 tips: document.getElementById('edit-tips').value.trim(),
@@ -1276,17 +1312,29 @@
         let _editUserRecipeId = null;
         let _userImageBase64 = '';
         
+        function getChipValue(groupId) {
+            const chip = document.querySelector('#' + groupId + ' .chip.active');
+            return chip ? chip.dataset.val : '';
+        }
+        function setChipValue(groupId, value) {
+            document.querySelectorAll('#' + groupId + ' .chip').forEach(c => c.classList.remove('active'));
+            const chip = document.querySelector('#' + groupId + ' .chip[data-val="' + value + '"]');
+            if (chip) chip.classList.add('active');
+        }
+        
         function openCreateForm(recipe) {
             _editUserRecipeId = recipe ? recipe.id : null;
             _userImageBase64 = recipe ? (recipe.image_base64 || '') : '';
             
             const modal = document.getElementById('create-modal');
             document.getElementById('create-name').value = recipe ? recipe.name : '';
-            document.getElementById('create-cuisine').value = recipe ? recipe.cuisine : '中式';
-            document.getElementById('create-method').value = recipe ? recipe.cooking_method : '炒';
-            document.getElementById('create-taste').value = recipe ? recipe.taste : '清淡';
+            setChipValue('create-cuisine-chips', recipe ? (recipe.cuisine || '中式') : '中式');
+            setChipValue('create-method-chips', recipe ? (recipe.cooking_method || '蒸') : '蒸');
+            setChipValue('create-taste-chips', recipe ? (recipe.taste || '清淡') : '清淡');
             document.getElementById('create-nutrition').value = recipe ? recipe.nutrition_tags : '';
-            document.getElementById('create-time').value = recipe ? recipe.prep_time_min : 30;
+            const timeSlider = document.getElementById('create-time');
+            timeSlider.value = recipe ? recipe.prep_time_min : 30;
+            document.getElementById('create-time-label').textContent = timeSlider.value + '分鐘';
             document.getElementById('create-ingredients').value = recipe ? recipe.ingredients : '';
             document.getElementById('create-steps').value = recipe ? recipe.steps : '';
             document.getElementById('create-tips').value = recipe ? recipe.tips : '';
@@ -1340,9 +1388,9 @@
         async function saveUserRecipe() {
             const data = {
                 name: document.getElementById('create-name').value.trim(),
-                cuisine: document.getElementById('create-cuisine').value.trim(),
-                cooking_method: document.getElementById('create-method').value.trim(),
-                taste: document.getElementById('create-taste').value.trim(),
+                cuisine: getChipValue('create-cuisine-chips'),
+                cooking_method: getChipValue('create-method-chips'),
+                taste: getChipValue('create-taste-chips'),
                 nutrition_tags: document.getElementById('create-nutrition').value.trim(),
                 prep_time_min: parseInt(document.getElementById('create-time').value) || 30,
                 ingredients: document.getElementById('create-ingredients').value.trim(),
