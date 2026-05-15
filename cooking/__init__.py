@@ -575,6 +575,9 @@ def add_user_recipe_to_db(recipe_id):
     if not r:
         conn.close()
         return jsonify({'success': False, 'error': 'Recipe not found.'})
+    if r['db_recipe_id']:
+        conn.close()
+        return jsonify({'success': False, 'error': '已經加入過食譜庫。'})
     try:
         c.execute('''
             INSERT INTO recipes (name, cuisine, cooking_method, taste, nutrition_tags,
@@ -585,10 +588,37 @@ def add_user_recipe_to_db(recipe_id):
             r['nutrition_tags'], r['prep_time_min'], r['can_prep_early'],
             r['is_spicy'], r['ingredients'], r['steps'], r['tips'], r['servings']
         ))
-        conn.commit()
         new_id = c.lastrowid
+        c.execute('UPDATE user_recipes SET db_recipe_id = ? WHERE id = ?', [new_id, recipe_id])
+        conn.commit()
         conn.close()
         return jsonify({'success': True, 'id': new_id, 'message': f'「{r["name"]}」已加入食譜庫！'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+@cooking_bp.route('/api/user-recipes/<int:recipe_id>/remove-from-db', methods=['POST'])
+def remove_user_recipe_from_db(recipe_id):
+    """Remove a previously added recipe from the main recipes table."""
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM user_recipes WHERE id = ?', [recipe_id])
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    if not r['db_recipe_id']:
+        conn.close()
+        return jsonify({'success': False, 'error': '尚未加入食譜庫。'})
+    try:
+        db_id = r['db_recipe_id']
+        c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [db_id])
+        c.execute('DELETE FROM custom_dishes WHERE recipe_id = ?', [db_id])
+        c.execute('DELETE FROM recipes WHERE id = ?', [db_id])
+        c.execute('UPDATE user_recipes SET db_recipe_id = NULL WHERE id = ?', [recipe_id])
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'「{r["name"]}」已從食譜庫移除。'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})

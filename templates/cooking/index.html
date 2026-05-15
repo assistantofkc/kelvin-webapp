@@ -1300,6 +1300,7 @@
                                         <div style="display:flex;gap:4px;">
                                             <button class="btn btn-secondary" onclick="editUserRecipe(${r.id})" style="padding:3px 8px;font-size:0.7rem;">✏️</button>
                                             <button class="btn btn-secondary" onclick="addUserRecipeToDb(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="加入食譜庫">💾</button>
+                                            ${r.db_recipe_id ? `<button class="btn btn-secondary" onclick="removeUserRecipeFromDb(${r.id})" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="從食譜庫移除">🗑️📖</button>` : ''}
                                             <button class="btn btn-secondary" onclick="deleteUserRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;">🗑️</button>
                                         </div>
                                     </div>
@@ -1349,7 +1350,18 @@
                 const res = await fetch('/cooking-ideas/api/user-recipes/' + id + '/add-to-db', { method: 'POST' });
                 const result = await res.json();
                 showToast(result.success ? result.message : (result.error || '加入失敗'));
+                if (result.success) loadUserRecipes();
             } catch(e) { showToast('加入失敗'); }
+        }
+        
+        async function removeUserRecipeFromDb(id) {
+            if (!confirm('確定要從食譜庫移除？')) return;
+            try {
+                const res = await fetch('/cooking-ideas/api/user-recipes/' + id + '/remove-from-db', { method: 'POST' });
+                const result = await res.json();
+                showToast(result.success ? result.message : (result.error || '移除失敗'));
+                if (result.success) loadUserRecipes();
+            } catch(e) { showToast('移除失敗'); }
         }
     </script>
     

@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 4
+DB_VERSION = 5
 
 def init_db():
     conn = get_db()
@@ -104,6 +104,7 @@ def init_db():
             image_base64 TEXT DEFAULT '',
             is_spicy INTEGER DEFAULT 0,
             can_prep_early INTEGER DEFAULT 0,
+            db_recipe_id INTEGER DEFAULT NULL,
             created_at TEXT DEFAULT (datetime('now'))
         )
     ''')
