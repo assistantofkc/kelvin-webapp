@@ -46,21 +46,21 @@
             --nav-border: rgba(0, 0, 0, 0.1);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { background: #1a1a2e; height: 100%; }
+        html { background: #1a1a2e; height: 100%; overflow-x: hidden; }
         body.light-mode ~ html, html:has(body.light-mode) { background: #f5f7fa; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
+            margin: 0; padding: 0;
             min-height: 100vh;
             min-height: 100dvh;
             transition: background 0.3s, color 0.3s;
-            padding-top: env(safe-area-inset-top);
         }
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: 24px 16px calc(100px + env(safe-area-inset-bottom)) 16px;
+            padding: calc(24px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom)) 16px;
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
@@ -235,7 +235,7 @@
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
-            .container { padding: 80px 12px calc(110px + env(safe-area-inset-bottom)) 12px; }
+            .container { padding: calc(80px + env(safe-area-inset-top)) 12px calc(110px + env(safe-area-inset-bottom)) 12px; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
