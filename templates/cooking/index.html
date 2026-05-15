@@ -818,7 +818,30 @@
             setTimeout(() => t.classList.remove('show'), 2500);
         }
         
-        // ===== TAB SWITCHING =====
+        // ===== SLIDER BEHAVIOR: only change by dragging thumb, not tapping track =====
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                let dragging = false;
+                let startVal;
+                slider.addEventListener('mousedown', function(e) {
+                    startVal = slider.value;
+                    dragging = false;
+                });
+                slider.addEventListener('touchstart', function(e) {
+                    startVal = slider.value;
+                    dragging = false;
+                }, {passive: true});
+                slider.addEventListener('input', function() {
+                    dragging = true;
+                });
+                slider.addEventListener('change', function() {
+                    if (!dragging && startVal !== undefined) {
+                        slider.value = startVal;
+                        slider.dispatchEvent(new Event('input', {bubbles: true}));
+                    }
+                });
+            });
+        });
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
