@@ -10,6 +10,9 @@ cooking_bp = Blueprint('cooking', __name__, template_folder='../templates/cookin
 
 MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '').strip()
 MINIMAX_URL = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = 'gemini-2.5-flash'
+GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
 
 # Lazy import to avoid circular imports
 def _get_db():
@@ -143,76 +146,90 @@ def ai_search():
     if not dish_name:
         return jsonify({'success': False, 'error': '請輸入菜式名稱。'})
     
-    if not MINIMAX_API_KEY:
+    if not GEMINI_API_KEY:
         return jsonify({'success': False, 'error': 'AI search not configured.'})
-    
-    prompt = f"""Please provide a complete recipe for "{dish_name}" in Traditional Chinese (繁體中文).
 
-Output ONLY valid JSON, no other text:
+    prompt = f"""Generate a complete recipe for "{dish_name}" in Traditional Chinese (繁體中文).
+
+Output ONLY valid JSON, no markdown, no explanation:
+
 {{
   "name": "菜名",
-  "name_en": "English name",
   "cuisine": "中式/西式/日式/東南亞",
   "cooking_method": "蒸/炒/炆/燉/煎/焗/炸",
   "taste": "清淡/濃味/辣",
-  "nutrition_tags": "營養標籤 (e.g. 菜,魚,白肉,紅肉,澱粉質,蛋白質)",
-  "prep_time_min": 數字(分鐘),
-  "can_prep_early": 0或1,
   "is_spicy": 0或1,
   "ingredients": "材料列表(每項用逗號分隔)",
-  "steps": "步驟(每步用換行分隔)",
+  "steps": "步驟(用\\n分隔每步)",
   "tips": "小貼士",
+  "prep_time_min": 15,
+  "can_prep_early": 0或1,
+  "nutrition_tags": "營養標籤(e.g. 菜,魚,白肉,紅肉,澱粉質,蛋白質)",
   "servings": 4
 }}
 
 Rules:
-- ALL text must be Traditional Chinese (繁體中文)
-- Steps should be numbered with newlines
-- Give realistic, practical recipes"""
+- ALL text MUST be Traditional Chinese (繁體中文)
+- Steps numbered, separated by \\n
+- Give realistic home-cooking recipes
+- Output ONLY the JSON, nothing else"""
 
     try:
-        headers = {
-            'Authorization': f'Bearer {MINIMAX_API_KEY}',
-            'Content-Type': 'application/json'
-        }
+        url = f'{GEMINI_URL}?key={GEMINI_API_KEY}'
         payload = {
-            'model': 'MiniMax-M2.7',
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.3,
-            'max_tokens': 2000
+            'contents': [{'parts': [{'text': prompt}]}],
+            'generationConfig': {
+                'temperature': 0.3,
+                'maxOutputTokens': 2000
+            }
         }
-        
-        response = req.post(MINIMAX_URL, headers=headers, json=payload, timeout=25)
-        
+
+        response = req.post(url, json=payload, timeout=25)
+
         if response.status_code != 200:
-            err_msg = f'AI API 錯誤 ({response.status_code})。請稍後再試或嘗試其他菜式名稱。'
-            print(f'[Cooking] AI search error: {response.status_code} - {response.text[:200]}')
+            err_msg = f'AI API 錯誤 ({response.status_code})。請稍後再試。'
+            print(f'[Cooking] Gemini error: {response.status_code} - {response.text[:300]}')
             return jsonify({'success': False, 'error': err_msg})
-        
+
         result = response.json()
-        content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
-        
-        if not content:
+        candidates = result.get('candidates', [])
+        if not candidates:
+            block_reason = result.get('promptFeedback', {}).get('blockReason', '')
+            if block_reason:
+                return jsonify({'success': False, 'error': f'內容被攔截：{block_reason}。請嘗試其他菜式名稱。'})
             return jsonify({'success': False, 'error': 'No response from AI.'})
-        
+
+        content = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+
+        if not content:
+            finish_reason = candidates[0].get('finishReason', 'unknown')
+            if finish_reason == 'SAFETY':
+                return jsonify({'success': False, 'error': 'AI 無法生成此食譜（安全限制）。請嘗試其他菜式名稱。'})
+            return jsonify({'success': False, 'error': 'AI 未返回內容，請再試。'})
+
+        # Clean JSON
         content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
         content = re.sub(r'```', '', content, flags=re.IGNORECASE)
+        content = content.strip()
         start = content.find('{')
         end = content.rfind('}') + 1
         if start == -1 or end == 0:
             return jsonify({'success': False, 'error': 'AI response format error.'})
-        
+
         recipe = json.loads(content[start:end])
         recipe['source'] = 'ai_search'
         recipe['from_ai'] = True
-        
+
         return jsonify({'success': True, 'recipe': recipe})
-        
+
     except req.exceptions.Timeout:
         return jsonify({'success': False, 'error': 'AI 搜尋超時（25秒），請用更簡單嘅菜式名再試。'})
     except req.exceptions.RequestException as e:
         return jsonify({'success': False, 'error': f'網絡錯誤，請再試。'})
+    except json.JSONDecodeError:
+        return jsonify({'success': False, 'error': 'AI 回覆格式錯誤，請再試。'})
     except Exception as e:
+        print(f'[Cooking] AI search error: {type(e).__name__}: {e}')
         return jsonify({'success': False, 'error': str(e)})
 
 @cooking_bp.route('/api/save', methods=['POST'])
