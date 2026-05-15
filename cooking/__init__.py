@@ -542,25 +542,25 @@ Output ONLY valid JSON:
             return jsonify({'success': False, 'error': 'AI response format error.'})
         
         json_str = raw[s:e]
-        # Fix common Gemini JSON issues: unescaped newlines inside string values
-        json_str = re.sub(r'(?<!\\")  # not preceded by escaped quote
-                          "([^"]*)"
-                          (?=[^{}]*[,}])
-                         ', lambda m: m.group(0), json_str, flags=re.VERBOSE)
-        # Simpler fix: collapse multi-line string values
-        # Actually just try to parse and if it fails, try to repair
+        # Try to parse, with simple repair for unescaped newlines
         try:
             recipe = json.loads(json_str)
         except json.JSONDecodeError:
-            # Attempt repair: re-escape newlines inside quoted strings
-            repaired = re.sub(
-                r'"([^"]*?[\n][^"]*?)"',
-                lambda m: '"' + m.group(1).replace('\n', '\\n') + '"',
-                json_str
-            )
-            recipe = json.loads(repaired)
+            import re as _re
+            fixed = _re.sub(r'"([^"]*?[\n\r][^"]*?)"',
+                lambda m: '"' + m.group(1).replace('\n', '\\n').replace('\r', '') + '"',
+                json_str)
+            recipe = json.loads(fixed)
         
         return jsonify({'success': True, 'recipe': recipe})
+
+    except req.exceptions.Timeout:
+        return jsonify({'success': False, 'error': 'AI 搜尋超時，請再試。'})
+    except json.JSONDecodeError:
+        return jsonify({'success': False, 'error': 'AI 回覆格式錯誤，請再試。'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 
     except req.exceptions.Timeout:
         return jsonify({'success': False, 'error': 'AI 搜尋超時，請再試。'})
