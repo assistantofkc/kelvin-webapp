@@ -127,6 +127,16 @@ def random_recipes():
     wants_soup = data.get('include_soup', False)
     wants_cold = data.get('include_cold', False)
     
+    # If not checked, EXCLUDE soup/cold dishes entirely
+    if not wants_soup:
+        remaining = [r for r in remaining if r['has_soup'] == 0]
+    if not wants_cold:
+        remaining = [r for r in remaining if r['has_cold_dish'] == 0]
+    
+    if not remaining:
+        conn.close()
+        return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
+    
     def pick_one(pool):
         """Pick best-scored if ingredient filter active, else random."""
         if has_ingredient_filter:
