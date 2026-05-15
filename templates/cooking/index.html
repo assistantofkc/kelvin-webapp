@@ -125,21 +125,18 @@
             background: var(--card-bg); border: 1px solid var(--card-border);
             border-radius: 12px; margin-bottom: 12px;
             box-shadow: var(--shadow); overflow: hidden;
-            display: flex; gap: 0; align-items: flex-start;
         }
         .recipe-card .recipe-img {
-            width: 130px; height: 130px; object-fit: cover;
-            flex-shrink: 0; border-radius: 12px 0 0 12px;
-            margin: 0;
+            float: right; width: 120px; height: 120px; 
+            object-fit: cover; border-radius: 8px;
+            margin: 0 0 8px 12px;
         }
-        .recipe-card .recipe-body {
-            flex: 1; min-width: 0;
-            padding: 14px 14px 14px 12px;
-        }
+        .recipe-card .recipe-body { padding: 14px; }
         @media (max-width: 480px) {
-            .recipe-card { flex-direction: column; }
             .recipe-card .recipe-img {
-                width: 100%; height: 160px; border-radius: 12px 12px 0 0;
+                float: none; display: block; 
+                width: calc(100% + 28px); height: 160px;
+                margin: -14px -14px 12px -14px; border-radius: 12px 12px 0 0;
             }
         }
         .recipe-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
@@ -751,6 +748,7 @@
                         <h3 style="margin:0;">${r.name}</h3>
                         <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
                     </div>
+                    <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
                     <div class="recipe-meta">
                         <span class="recipe-tag">${r.cuisine}</span>
                         <span class="recipe-tag">${r.cooking_method}</span>
@@ -762,7 +760,7 @@
                     <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                     </div>
-                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
+                
                 </div>
             `).join('');
             checkBookmarkStatus(dishes.map(d => d.id));
@@ -798,6 +796,7 @@
                                     <button class="btn btn-secondary" onclick="saveAiRecipe()" style="padding:6px 12px;font-size:0.8rem;">💾 加入食譜庫</button>
                                 </div>
                             </div>
+                            <img class="recipe-img" data-dish="${(r.name || '').replace(/"/g, '&quot;')}" src="" alt="${r.name || ''}" style="display:none">
                             <div class="recipe-meta">
                                 <span class="recipe-tag">${r.cuisine || ''}</span>
                                 <span class="recipe-tag">${r.cooking_method || ''}</span>
@@ -808,7 +807,7 @@
                             <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || ''}</div>
                             ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                             </div>
-                            <img class="recipe-img" data-dish="${(r.name || '').replace(/"/g, '&quot;')}" src="" alt="${r.name || ''}" style="display:none">
+                            
                         </div>
                     `;
                     window._aiRecipe = r;
@@ -881,6 +880,7 @@
                                         ${r.source === 'ai_custom' ? `<button class="btn btn-secondary" onclick="deleteRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="刪除">🗑️</button>` : ''}
                                     </div>
                                 </div>
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
                                 <div class="recipe-meta">
                                     <span class="recipe-tag">${r.cuisine}</span>
                                     <span class="recipe-tag">${r.cooking_method}</span>
@@ -891,7 +891,7 @@
                                 <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                                 ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                             </div>
-                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
+                                
                             </div>
                         `).join('');
                         checkBookmarkStatus(result.results.map(d => d.id));
@@ -1061,6 +1061,7 @@
                                     <h3 style="margin:0;">${r.name}</h3>
                                     <button class="bookmark-btn bookmarked" onclick="removeBookmark(${r.id}, this)" title="取消收藏">★</button>
                                 </div>
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
                                 <div class="recipe-meta">
                                     <span class="recipe-tag">${r.cuisine}</span>
                                     <span class="recipe-tag">${r.cooking_method}</span>
@@ -1071,7 +1072,7 @@
                                 <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                                 ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                             </div>
-                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
+                                
                             </div>
                         `).join('');
                         loadRecipeImages(bookmarks.map(d => d.name));
