@@ -968,7 +968,7 @@
                                     <div style="display:flex;gap:4px;">
                                         <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
                                         <button class="btn btn-secondary" onclick="openEditModal(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="編輯">✏️</button>
-                                        ${r.source === 'ai_custom' ? `<button class="btn btn-secondary" onclick="deleteRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="刪除">🗑️</button>` : ''}
+                                        ${(r.source === 'ai_custom' || r.source === 'user_created') ? `<button class="btn btn-secondary" onclick="deleteRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="刪除">🗑️</button>` : ''}
                                     </div>
                                 </div>
                                 <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
