@@ -341,3 +341,27 @@ def bookmark_status():
     bookmarked = {str(r['recipe_id']): True for r in c.fetchall()}
     conn.close()
     return jsonify({'success': True, 'bookmarked': bookmarked})
+
+@cooking_bp.route('/api/search-db', methods=['POST'])
+def search_db():
+    """Search recipes in the database by name or ingredients."""
+    data = request.get_json() or {}
+    query = data.get('q', '').strip()
+    if not query:
+        return jsonify({'success': False, 'error': '請輸入搜尋關鍵字。'})
+    
+    conn = _get_db()
+    c = conn.cursor()
+    # Search in name, ingredients, and cuisine
+    like = f'%{query}%'
+    c.execute('''
+        SELECT * FROM recipes 
+        WHERE name LIKE ? OR ingredients LIKE ? OR cuisine LIKE ?
+        ORDER BY 
+            CASE WHEN name LIKE ? THEN 0 ELSE 1 END,
+            name
+        LIMIT 20
+    ''', (like, like, like, like))
+    results = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify({'success': True, 'results': results, 'count': len(results)})

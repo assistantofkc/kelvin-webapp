@@ -459,14 +459,32 @@
             </div>
         </div>
         
-        <!-- ===== TAB 2: AI 搜尋食譜 ===== -->
+        <!-- ===== TAB 2: 搜尋菜式 ===== -->
         <div class="tab-content" id="tab-ai">
-            <div style="display:flex;gap:8px;margin-bottom:16px;">
-                <input type="text" id="custom-dish" placeholder="輸入菜式名稱 (例如：粟米斑塊)" style="flex:1;">
-                <button class="btn btn-secondary" onclick="aiSearchRecipe()" id="ai-search-btn">
-                    <span class="spinner" id="ai-spinner"></span>
-                    🤖 搜尋
-                </button>
+            <!-- DB Search -->
+            <div class="card" style="margin-bottom:12px;">
+                <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">🔍 搜尋食譜庫（已收錄食譜）</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="db-search-input" placeholder="輸入菜式名或材料..." style="flex:1;">
+                    <button class="btn btn-secondary" onclick="searchDB()" id="db-search-btn">
+                        <span class="spinner" id="db-spinner"></span>
+                        搜尋
+                    </button>
+                </div>
+            </div>
+            <!-- DB Search Results -->
+            <div id="db-results"></div>
+            
+            <!-- AI Search -->
+            <div class="card" style="margin-top:12px;">
+                <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">🤖 AI 生成新食譜（Gemini）</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="custom-dish" placeholder="輸入菜式名稱 (例如：粟米斑塊)" style="flex:1;">
+                    <button class="btn btn-secondary" onclick="aiSearchRecipe()" id="ai-search-btn">
+                        <span class="spinner" id="ai-spinner"></span>
+                        生成
+                    </button>
+                </div>
             </div>
             
             <!-- AI Search Result -->
@@ -490,8 +508,8 @@
             <span>隨機生成</span>
         </button>
         <button class="nav-btn" onclick="switchTab('ai')" data-tab="ai">
-            <span class="nav-icon">🤖</span>
-            <span>AI 搜尋</span>
+            <span class="nav-icon">🔍</span>
+            <span>搜尋菜式</span>
         </button>
         <button class="nav-btn" onclick="switchTab('bookmarks')" data-tab="bookmarks">
             <span class="nav-icon">📑</span>
@@ -723,6 +741,56 @@
         document.getElementById('custom-dish').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') aiSearchRecipe();
         });
+        document.getElementById('db-search-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') searchDB();
+        });
+        
+        // ===== DB SEARCH =====
+        async function searchDB() {
+            const query = document.getElementById('db-search-input').value.trim();
+            if (!query) { showToast('請輸入搜尋關鍵字'); return; }
+            
+            const spinner = document.getElementById('db-spinner');
+            const container = document.getElementById('db-results');
+            spinner.classList.add('show');
+            
+            try {
+                const res = await fetch('/cooking-ideas/api/search-db', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({q: query})
+                });
+                const result = await res.json();
+                
+                if (result.success) {
+                    if (result.results.length === 0) {
+                        container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:0.85rem;">找不到相關食譜</div>';
+                    } else {
+                        container.innerHTML = result.results.map(r => `
+                            <div class="recipe-card">
+                                <div style="display:flex;justify-content:space-between;align-items:start;">
+                                    <h3 style="margin:0;">${r.name}</h3>
+                                    <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
+                                </div>
+                                <div class="recipe-meta">
+                                    <span class="recipe-tag">${r.cuisine}</span>
+                                    <span class="recipe-tag">${r.cooking_method}</span>
+                                    <span class="recipe-tag">${r.taste}</span>
+                                    <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
+                                </div>
+                                <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
+                                <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
+                                ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                            </div>
+                        `).join('');
+                        checkBookmarkStatus(result.results.map(d => d.id));
+                    }
+                    container.scrollIntoView({behavior: 'smooth'});
+                } else {
+                    showToast(result.error || '搜尋失敗');
+                }
+            } catch(e) { showToast('搜尋失敗'); }
+            spinner.classList.remove('show');
+        }
         
         // ===== BOOKMARK FUNCTIONS =====
         async function toggleBookmark(recipeId, btn) {
