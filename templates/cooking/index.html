@@ -271,7 +271,7 @@
         /* Edit Modal */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 1001;
+            background: rgba(0,0,0,0.45); z-index: 1001;
             display: none; align-items: center; justify-content: center;
         }
         .modal-overlay.show { display: flex; }
@@ -545,7 +545,7 @@
             
             <!-- Results -->
             <div id="results" style="margin-top:16px;"></div>
-            <div style="text-align:center;margin-top:8px;" id="regenerate-btn" style="display:none;">
+            <div style="text-align:center;margin-top:8px;display:none;" id="regenerate-btn">
                 <button class="btn btn-secondary" onclick="generateDishes()">🔄 重新生成</button>
             </div>
         </div>
@@ -595,7 +595,7 @@
         <div class="tab-content" id="tab-bookmarks">
             <div id="bookmarks-section">
                 <div style="text-align:center;padding:40px;color:var(--text-secondary);">
-                    📑 載入中...
+                    ❤️ 載入中...
                 </div>
             </div>
         </div>
@@ -701,7 +701,7 @@
             <span>創建菜式</span>
         </button>
         <button class="nav-btn" onclick="switchTab('bookmarks')" data-tab="bookmarks">
-            <span class="nav-icon">📑</span>
+            <span class="nav-icon">❤️</span>
             <span>收藏</span>
         </button>
     </nav>
@@ -851,7 +851,7 @@
                     <div class="recipe-body">
                     <div style="display:flex;justify-content:space-between;align-items:start;">
                         <h3 style="margin:0;">${r.name}</h3>
-                        <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
+                        <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">♡</button>
                     </div>
                     <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
                     <div class="recipe-meta">
@@ -898,7 +898,7 @@
                             <div style="display:flex;justify-content:space-between;align-items:start;">
                                 <h3 style="margin:0;">🤖 ${r.name}</h3>
                                 <div style="display:flex;gap:6px;">
-                                    <button class="bookmark-btn" data-rid="${r.id || 'ai'}" onclick="toggleAiBookmark(this)" title="收藏">☆</button>
+                                    <button class="bookmark-btn" data-rid="${r.id || 'ai'}" onclick="toggleAiBookmark(this)" title="收藏">♡</button>
                                     <button class="btn btn-secondary" onclick="saveAiRecipe()" style="padding:6px 12px;font-size:0.8rem;">💾 加入食譜庫</button>
                                 </div>
                             </div>
@@ -981,7 +981,7 @@
                                 <div style="display:flex;justify-content:space-between;align-items:start;">
                                     <h3 style="margin:0;">${r.name}</h3>
                                     <div style="display:flex;gap:4px;">
-                                        <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
+                                        <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">♡</button>
                                         <button class="btn btn-secondary" onclick="openEditModal(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="編輯">✏️</button>
                                         ${(r.source === 'ai_custom' || r.source === 'user_created') ? `<button class="btn btn-secondary" onclick="deleteRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="刪除">🗑️</button>` : ''}
                                     </div>
@@ -1121,7 +1121,7 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    if (btn) btn.textContent = result.bookmarked ? '★' : '☆';
+                    if (btn) btn.textContent = result.bookmarked ? '❤️' : '♡';
                     if (result.bookmarked) btn?.classList.add('bookmarked');
                     else btn?.classList.remove('bookmarked');
                     showToast(result.message);
@@ -1148,7 +1148,7 @@
                     document.querySelectorAll('.bookmark-btn[data-rid]').forEach(btn => {
                         const rid = btn.dataset.rid;
                         if (result.bookmarked[rid]) {
-                            btn.textContent = '★';
+                            btn.textContent = '❤️';
                             btn.classList.add('bookmarked');
                         }
                     });
@@ -1165,14 +1165,14 @@
                 if (result.success) {
                     const bookmarks = result.bookmarks;
                     if (bookmarks.length === 0) {
-                        container.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--text-secondary);">📑 未有收藏<br><span style="font-size:0.85rem;">喺其他 Tab 點擊食譜右上角 ☆ 加入收藏</span></div>';
+                        container.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--text-secondary);">❤️ 未有收藏<br><span style="font-size:0.85rem;">喺其他 Tab 點擊食譜右上角 ♡ 加入收藏</span></div>';
                     } else {
                         container.innerHTML = bookmarks.map(r => `
                             <div class="recipe-card">
                                 <div class="recipe-body">
                                 <div style="display:flex;justify-content:space-between;align-items:start;">
                                     <h3 style="margin:0;">${r.name}</h3>
-                                    <button class="bookmark-btn bookmarked" onclick="removeBookmark(${r.id}, this)" title="取消收藏">★</button>
+                                    <button class="bookmark-btn bookmarked" onclick="removeBookmark(${r.id}, this)" title="取消收藏">❤️</button>
                                 </div>
                                 <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
                                 <div class="recipe-meta">
@@ -1218,6 +1218,8 @@
             const content = document.getElementById('expand-content');
             modal.classList.add('show');
             document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
             content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 生成中...</div></div>';
             try {
                 const res = await fetch('/cooking-ideas/api/expand-recipe', {
@@ -1268,6 +1270,8 @@
         function closeExpandModal() {
             document.getElementById('expand-modal').classList.remove('show');
             document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
         }
         
         // ===== USER RECIPES (創建菜式) =====
