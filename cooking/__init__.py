@@ -100,7 +100,9 @@ def random_recipes():
         return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
     
     # Score & sort by ingredient overlap if user provided ingredients
+    has_ingredient_filter = False
     if have_list:
+        has_ingredient_filter = True
         for r in all_candidates:
             recipe_ingredients = r['ingredients'].lower()
             score = sum(1 for item in have_list if item in recipe_ingredients)
@@ -117,24 +119,32 @@ def random_recipes():
     wants_soup = data.get('include_soup', False)
     wants_cold = data.get('include_cold', False)
     
+    def pick_one(pool):
+        """Pick best-scored if ingredient filter active, else random."""
+        if has_ingredient_filter:
+            return pool[0]  # top-scored from sorted list
+        return secrets.choice(pool)
+    
     if wants_soup:
         soups = [r for r in remaining if r['has_soup'] == 1]
         if soups:
-            chosen = secrets.choice(soups)
+            soups.sort(key=lambda r: r.get('_score', 0), reverse=True)
+            chosen = pick_one(soups)
             selected.append(chosen)
             remaining.remove(chosen)
     
     if wants_cold:
         colds = [r for r in remaining if r['has_cold_dish'] == 1]
         if colds:
-            chosen = secrets.choice(colds)
+            colds.sort(key=lambda r: r.get('_score', 0), reverse=True)
+            chosen = pick_one(colds)
             selected.append(chosen)
             remaining.remove(chosen)
     
     for _ in range(count - len(selected)):
         if not remaining:
             break
-        chosen = secrets.choice(remaining)
+        chosen = pick_one(remaining)
         selected.append(chosen)
         remaining.remove(chosen)
     
