@@ -484,7 +484,7 @@ Example format:
             resp = req.get(
                 'https://api.pexels.com/v1/search',
                 headers={'Authorization': PEXELS_API_KEY},
-                params={'query': query, 'per_page': 1, 'size': 'medium'},
+                params={'query': f'{query} dish', 'per_page': 1, 'size': 'medium'},
                 timeout=8
             )
             if resp.status_code == 200:
