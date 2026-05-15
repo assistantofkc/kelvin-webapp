@@ -187,6 +187,26 @@
         .sub-tab { display: none; }
         .sub-tab.active { display: block; }
         
+        /* Sub-tab pill nav (Tab 2) */
+        .sub-tab-nav {
+            display: flex; gap: 0; margin-bottom: 16px;
+            background: var(--input-bg); border-radius: 12px;
+            padding: 4px; border: 1px solid var(--input-border);
+        }
+        .sub-tab-nav .pill-btn {
+            flex: 1; padding: 10px 18px; border: none; background: none;
+            color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; border-radius: 10px; transition: all 0.2s;
+            text-align: center; white-space: nowrap;
+        }
+        .sub-tab-nav .pill-btn.active {
+            background: var(--accent); color: #fff;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        }
+        .sub-tab-nav .pill-btn:hover:not(.active) {
+            color: var(--text-primary);
+        }
+        
         /* Mobile adjustments */
         @media (max-width: 768px) {
             .container { padding: 80px 12px 110px 12px; }
@@ -482,10 +502,10 @@
         
         <!-- ===== TAB 2: 搜尋菜式 ===== -->
         <div class="tab-content" id="tab-ai">
-            <!-- Sub-tabs -->
-            <div class="tab-row" style="margin-bottom:12px;">
-                <button class="tab-btn active" onclick="switchSubTab('db')">🔍 搜尋食譜庫</button>
-                <button class="tab-btn" onclick="switchSubTab('ai')">🤖 AI 生成</button>
+            <!-- Sub-tab pill nav -->
+            <div class="sub-tab-nav">
+                <button class="pill-btn active" onclick="switchSubTab('db')">🔍 搜尋食譜庫</button>
+                <button class="pill-btn" onclick="switchSubTab('ai')">🤖 AI 生成</button>
             </div>
             
             <!-- DB Search -->
@@ -655,8 +675,8 @@
         function switchSubTab(tab) {
             document.querySelectorAll('.sub-tab').forEach(el => el.classList.remove('active'));
             document.getElementById('sub-' + tab).classList.add('active');
-            document.querySelectorAll('#tab-ai .tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('#tab-ai .tab-btn[onclick*="' + tab + '"]').classList.add('active');
+            document.querySelectorAll('.sub-tab-nav .pill-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.sub-tab-nav .pill-btn[onclick*="' + tab + '"]').classList.add('active');
         }
         
         // ===== TAB 1: RANDOM GENERATION =====
