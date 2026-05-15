@@ -81,7 +81,7 @@ def random_recipes():
     # Nutrition is handled in meal planning, not as SQL filter
     # We just fetch all matching recipes and plan from them
     
-    max_time = data.get('max_time', 60)  # TOTAL time for all dishes
+    max_time = data.get('max_time', 120)  # TOTAL time for all dishes (default generous)
     
     prep_early = data.get('prep_early')
     if prep_early == 'yes':
@@ -209,9 +209,16 @@ def random_recipes():
     # Step 4: Check total time constraint
     total_time = sum(r['prep_time_min'] for r in selected)
     if total_time > max_time and len(selected) > 1:
-        # Try to swap in faster alternatives
+        # Try to swap in faster alternatives (but keep soup/cold if requested)
+        skip_indices = set()
+        if wants_soup:
+            skip_indices.add(0)  # soup is first
+        if wants_cold:
+            skip_indices.add(len(skip_indices))  # cold is after soup
         for i in range(len(selected) - 1, -1, -1):
-            if len(selected) <= 1:
+            if i in skip_indices:
+                continue
+            if len(selected) - len(skip_indices) <= 1:
                 break
             current = selected[i]
             alt_candidates = [r for r in all_candidates
