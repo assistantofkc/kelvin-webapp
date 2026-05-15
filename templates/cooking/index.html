@@ -826,6 +826,12 @@
             // Spicy: check if '辣' taste chip is selected
             if (getSelected('taste-chips').includes('辣')) data.spicy = 'yes';
             
+            // Allergy: send excluded ingredients
+            const allergyChip = document.querySelector('#allergy-chips .chip.active');
+            if (allergyChip?.dataset.val === 'yes') {
+                data.allergies = document.getElementById('allergy-details').value.trim();
+            }
+            
             try {
                 const res = await fetch('/cooking-ideas/api/random', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)

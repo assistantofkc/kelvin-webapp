@@ -68,6 +68,14 @@ def random_recipes():
     elif spicy == 'no':
         query += ' AND is_spicy = 0'
     
+    # Allergy filter: exclude recipes containing specified allergens
+    allergies = data.get('allergies', '').strip()
+    if allergies:
+        allergy_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', allergies) if x.strip()]
+        for allergen in allergy_list:
+            query += ' AND ingredients NOT LIKE ?'
+            params.append(f'%{allergen}%')
+    
     nutrition = data.get('nutrition', [])
     if nutrition:
         nutrition_conditions = []
