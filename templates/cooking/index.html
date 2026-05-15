@@ -352,16 +352,16 @@
                             <span class="counter-value" id="adults-count">2</span>
                             <button onclick="adjustCounter('adults', 1)">+</button>
                         </div>
-                        <div class="counter-row" id="kids-row" style="display:none;">
+                        <div class="counter-row" id="kids-row" style="display:flex;">
                             <label>小孩</label>
                             <button onclick="adjustCounter('kids', -1)">−</button>
-                            <span class="counter-value" id="kids-count">0</span>
+                            <span class="counter-value" id="kids-count">1</span>
                             <button onclick="adjustCounter('kids', 1)">+</button>
                             <span style="font-size:0.75rem;color:var(--text-secondary);">歲</span>
-                            <input type="number" id="kids-age" value="5" min="1" max="17" style="width:50px;padding:4px;text-align:center;">
+                            <input type="number" id="kids-age" value="11" min="1" max="17" style="width:50px;padding:4px;text-align:center;">
                         </div>
                         <div class="toggle-row">
-                            <input type="checkbox" id="has-kids" onchange="toggleKids()">
+                            <input type="checkbox" id="has-kids" onchange="toggleKids()" checked>
                             <label>有小孩</label>
                         </div>
                     </div>
@@ -602,7 +602,7 @@
     
     <script>
         // Settings state
-        let adults = 2, kids = 0, dishCount = 3;
+        let adults = 2, kids = 1, dishCount = 3;
         
         function toggleSettings() {
             document.getElementById('settings-panel').classList.toggle('open');
@@ -676,8 +676,8 @@
                 ingredients: document.getElementById('have-ingredients').value.trim()
             };
             
-            const allergyChip = document.querySelector('#allergy-chips .chip.active');
-            if (allergyChip?.dataset.val === 'yes') data.spicy = 'yes';
+            // Spicy: check if '辣' taste chip is selected
+            if (getSelected('taste-chips').includes('辣')) data.spicy = 'yes';
             
             try {
                 const res = await fetch('/cooking-ideas/api/random', {

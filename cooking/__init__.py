@@ -68,9 +68,12 @@ def random_recipes():
         query += ' AND is_spicy = 0'
     
     nutrition = data.get('nutrition', [])
-    for n in nutrition:
-        query += ' AND nutrition_tags LIKE ?'
-        params.append(f'%{n}%')
+    if nutrition:
+        nutrition_conditions = []
+        for n in nutrition:
+            nutrition_conditions.append('nutrition_tags LIKE ?')
+            params.append(f'%{n}%')
+        query += f' AND ({" OR ".join(nutrition_conditions)})'
     
     max_time = data.get('max_time', 60)
     query += ' AND prep_time_min <= ?'
