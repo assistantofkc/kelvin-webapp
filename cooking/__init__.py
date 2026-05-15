@@ -479,6 +479,57 @@ Example format:
     
     return jsonify({'success': True, 'images': images})
 
+@cooking_bp.route('/api/expand-recipe', methods=['POST'])
+def expand_recipe():
+    """Use Gemini to generate a more detailed version of a recipe."""
+    if not GEMINI_API_KEY:
+        return jsonify({'success': False, 'error': 'AI not configured.'})
+    data = request.get_json() or {}
+    dish_name = data.get('name', '').strip()
+    ingredients = data.get('ingredients', '').strip()
+    steps = data.get('steps', '').strip()
+    cuisine = data.get('cuisine', '').strip()
+    if not dish_name:
+        return jsonify({'success': False, 'error': 'Recipe name required.'})
+
+    prompt = f"""Expand this recipe with much more detail in Traditional Chinese (繁體中文).
+
+Original recipe: {dish_name} ({cuisine})
+Ingredients: {ingredients}
+Steps: {steps}
+
+Please provide a COMPLETE, DETAILED recipe with:
+1. A more detailed ingredient list with specific quantities (e.g., "豬肉 200g" instead of "豬肉")
+2. Detailed numbered steps with cooking techniques explained
+3. Helpful cooking tips
+4. Estimated prep time
+
+Output ONLY valid JSON:
+{{"name":"{dish_name}","cuisine":"{cuisine}","ingredients":"detailed ingredients with amounts","steps":"detailed numbered steps with explanations","tips":"cooking tips","prep_time_min":30}}"""
+
+    try:
+        url = f'{GEMINI_URL}?key={GEMINI_API_KEY}'
+        resp = req.post(url, json={
+            'contents': [{'parts': [{'text': prompt}]}],
+            'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 2000}
+        }, timeout=35)
+
+        if resp.status_code != 200:
+            return jsonify({'success': False, 'error': f'AI API error ({resp.status_code})'})
+
+        raw = resp.json()['candidates'][0]['content']['parts'][0]['text']
+        raw = re.sub(r'```json|```', '', raw).strip()
+        s = raw.find('{'); e = raw.rfind('}') + 1
+        if s < 0 or e <= 0:
+            return jsonify({'success': False, 'error': 'AI response format error.'})
+        recipe = json.loads(raw[s:e])
+        return jsonify({'success': True, 'recipe': recipe})
+
+    except req.exceptions.Timeout:
+        return jsonify({'success': False, 'error': 'AI 搜尋超時，請再試。'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 # ===== USER RECIPES (創建菜式) =====
 
 @cooking_bp.route('/api/user-recipes', methods=['GET', 'POST'])

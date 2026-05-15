@@ -641,6 +641,22 @@
         </div>
     </div>
     
+    <!-- Expand Recipe Modal -->
+    <div class="modal-overlay" id="expand-modal" onclick="if(event.target===this)closeExpandModal()">
+        <div class="modal-content">
+            <h3>🤖 AI 詳細食譜</h3>
+            <div id="expand-content">
+                <div style="text-align:center;padding:40px;color:var(--text-secondary);">
+                    <span class="spinner show" style="margin:0 auto 12px;"></span>
+                    <div>AI 生成中...</div>
+                </div>
+            </div>
+            <div style="text-align:right;margin-top:12px;">
+                <button class="btn btn-secondary" onclick="closeExpandModal()">關閉</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Edit Recipe Modal -->
     <div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeEditModal()">
         <div class="modal-content">
@@ -850,6 +866,7 @@
                     <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                     <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                    <div style="text-align:right;margin-top:8px;"><button class="btn btn-secondary" onclick="expandRecipe('${r.name.replace(/'/g, "\\'")}', '${(r.ingredients || '').replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${(r.steps || '').replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${(r.cuisine || '').replace(/'/g, "\\'")}')" style="padding:4px 10px;font-size:0.75rem;">🤖 展開更多</button></div>
                     </div>
                 
                 </div>
@@ -1183,6 +1200,39 @@
         async function removeBookmark(recipeId, btn) {
             await toggleBookmark(recipeId, btn);
             loadBookmarks();
+        }
+        
+        // ===== AI EXPAND RECIPE =====
+        async function expandRecipe(name, ingredients, steps, cuisine) {
+            const modal = document.getElementById('expand-modal');
+            const content = document.getElementById('expand-content');
+            modal.classList.add('show');
+            content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 生成中...</div></div>';
+            try {
+                const res = await fetch('/cooking-ideas/api/expand-recipe', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, ingredients, steps, cuisine})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    const r = result.recipe;
+                    content.innerHTML = `
+                        <h3 style="margin-bottom:8px;">${r.name || name}</h3>
+                        <div class="recipe-meta"><span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span></div>
+                        <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients || ingredients}</div>
+                        <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || steps}</div>
+                        ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                    `;
+                } else {
+                    content.innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px;">${result.error || '生成失敗'}</div>`;
+                }
+            } catch(e) {
+                content.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">網絡錯誤</div>';
+            }
+        }
+        
+        function closeExpandModal() {
+            document.getElementById('expand-modal').classList.remove('show');
         }
         
         // ===== USER RECIPES (創建菜式) =====
