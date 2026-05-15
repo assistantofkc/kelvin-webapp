@@ -408,7 +408,7 @@
         <!-- Header -->
         <div style="text-align:center;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.51</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.52</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -818,19 +818,28 @@
             setTimeout(() => t.classList.remove('show'), 2500);
         }
         
-        // ===== SLIDER: only change by dragging dot, not tapping track =====
+        // ===== SLIDER: drag-only via wrapper (no tap-to-change) =====
         document.querySelectorAll('input[type="range"]').forEach(slider => {
-            let dragStartVal, isDragging = false;
-            slider.addEventListener('mousedown', e => { dragStartVal = slider.value; isDragging = false; });
-            slider.addEventListener('touchstart', e => { dragStartVal = slider.value; isDragging = false; }, {passive: true});
-            slider.addEventListener('input', () => { isDragging = true; });
-            slider.addEventListener('mouseup', () => { if (!isDragging) slider.value = dragStartVal; });
-            slider.addEventListener('touchend', () => { if (!isDragging) slider.value = dragStartVal; });
-            // Also reset on change if not dragged
-            slider.addEventListener('change', function() {
-                if (!isDragging) { slider.value = dragStartVal; slider.dispatchEvent(new Event('input', {bubbles: true})); }
-                isDragging = false;
-            });
+            slider.style.pointerEvents = 'none';
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'position:relative;width:100%;';
+            slider.parentNode.insertBefore(wrap, slider);
+            wrap.appendChild(slider);
+            let dragging = false;
+            const update = (e) => {
+                const r = wrap.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+                const pct = Math.max(0, Math.min(1, x / r.width));
+                const min = parseFloat(slider.min)||0, max = parseFloat(slider.max)||100, step = parseFloat(slider.step)||1;
+                slider.value = Math.round((min + pct*(max-min))/step)*step;
+                slider.dispatchEvent(new Event('input',{bubbles:true}));
+            };
+            wrap.addEventListener('mousedown', e => { dragging=true; update(e); e.preventDefault(); });
+            wrap.addEventListener('touchstart', e => { dragging=true; update(e); }, {passive:false});
+            document.addEventListener('mousemove', e => { if(dragging) update(e); });
+            document.addEventListener('touchmove', e => { if(dragging) update(e); }, {passive:false});
+            document.addEventListener('mouseup', () => dragging=false);
+            document.addEventListener('touchend', () => dragging=false);
         });
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
