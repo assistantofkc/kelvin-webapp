@@ -741,7 +741,7 @@
             const container = document.getElementById('results');
             container.innerHTML = dishes.map(r => `
                 <div class="recipe-card">
-                    <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" onerror="this.style.display='none'" loading="lazy">
+                    <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" style="display:none" loading="lazy">
                     <div class="recipe-body">
                     <div style="display:flex;justify-content:space-between;align-items:start;">
                         <h3 style="margin:0;">${r.name}</h3>
@@ -785,7 +785,7 @@
                     const r = result.recipe;
                     resultDiv.innerHTML = `
                         <div class="recipe-card">
-                            <img class="recipe-img" data-dish="${(r.name || '').replace(/"/g, '&quot;')}" src="" alt="${r.name || ''}" onerror="this.style.display='none'">
+                            <img class="recipe-img" data-dish="${(r.name || '').replace(/"/g, '&quot;')}" src="" alt="${r.name || ''}" style="display:none">
                             <div class="recipe-body">
                             <div style="display:flex;justify-content:space-between;align-items:start;">
                                 <h3 style="margin:0;">🤖 ${r.name}</h3>
@@ -867,7 +867,7 @@
                     } else {
                         container.innerHTML = result.results.map(r => `
                             <div class="recipe-card">
-                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" onerror="this.style.display='none'" loading="lazy">
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" style="display:none" loading="lazy">
                                 <div class="recipe-body">
                                 <div style="display:flex;justify-content:space-between;align-items:start;">
                                     <h3 style="margin:0;">${r.name}</h3>
@@ -984,9 +984,9 @@
                     document.querySelectorAll('.recipe-img[data-dish]').forEach(img => {
                         const dish = img.dataset.dish;
                         if (result.images[dish]) {
-                            img.src = result.images[dish];
+                            img.src = result.images[dish]; img.style.display = "";
                         } else {
-                            img.style.display = 'none';
+                            img.style.display = "none";
                         }
                     });
                 }
@@ -1050,7 +1050,7 @@
                     } else {
                         container.innerHTML = bookmarks.map(r => `
                             <div class="recipe-card">
-                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" onerror="this.style.display='none'" loading="lazy">
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" style="display:none" loading="lazy">
                                 <div class="recipe-body">
                                 <div style="display:flex;justify-content:space-between;align-items:start;">
                                     <h3 style="margin:0;">${r.name}</h3>
