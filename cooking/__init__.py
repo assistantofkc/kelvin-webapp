@@ -131,34 +131,19 @@ def random_recipes():
     selected = []
     used_nutrition = set()
     
-    # Step 1: Pick soup if requested (counts as 1 dish, covers 1 nutrition)
+    # Step 1: Pick soup if requested
     if wants_soup:
         soups = [r for r in all_candidates if r['has_soup'] == 1 and r['id'] not in {s['id'] for s in selected}]
         if soups:
             soups.sort(key=lambda r: r.get('_score', 0), reverse=True)
-            # Pick soup that covers a needed nutrition
-            for soup in soups:
-                soup_nuts = set(soup['nutrition_tags'].split(','))
-                covers = [n for n in required_nutrition if any(n in sn for sn in soup_nuts)]
-                if covers:
-                    selected.append(soup)
-                    for c in covers:
-                        used_nutrition.add(c)
-                    break
+            selected.append(soups[0])
     
     # Step 2: Pick cold dish if requested
     if wants_cold:
         colds = [r for r in all_candidates if r['has_cold_dish'] == 1 and r['id'] not in {s['id'] for s in selected}]
         if colds:
             colds.sort(key=lambda r: r.get('_score', 0), reverse=True)
-            for cold in colds:
-                cold_nuts = set(cold['nutrition_tags'].split(','))
-                covers = [n for n in required_nutrition if n not in used_nutrition and any(n in cn for cn in cold_nuts)]
-                if covers:
-                    selected.append(cold)
-                    for c in covers:
-                        used_nutrition.add(c)
-                    break
+            selected.append(colds[0])
     
     # Step 3: Fill remaining slots with dishes covering remaining nutrition needs
     dishes_needed = count - len(selected)
@@ -189,14 +174,12 @@ def random_recipes():
         # Find candidates covering this nutrition and cuisine
         candidates = [r for r in all_candidates 
                      if r['id'] not in {s['id'] for s in selected}
-                     and (not target_nut or any(target_nut in n for n in r['nutrition_tags'].split(',')))
                      and r['cuisine'] == target_cuisine]
         
         # If no match with specific cuisine, try without cuisine constraint
         if not candidates:
             candidates = [r for r in all_candidates
-                         if r['id'] not in {s['id'] for s in selected}
-                         and (not target_nut or any(target_nut in n for n in r['nutrition_tags'].split(',')))]
+                         if r['id'] not in {s['id'] for s in selected}]
         
         if not candidates:
             continue  # skip if no match
