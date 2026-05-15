@@ -866,7 +866,7 @@
                     <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                     <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
-                    <div style="text-align:right;margin-top:8px;"><button class="btn btn-secondary" onclick="expandRecipe('${r.name.replace(/'/g, "\\'")}', '${(r.ingredients || '').replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${(r.steps || '').replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${(r.cuisine || '').replace(/'/g, "\\'")}')" style="padding:4px 10px;font-size:0.75rem;">🤖 展開更多</button></div>
+                    <div style="text-align:right;margin-top:8px;"><button class="btn btn-secondary expand-btn" data-name="${r.name.replace(/"/g, '&quot;')}" data-ingredients="${(r.ingredients || '').replace(/"/g, '&quot;')}" data-steps="${(r.steps || '').replace(/"/g, '&quot;')}" data-cuisine="${(r.cuisine || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;font-size:0.75rem;">🤖 展開更多</button></div>
                     </div>
                 
                 </div>
@@ -1203,6 +1203,16 @@
         }
         
         // ===== AI EXPAND RECIPE =====
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.expand-btn');
+            if (!btn) return;
+            const name = btn.dataset.name;
+            const ingredients = btn.dataset.ingredients || '';
+            const steps = btn.dataset.steps || '';
+            const cuisine = btn.dataset.cuisine || '';
+            expandRecipe(name, ingredients, steps, cuisine);
+        });
+        
         async function expandRecipe(name, ingredients, steps, cuisine) {
             const modal = document.getElementById('expand-modal');
             const content = document.getElementById('expand-content');
