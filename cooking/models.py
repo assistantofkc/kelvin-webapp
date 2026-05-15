@@ -31,7 +31,7 @@ def init_db():
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
             c.execute('DROP TABLE IF EXISTS bookmarks')
-            c.execute('DROP TABLE IF EXISTS user_recipes')
+            # Note: user_recipes is NEVER dropped — it contains user data
             need_reinit = True
     else:
         # Check if tables exist but no version table (old DB)
@@ -40,7 +40,6 @@ def init_db():
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
             c.execute('DROP TABLE IF EXISTS bookmarks')
-            c.execute('DROP TABLE IF EXISTS user_recipes')
             need_reinit = True
     
     c.execute('''
