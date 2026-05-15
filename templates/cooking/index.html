@@ -643,16 +643,14 @@
     
     <!-- Expand Recipe Modal -->
     <div class="modal-overlay" id="expand-modal" onclick="if(event.target===this)closeExpandModal()">
-        <div class="modal-content">
-            <h3>🤖 AI 詳細食譜</h3>
+        <div class="modal-content" style="position:relative;font-size:1rem;line-height:1.7;">
+            <button onclick="closeExpandModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);z-index:1;">✕</button>
+            <h3 style="padding-right:30px;">🤖 AI 詳細食譜</h3>
             <div id="expand-content">
                 <div style="text-align:center;padding:40px;color:var(--text-secondary);">
                     <span class="spinner show" style="margin:0 auto 12px;"></span>
                     <div>AI 生成中...</div>
                 </div>
-            </div>
-            <div style="text-align:right;margin-top:12px;">
-                <button class="btn btn-secondary" onclick="closeExpandModal()">關閉</button>
             </div>
         </div>
     </div>
@@ -1217,6 +1215,7 @@
             const modal = document.getElementById('expand-modal');
             const content = document.getElementById('expand-content');
             modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
             content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 生成中...</div></div>';
             try {
                 const res = await fetch('/cooking-ideas/api/expand-recipe', {
@@ -1229,30 +1228,32 @@
                     // Handle structured (array) or simple (string) ingredients
                     let ingText = '';
                     if (Array.isArray(r.ingredients)) {
-                        ingText = r.ingredients.map(i => `${i.item || ''} ${i.quantity || ''} ${i.notes ? '(' + i.notes + ')' : ''}`).join('<br>');
+                        ingText = r.ingredients.map(i => `${i.item || ''}：${i.quantity || ''}`).join('<br>');
                     } else {
                         ingText = (r.ingredients || ingredients).replace(/\n/g, '<br>');
                     }
                     // Handle structured or simple steps
                     let stepText = '';
                     if (Array.isArray(r.steps)) {
-                        stepText = r.steps.map(s => `${s.step_number || ''}. ${s.instruction || ''}`).join('<br>');
+                        stepText = r.steps.map(s => `<div style="margin-bottom:10px;"><strong>${s.step_number || ''}.</strong> ${s.instruction || ''} ${s.technique ? '<span style="color:var(--accent);font-size:0.85rem;">(' + s.technique + ')</span>' : ''}</div>`).join('');
                     } else {
                         stepText = (r.steps || steps).replace(/\n/g, '<br>');
                     }
                     // Handle tips array
                     let tipsText = '';
                     if (Array.isArray(r.tips)) {
-                        tipsText = r.tips.join('<br>');
+                        tipsText = r.tips.map(t => `• ${t}`).join('<br>');
                     } else if (r.tips) {
                         tipsText = r.tips;
                     }
                     content.innerHTML = `
+                        <div style="font-size:1.05rem;">
                         <h3 style="margin-bottom:8px;">${r.name || name}</h3>
                         <div class="recipe-meta"><span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span></div>
-                        <div class="recipe-ingredients"><strong>材料：</strong><br>${ingText}</div>
-                        <div class="recipe-steps"><strong>步驟：</strong><br>${stepText}</div>
-                        ${tipsText ? `<div class="recipe-tips">💡 ${tipsText}</div>` : ''}
+                        <div style="margin:12px 0;"><strong style="font-size:1rem;">材料：</strong><br><span style="line-height:2;">${ingText}</span></div>
+                        <div style="margin:12px 0;"><strong style="font-size:1rem;">步驟：</strong><br>${stepText}</div>
+                        ${tipsText ? `<div style="margin:12px 0;"><strong style="font-size:1rem;">💡 小貼士：</strong><br><span style="line-height:1.8;">${tipsText}</span></div>` : ''}
+                        </div>
                     `;
                 } else {
                     content.innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px;">${result.error || '生成失敗'}</div>`;
@@ -1264,6 +1265,7 @@
         
         function closeExpandModal() {
             document.getElementById('expand-modal').classList.remove('show');
+            document.body.style.overflow = '';
         }
         
         // ===== USER RECIPES (創建菜式) =====
