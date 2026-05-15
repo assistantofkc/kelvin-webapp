@@ -408,7 +408,7 @@
         <!-- Header -->
         <div style="text-align:center;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.52</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.53</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -508,7 +508,7 @@
                     <!-- Time -->
                     <div style="margin-bottom:12px;">
                         <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">
-                            時間：<span id="time-label">60分鐘內</span>
+                            時間：<span id="time-label">60分鐘總時間</span>
                         </div>
                         <input type="range" id="max-time" min="15" max="120" value="60" step="5" oninput="updateTimeLabel(this.value)">
                     </div>
@@ -806,7 +806,7 @@
             if (key === 'dishCount') { dishCount = Math.max(1, Math.min(10, dishCount + delta)); document.getElementById('dish-count').textContent = dishCount; }
         }
         
-        function updateTimeLabel(v) { document.getElementById('time-label').textContent = v + '分鐘內'; }
+        function updateTimeLabel(v) { document.getElementById('time-label').textContent = v + '分鐘總時間'; }
         
         function getSelected(groupId) {
             return [...document.querySelectorAll('#' + groupId + ' .chip.active')].map(c => c.dataset.val);

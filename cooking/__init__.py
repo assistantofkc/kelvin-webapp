@@ -47,6 +47,8 @@ def random_recipes():
         placeholders = ','.join(['?'] * len(cuisines))
         query += f' AND cuisine IN ({placeholders})'
         params.extend(cuisines)
+    else:
+        cuisines = ['中式', '西式', '日式', '東南亞']  # Default all
     
     methods = data.get('methods', [])
     if methods:
@@ -68,7 +70,6 @@ def random_recipes():
     elif spicy == 'no':
         query += ' AND is_spicy = 0'
     
-    # Allergy filter: exclude recipes containing specified allergens
     allergies = data.get('allergies', '').strip()
     if allergies:
         allergy_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', allergies) if x.strip()]
@@ -77,24 +78,19 @@ def random_recipes():
             params.append(f'%{allergen}%')
     
     nutrition = data.get('nutrition', [])
-    if nutrition:
-        nutrition_conditions = []
-        for n in nutrition:
-            nutrition_conditions.append('nutrition_tags LIKE ?')
-            params.append(f'%{n}%')
-        query += f' AND ({" OR ".join(nutrition_conditions)})'
+    # Nutrition is handled in meal planning, not as SQL filter
+    # We just fetch all matching recipes and plan from them
     
-    max_time = data.get('max_time', 60)
-    query += ' AND prep_time_min <= ?'
-    params.append(max_time)
+    max_time = data.get('max_time', 60)  # TOTAL time for all dishes
     
     prep_early = data.get('prep_early')
     if prep_early == 'yes':
         query += ' AND can_prep_early = 1'
     
     count = min(int(data.get('count', 3)), 10)
+    wants_soup = data.get('include_soup', False)
+    wants_cold = data.get('include_cold', False)
     
-    # Existing ingredients - parse and score recipes by ingredient overlap
     have_ingredients = data.get('ingredients', '').strip()
     have_list = []
     if have_ingredients:
@@ -107,68 +103,152 @@ def random_recipes():
         conn.close()
         return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
     
-    # Score & sort by ingredient overlap if user provided ingredients
-    has_ingredient_filter = False
+    # Score by ingredient overlap if provided
     if have_list:
-        has_ingredient_filter = True
         for r in all_candidates:
             recipe_ingredients = r['ingredients'].lower()
-            score = sum(1 for item in have_list if item in recipe_ingredients)
-            r['_score'] = score
+            r['_score'] = sum(1 for item in have_list if item in recipe_ingredients)
         all_candidates.sort(key=lambda r: r.get('_score', 0), reverse=True)
-        # Only keep recipes that match at least 1 ingredient (if >0 matches exist)
         has_matches = [r for r in all_candidates if r.get('_score', 0) > 0]
         if has_matches:
             all_candidates = has_matches
     
-    selected = []
-    remaining = list(all_candidates)
+    # === MEAL PLANNING ALGORITHM ===
+    # Nutrition types to cover (one dish per type, no duplicates)
+    required_nutrition = list(nutrition) if nutrition else ['菜', '蛋白質']  # default
     
-    wants_soup = data.get('include_soup', False)
-    wants_cold = data.get('include_cold', False)
-    
-    # If not checked, EXCLUDE soup/cold dishes entirely
+    # Remove soup/cold from candidates if not wanted
     if not wants_soup:
-        remaining = [r for r in remaining if r['has_soup'] == 0]
+        all_candidates = [r for r in all_candidates if r['has_soup'] == 0]
     if not wants_cold:
-        remaining = [r for r in remaining if r['has_cold_dish'] == 0]
+        all_candidates = [r for r in all_candidates if r['has_cold_dish'] == 0]
     
-    if not remaining:
+    if not all_candidates:
         conn.close()
         return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
     
-    def pick_one(pool):
-        """Pick best-scored if ingredient filter active, else random."""
-        if has_ingredient_filter:
-            return pool[0]  # top-scored from sorted list
-        return secrets.choice(pool)
+    # Build meal plan: distribute nutrition across dishes
+    selected = []
+    used_nutrition = set()
     
+    # Step 1: Pick soup if requested (counts as 1 dish, covers 1 nutrition)
     if wants_soup:
-        soups = [r for r in remaining if r['has_soup'] == 1]
+        soups = [r for r in all_candidates if r['has_soup'] == 1 and r['id'] not in {s['id'] for s in selected}]
         if soups:
             soups.sort(key=lambda r: r.get('_score', 0), reverse=True)
-            chosen = pick_one(soups)
-            selected.append(chosen)
-            remaining.remove(chosen)
+            # Pick soup that covers a needed nutrition
+            for soup in soups:
+                soup_nuts = set(soup['nutrition_tags'].split(','))
+                covers = [n for n in required_nutrition if any(n in sn for sn in soup_nuts)]
+                if covers:
+                    selected.append(soup)
+                    for c in covers:
+                        used_nutrition.add(c)
+                    break
     
+    # Step 2: Pick cold dish if requested
     if wants_cold:
-        colds = [r for r in remaining if r['has_cold_dish'] == 1]
+        colds = [r for r in all_candidates if r['has_cold_dish'] == 1 and r['id'] not in {s['id'] for s in selected}]
         if colds:
             colds.sort(key=lambda r: r.get('_score', 0), reverse=True)
-            chosen = pick_one(colds)
-            selected.append(chosen)
-            remaining.remove(chosen)
+            for cold in colds:
+                cold_nuts = set(cold['nutrition_tags'].split(','))
+                covers = [n for n in required_nutrition if n not in used_nutrition and any(n in cn for cn in cold_nuts)]
+                if covers:
+                    selected.append(cold)
+                    for c in covers:
+                        used_nutrition.add(c)
+                    break
     
-    for _ in range(count - len(selected)):
-        if not remaining:
-            break
-        chosen = pick_one(remaining)
-        selected.append(chosen)
-        remaining.remove(chosen)
+    # Step 3: Fill remaining slots with dishes covering remaining nutrition needs
+    dishes_needed = count - len(selected)
+    remaining_nutrition = [n for n in required_nutrition if n not in used_nutrition]
     
+    # Distribute remaining nutrition across remaining slots
+    # Shuffle to avoid always picking same order
+    if remaining_nutrition:
+        random.shuffle(remaining_nutrition)
+    
+    # Assign nutrition to slots (round-robin if more slots than nutrition)
+    slot_nutrition = []
+    for i in range(dishes_needed):
+        if remaining_nutrition:
+            slot_nutrition.append(remaining_nutrition[i % len(remaining_nutrition)])
+        else:
+            slot_nutrition.append(None)  # any dish fine
+    
+    # Also distribute cuisines roughly evenly
+    shuffled_cuisines = list(cuisines)
+    random.shuffle(shuffled_cuisines)
+    cuisine_cycle = shuffled_cuisines * 5  # repeat enough times
+    
+    for slot_idx in range(dishes_needed):
+        target_nut = slot_nutrition[slot_idx]
+        target_cuisine = cuisine_cycle[slot_idx % len(shuffled_cuisines)]
+        
+        # Find candidates covering this nutrition and cuisine
+        candidates = [r for r in all_candidates 
+                     if r['id'] not in {s['id'] for s in selected}
+                     and (not target_nut or any(target_nut in n for n in r['nutrition_tags'].split(',')))
+                     and r['cuisine'] == target_cuisine]
+        
+        # If no match with specific cuisine, try without cuisine constraint
+        if not candidates:
+            candidates = [r for r in all_candidates
+                         if r['id'] not in {s['id'] for s in selected}
+                         and (not target_nut or any(target_nut in n for n in r['nutrition_tags'].split(',')))]
+        
+        if not candidates:
+            continue  # skip if no match
+        
+        # Sort by score and avoid already-used nutrition when possible
+        candidates.sort(key=lambda r: r.get('_score', 0), reverse=True)
+        
+        # Pick best candidate whose nutrition doesn't overlap too much with used
+        best = None
+        for c in candidates:
+            c_nuts = set(c['nutrition_tags'].split(','))
+            new_nuts = [n for n in required_nutrition if any(n in cn for cn in c_nuts) and n not in used_nutrition]
+            if new_nuts or not remaining_nutrition:
+                best = c
+                for n in new_nuts:
+                    used_nutrition.add(n)
+                break
+        
+        if not best:
+            best = candidates[0]  # fallback: pick top scorer
+            for n in required_nutrition:
+                if any(n in cn for cn in best['nutrition_tags'].split(',')):
+                    used_nutrition.add(n)
+        
+        selected.append(best)
+    
+    # Step 4: Check total time constraint
+    total_time = sum(r['prep_time_min'] for r in selected)
+    if total_time > max_time and len(selected) > 1:
+        # Try to swap in faster alternatives
+        for i in range(len(selected) - 1, -1, -1):
+            if len(selected) <= 1:
+                break
+            current = selected[i]
+            alt_candidates = [r for r in all_candidates
+                             if r['id'] not in {s['id'] for s in selected}
+                             and r['prep_time_min'] < current['prep_time_min']]
+            if alt_candidates:
+                alt_candidates.sort(key=lambda r: r['prep_time_min'])
+                selected[i] = alt_candidates[0]
+            total_time = sum(r['prep_time_min'] for r in selected)
+            if total_time <= max_time:
+                break
+    
+    if not selected:
+        conn.close()
+        return jsonify({'success': False, 'error': '未能組合出合適嘅餐單，試下放寬篩選條件。'})
+    
+    random.shuffle(selected)
     result = [{k: r[k] for k in r.keys() if not k.startswith('_')} for r in selected]
     conn.close()
-    return jsonify({'success': True, 'dishes': result})
+    return jsonify({'success': True, 'dishes': result, 'total_time': sum(r['prep_time_min'] for r in selected)})
 
 @cooking_bp.route('/api/search', methods=['POST'])
 def ai_search():
