@@ -276,17 +276,77 @@ def save_recipe():
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
 
-@cooking_bp.route('/api/recipe/<int:recipe_id>')
-def get_recipe(recipe_id):
+@cooking_bp.route('/api/recipe/<int:recipe_id>', methods=['GET', 'PUT', 'DELETE'])
+def manage_recipe(recipe_id):
+    if request.method == 'GET':
+        return _get_recipe(recipe_id)
+    elif request.method == 'PUT':
+        return _update_recipe(recipe_id)
+    elif request.method == 'DELETE':
+        return _delete_recipe(recipe_id)
+
+def _get_recipe(recipe_id):
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM recipes WHERE id = ?', [recipe_id])
     r = c.fetchone()
     conn.close()
-    
     if r:
         return jsonify({'success': True, 'recipe': dict(r)})
     return jsonify({'success': False, 'error': 'Recipe not found.'})
+
+def _update_recipe(recipe_id):
+    data = request.get_json() or {}
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT id FROM recipes WHERE id = ?', [recipe_id])
+    if not c.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    try:
+        fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
+                  'prep_time_min', 'can_prep_early', 'is_spicy', 'ingredients', 'steps', 'tips', 'servings']
+        updates = []
+        params = []
+        for f in fields:
+            if f in data:
+                updates.append(f'{f} = ?')
+                params.append(data[f])
+        if not updates:
+            conn.close()
+            return jsonify({'success': False, 'error': 'No fields to update.'})
+        params.append(recipe_id)
+        sql = f'UPDATE recipes SET {", ".join(updates)} WHERE id = ?'
+        c.execute(sql, params)
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': '已更新！'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+def _delete_recipe(recipe_id):
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, source FROM recipes WHERE id = ?', [recipe_id])
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    # Don't allow deleting seed recipes via UI (protect the base 100)
+    if r['source'] == 'seed':
+        conn.close()
+        return jsonify({'success': False, 'error': '不能刪除內置食譜，只可以刪除 AI 加入嘅食譜。'})
+    try:
+        c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [recipe_id])
+        c.execute('DELETE FROM custom_dishes WHERE recipe_id = ?', [recipe_id])
+        c.execute('DELETE FROM recipes WHERE id = ?', [recipe_id])
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'已刪除「{r["name"]}」'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
 
 @cooking_bp.route('/api/bookmark', methods=['POST'])
 def toggle_bookmark():
