@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 6
+DB_VERSION = 7
 
 def init_db():
     conn = get_db()
@@ -123,8 +123,26 @@ def init_db():
         c.execute('DELETE FROM db_version')
         c.execute('INSERT INTO db_version (version) VALUES (?)', (DB_VERSION,))
     
+    # Insert any extra recipes that don't exist yet (fill criteria gaps)
+    _insert_extra_recipes(c)
+    
     conn.commit()
     conn.close()
+
+def _insert_extra_recipes(c):
+    """Insert additional recipes that fill criteria gaps (only if name not already in DB)."""
+    for r in _build_extra_recipes():
+        c.execute('SELECT id FROM recipes WHERE name = ?', [r['name']])
+        if not c.fetchone():
+            c.execute('''
+                INSERT INTO recipes (name, cuisine, cooking_method, taste, nutrition_tags, prep_time_min, can_prep_early, has_soup, has_cold_dish, is_spicy, ingredients, steps, tips, source, servings)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'seed', 4)
+            ''', (
+                r['name'], r['cuisine'], r['method'], r['taste'], r['nutrition'],
+                r['time'], r.get('early', 0), r.get('has_soup', 0),
+                r.get('has_cold_dish', 0), r.get('spicy', 0),
+                r['ingredients'], r['steps'], r.get('tips', '')
+            ))
 
 def _seed_recipes(c):
     """Seed 100 住家菜 across 4 cuisines."""
@@ -261,3 +279,30 @@ def _build_recipe_list():
     ]
     
     return recipes
+
+def _build_extra_recipes():
+    """Additional recipes to fill criteria gaps (炸, 燉, etc)."""
+    return [
+        # ===== 炸 (4 new) =====
+        {"name":"日式炸豬排","cuisine":"日式","method":"炸","taste":"濃味","nutrition":"紅肉,澱粉質","time":30,"early":1,"spicy":0,"ingredients":"豬扒2塊,麵粉,雞蛋,麵包糠,椰菜絲,豬扒醬,鹽,黑胡椒","steps":"1. 豬扒用刀背拍鬆，灑鹽黑胡椒\n2. 依序沾麵粉→蛋液→麵包糠\n3. 170°C炸6-8分鐘至金黃\n4. 撈起瀝油切片\n5. 配椰菜絲、豬扒醬","tips":"炸之前肉要室溫回溫，炸出嚟先均勻"},
+        {"name":"酥炸魷魚","cuisine":"中式","method":"炸","taste":"濃味","nutrition":"白肉,蛋白質","time":20,"early":0,"spicy":0,"ingredients":"魷魚300g,脆漿粉(麵粉+粟粉+泡打粉),椒鹽,檸檬","steps":"1. 魷魚洗淨切圈，抹乾\n2. 脆漿粉加冰水攪成粉漿\n3. 魷魚沾粉漿\n4. 180°C炸3-4分鐘至金黃酥脆\n5. 灑椒鹽，配檸檬","tips":"粉漿用冰水開，炸出嚟先脆"},
+        {"name":"炸豆腐","cuisine":"中式","method":"炸","taste":"清淡","nutrition":"蛋白質,菜","time":15,"early":0,"spicy":0,"ingredients":"硬豆腐1盒,生粉,蒜蓉,辣椒,生抽,醋,糖,蔥花","steps":"1. 豆腐切件，用廚房紙吸乾水份\n2. 沾上薄薄生粉\n3. 180°C炸至金黃\n4. 蒜蓉+辣椒+生抽+醋+糖煮成醬汁\n5. 淋在炸豆腐上，灑蔥花","tips":"豆腐一定要吸乾水先炸，唔係會彈油"},
+        {"name":"椒鹽雞翼","cuisine":"中式","method":"炸","taste":"濃味","nutrition":"白肉,蛋白質","time":25,"early":0,"spicy":0,"ingredients":"雞翼10隻,椒鹽,蒜蓉,辣椒,生粉,生抽,料酒","steps":"1. 雞翼用生抽、料酒醃30分鐘\n2. 瀝乾，沾上生粉\n3. 170°C炸8-10分鐘至熟\n4. 油溫升至190°C翻炸1分鐘至脆\n5. 爆香蒜蓉辣椒，加入雞翼、椒鹽兜勻","tips":"炸兩次先做到外脆內多汁"},
+        
+        # ===== 燉 (6 new) =====
+        {"name":"紅燒牛腩","cuisine":"中式","method":"燉","taste":"濃味","nutrition":"紅肉,蛋白質","time":120,"early":1,"spicy":0,"ingredients":"牛腩500g,白蘿蔔1條,薑片,八角,桂皮,生抽,老抽,冰糖","steps":"1. 牛腩汆水切件，白蘿蔔去皮切塊\n2. 熱油爆香薑片、八角、桂皮\n3. 加入牛腩炒香\n4. 加生抽、老抽、冰糖、水蓋過牛腩\n5. 大火煮滾轉小火燉1.5小時\n6. 加入白蘿蔔再燉30分鐘至腍","tips":"隔夜更入味，燉好攤凍再翻熱最好食"},
+        {"name":"燉雞湯","cuisine":"中式","method":"燉","taste":"清淡","nutrition":"白肉,蛋白質","time":120,"early":1,"has_soup":1,"spicy":0,"ingredients":"雞半隻,淮山,杞子,紅棗,薑片,鹽","steps":"1. 雞斬件汆水去血沫\n2. 淮山、杞子、紅棗洗淨\n3. 所有材料放入燉盅\n4. 加入熱水蓋過材料\n5. 隔水燉2小時\n6. 加鹽調味","tips":"用熱水燉唔會降溫，湯更鮮甜"},
+        {"name":"東坡肉","cuisine":"中式","method":"燉","taste":"濃味","nutrition":"紅肉,蛋白質","time":150,"early":1,"spicy":0,"ingredients":"五花腩500g,生抽,老抽,冰糖,紹興酒,薑片,蔥段","steps":"1. 五花腩汆水，切大方塊\n2. 用棉繩綁十字定型\n3. 砂鍋底鋪薑蔥，皮向下放肉\n4. 加生抽、老抽、冰糖、紹興酒、水\n5. 大火煮滾轉小火燉2小時\n6. 翻面再燉30分鐘至皮軟腍","tips":"綁繩可以保持形狀，燉好先解開"},
+        {"name":"燉蛋","cuisine":"中式","method":"燉","taste":"清淡","nutrition":"蛋白質","time":25,"early":0,"spicy":0,"ingredients":"雞蛋3隻,牛奶200ml,糖30g","steps":"1. 雞蛋打散加糖拌勻\n2. 加入牛奶攪拌均勻\n3. 過篩倒入碗中，撇去泡泡\n4. 蓋上保鮮紙\n5. 隔水中火燉12-15分鐘\n6. 冷熱皆可食","tips":"蛋液過篩先滑，保鮮紙防倒汗水"},
+        {"name":"淮山杞子燉排骨","cuisine":"中式","method":"燉","taste":"清淡","nutrition":"紅肉,蛋白質","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"排骨400g,淮山,杞子,紅棗,薑片,鹽","steps":"1. 排骨汆水洗淨\n2. 淮山、杞子、紅棗浸軟\n3. 所有材料放入燉盅\n4. 加熱水蓋過材料\n5. 隔水燉1.5小時\n6. 加鹽調味","tips":"燉湯唔好中途開蓋，保持溫度"},
+        {"name":"南乳燜豬手","cuisine":"中式","method":"燉","taste":"濃味","nutrition":"紅肉,蛋白質","time":120,"early":1,"spicy":0,"ingredients":"豬手1隻,南乳2磚,薑片,蒜頭,八角,生抽,老抽,冰糖","steps":"1. 豬手斬件汆水5分鐘\n2. 南乳壓爛\n3. 熱油爆香薑蒜、南乳\n4. 加豬手炒香\n5. 加生抽、老抽、冰糖、八角、水\n6. 大火煮滾轉小火燉1.5小時至腍","tips":"南乳要先爆香先出味"},
+
+        # ===== 煎 (2 new) =====
+        {"name":"煎釀豆腐","cuisine":"中式","method":"煎","taste":"清淡","nutrition":"蛋白質,白肉","time":25,"early":0,"spicy":0,"ingredients":"硬豆腐2盒,魚肉200g,蔥花,生抽,蠔油,生粉","steps":"1. 豆腐切件，中間挖小洞\n2. 魚肉加蔥花、生抽拌勻\n3. 豆腐洞內撲少少生粉，釀入魚肉\n4. 熱油中火，魚肉面向下煎至金黃\n5. 翻面煎至豆腐金黃\n6. 加蠔油、水煮成汁淋上","tips":"豆腐撲生粉可以防魚肉甩出嚟"},
+        {"name":"煎魚餅","cuisine":"中式","method":"煎","taste":"濃味","nutrition":"魚,蛋白質","time":20,"early":1,"spicy":0,"ingredients":"魚肉300g,蔥花,芫茜,鹽,胡椒粉,生粉","steps":"1. 魚肉加蔥花、芫茜、鹽、胡椒粉、生粉拌勻\n2. 攪至起膠\n3. 分成小份，搓圓壓扁\n4. 熱油中火煎至兩面金黃\n5. 配甜辣醬或生抽","tips":"魚肉要攪到起膠先彈牙"},
+
+        # ===== 蒸 (2 new) =====
+        {"name":"豉汁蒸魚頭","cuisine":"中式","method":"蒸","taste":"濃味","nutrition":"魚,蛋白質","time":15,"early":0,"spicy":0,"ingredients":"大魚頭半個,豆豉,蒜蓉,薑絲,辣椒,生抽,油,蔥花","steps":"1. 魚頭洗淨斬件\n2. 豆豉沖洗壓爛，加蒜蓉、薑絲、辣椒拌勻\n3. 鋪在魚頭上\n4. 大火蒸10分鐘\n5. 淋上生抽，灑蔥花\n6. 燒滾油淋面","tips":"蒸魚時間因魚頭大細調整"},
+        {"name":"糯米蒸排骨","cuisine":"中式","method":"蒸","taste":"濃味","nutrition":"紅肉,澱粉質","time":45,"early":1,"spicy":0,"ingredients":"排骨400g,糯米200g,生抽,老抽,蠔油,薑絲,蒜蓉","steps":"1. 糯米浸水4小時以上\n2. 排骨用生抽、老抽、蠔油、薑蒜醃30分鐘\n3. 糯米瀝乾，加少少生抽拌勻\n4. 排骨沾上糯米\n5. 大火蒸40分鐘至糯米熟透","tips":"糯米要浸夠時間先蒸得透"},
+    ]
+
