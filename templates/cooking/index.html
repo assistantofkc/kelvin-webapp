@@ -693,6 +693,12 @@
             document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('.bottom-nav .nav-btn[data-tab="' + tab + '"]').classList.add('active');
             if (tab === 'bookmarks') loadBookmarks();
+            // Re-show any recipe images that were loaded
+            setTimeout(() => {
+                document.querySelectorAll('#tab-' + tab + ' .recipe-img[src^="http"]').forEach(img => {
+                    img.style.display = '';
+                });
+            }, 100);
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
         
