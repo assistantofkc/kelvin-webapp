@@ -498,14 +498,14 @@ Original recipe: {dish_name} ({cuisine})
 Ingredients: {ingredients}
 Steps: {steps}
 
-Please provide a COMPLETE, DETAILED recipe with:
-1. A more detailed ingredient list with specific quantities (e.g., "豬肉 200g" instead of "豬肉")
+Provide a COMPLETE, DETAILED recipe with:
+1. Ingredient list where EVERY item MUST include a specific quantity WITH A UNIT (e.g., "豬肉 200克", "雞蛋 3隻", "鹽 1茶匙", "油 2湯匙"). Never omit units.
 2. Detailed numbered steps with cooking techniques explained
 3. Helpful cooking tips
 4. Estimated prep time
 
 Output ONLY valid JSON:
-{{"name":"{dish_name}","cuisine":"{cuisine}","ingredients":"detailed ingredients with amounts","steps":"detailed numbered steps with explanations","tips":"cooking tips","prep_time_min":30}}"""
+{{"name":"{dish_name}","cuisine":"{cuisine}","ingredients":"detailed ingredients with amounts AND units","steps":"detailed numbered steps with explanations","tips":"cooking tips","prep_time_min":30}}"""
 
     try:
         url = f'{GEMINI_URL}?key={GEMINI_API_KEY}'
