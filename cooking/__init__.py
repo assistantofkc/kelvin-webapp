@@ -581,12 +581,13 @@ def add_user_recipe_to_db(recipe_id):
     try:
         c.execute('''
             INSERT INTO recipes (name, cuisine, cooking_method, taste, nutrition_tags,
-                prep_time_min, can_prep_early, is_spicy, ingredients, steps, tips, source, servings)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?)
+                prep_time_min, can_prep_early, is_spicy, ingredients, steps, tips, source, servings, image_base64)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?, ?)
         ''', (
             r['name'], r['cuisine'], r['cooking_method'], r['taste'],
             r['nutrition_tags'], r['prep_time_min'], r['can_prep_early'],
-            r['is_spicy'], r['ingredients'], r['steps'], r['tips'], r['servings']
+            r['is_spicy'], r['ingredients'], r['steps'], r['tips'], r['servings'],
+            r['image_base64']
         ))
         new_id = c.lastrowid
         c.execute('UPDATE user_recipes SET db_recipe_id = ? WHERE id = ?', [new_id, recipe_id])

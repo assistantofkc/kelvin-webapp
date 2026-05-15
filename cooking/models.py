@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 5
+DB_VERSION = 6
 
 def init_db():
     conn = get_db()
@@ -62,6 +62,7 @@ def init_db():
             tips TEXT DEFAULT '',
             source TEXT DEFAULT 'seed',
             servings INTEGER DEFAULT 4,
+            image_base64 TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now'))
         )
     ''')

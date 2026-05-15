@@ -775,12 +775,12 @@
             // Show/hide floating add button
             const addBtn = document.querySelector('.circle-add-btn');
             if (addBtn) addBtn.style.display = (tab === 'create') ? 'flex' : 'none';
-            // Re-show any recipe images that were loaded
-            setTimeout(() => {
-                document.querySelectorAll('#tab-' + tab + ' .recipe-img[src^="http"]').forEach(img => {
-                    img.style.display = '';
-                });
-            }, 100);
+            // Also show user-uploaded images inline before Pexels loads
+            document.querySelectorAll('#tab-' + tab + ' .recipe-img[data-dish]').forEach(img => {
+                var rImg = img.dataset.userImg;
+                if (rImg) { img.src = rImg; img.style.display = ''; }
+                else if (img.src && img.src.startsWith('http')) { img.style.display = ''; }
+            });
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
         
@@ -839,7 +839,7 @@
                         <h3 style="margin:0;">${r.name}</h3>
                         <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
                     </div>
-                    <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
+                    <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
                     <div class="recipe-meta">
                         <span class="recipe-tag">${r.cuisine}</span>
                         <span class="recipe-tag">${r.cooking_method}</span>
@@ -971,7 +971,7 @@
                                         ${r.source === 'ai_custom' ? `<button class="btn btn-secondary" onclick="deleteRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="刪除">🗑️</button>` : ''}
                                     </div>
                                 </div>
-                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
                                 <div class="recipe-meta">
                                     <span class="recipe-tag">${r.cuisine}</span>
                                     <span class="recipe-tag">${r.cooking_method}</span>
@@ -1071,10 +1071,16 @@
         
         // ===== IMAGE LOADING =====
         async function loadRecipeImages(dishNames) {
+            // Skip dishes that already have user-uploaded images
+            const needsImage = dishNames.filter(name => {
+                const img = document.querySelector('.recipe-img[data-dish="' + name.replace(/"/g, '&quot;') + '"]');
+                return img && !img.dataset.userImg;
+            });
+            if (!needsImage.length) return;
             try {
                 const res = await fetch('/cooking-ideas/api/images', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({dishes: dishNames})
+                    body: JSON.stringify({dishes: needsImage})
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -1082,7 +1088,7 @@
                         const dish = img.dataset.dish;
                         if (result.images[dish]) {
                             img.src = result.images[dish]; img.style.display = "";
-                        } else {
+                        } else if (!img.dataset.userImg && !img.src) {
                             img.style.display = "none";
                         }
                     });
@@ -1152,7 +1158,7 @@
                                     <h3 style="margin:0;">${r.name}</h3>
                                     <button class="bookmark-btn bookmarked" onclick="removeBookmark(${r.id}, this)" title="取消收藏">★</button>
                                 </div>
-                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" loading="lazy" style="display:none">
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
                                 <div class="recipe-meta">
                                     <span class="recipe-tag">${r.cuisine}</span>
                                     <span class="recipe-tag">${r.cooking_method}</span>
