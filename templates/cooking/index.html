@@ -183,6 +183,8 @@
         /* Tab content visibility */
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .sub-tab { display: none; }
+        .sub-tab.active { display: block; }
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
@@ -479,34 +481,35 @@
         
         <!-- ===== TAB 2: 搜尋菜式 ===== -->
         <div class="tab-content" id="tab-ai">
+            <!-- Sub-tabs -->
+            <div class="tab-row" style="margin-bottom:12px;">
+                <button class="tab-btn active" onclick="switchSubTab('db')">🔍 搜尋食譜庫</button>
+                <button class="tab-btn" onclick="switchSubTab('ai')">🤖 AI 生成</button>
+            </div>
+            
             <!-- DB Search -->
-            <div class="card" style="margin-bottom:12px;">
-                <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">🔍 搜尋食譜庫（已收錄食譜）</div>
-                <div style="display:flex;gap:8px;">
+            <div class="sub-tab active" id="sub-db">
+                <div style="display:flex;gap:8px;margin-bottom:16px;">
                     <input type="text" id="db-search-input" placeholder="輸入菜式名或材料..." style="flex:1;">
                     <button class="btn btn-secondary" onclick="searchDB()" id="db-search-btn">
                         <span class="spinner" id="db-spinner"></span>
                         搜尋
                     </button>
                 </div>
+                <div id="db-results"></div>
             </div>
-            <!-- DB Search Results -->
-            <div id="db-results"></div>
             
             <!-- AI Search -->
-            <div class="card" style="margin-top:12px;">
-                <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">🤖 AI 生成新食譜（Gemini）</div>
-                <div style="display:flex;gap:8px;">
+            <div class="sub-tab" id="sub-ai">
+                <div style="display:flex;gap:8px;margin-bottom:16px;">
                     <input type="text" id="custom-dish" placeholder="輸入菜式名稱 (例如：粟米斑塊)" style="flex:1;">
                     <button class="btn btn-secondary" onclick="aiSearchRecipe()" id="ai-search-btn">
                         <span class="spinner" id="ai-spinner"></span>
                         生成
                     </button>
                 </div>
+                <div id="ai-result"></div>
             </div>
-            
-            <!-- AI Search Result -->
-            <div id="ai-result"></div>
         </div>
         
         <!-- ===== TAB 3: 收藏 ===== -->
@@ -640,19 +643,19 @@
         
         // ===== TAB SWITCHING =====
         function switchTab(tab) {
-            // Update content visibility
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
-            
-            // Update nav buttons
             document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('.bottom-nav .nav-btn[data-tab="' + tab + '"]').classList.add('active');
-            
-            // Load bookmarks when switching to bookmarks tab
             if (tab === 'bookmarks') loadBookmarks();
-            
-            // Scroll to top of content
             window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+        
+        function switchSubTab(tab) {
+            document.querySelectorAll('.sub-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('sub-' + tab).classList.add('active');
+            document.querySelectorAll('#tab-ai .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('#tab-ai .tab-btn[onclick*="' + tab + '"]').classList.add('active');
         }
         
         // ===== TAB 1: RANDOM GENERATION =====
