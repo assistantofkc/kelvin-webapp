@@ -202,6 +202,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .bottom-nav .nav-btn .nav-icon { font-size: 1.3rem; }
+        .bottom-nav .nav-btn .nav-icon-img { width: 26px; height: 26px; object-fit: contain; }
         .bottom-nav .nav-btn.active { color: var(--accent); }
         .bottom-nav .nav-btn:hover { color: var(--text-primary); }
         
@@ -265,6 +266,7 @@
             .chip { padding: 4px 8px; font-size: 0.75rem; }
             .bottom-nav .nav-btn { padding: 6px 2px 8px; font-size: 0.65rem; }
             .bottom-nav .nav-btn .nav-icon { font-size: 1.1rem; }
+            .bottom-nav .nav-btn .nav-icon-img { width: 22px; height: 22px; }
             .modal-content { margin: 20px; max-height: 85vh; }
         }
         
@@ -689,19 +691,19 @@
     <!-- Bottom Navigation -->
     <nav class="bottom-nav" id="bottom-nav">
         <button class="nav-btn active" onclick="switchTab('random')" data-tab="random">
-            <span class="nav-icon">🎲</span>
+            <img src="/static/cooking/nav-dice.png" class="nav-icon-img">
             <span>隨機生成</span>
         </button>
         <button class="nav-btn" onclick="switchTab('ai')" data-tab="ai">
-            <span class="nav-icon">🔍</span>
+            <img src="/static/cooking/nav-search.png" class="nav-icon-img">
             <span>搜尋菜式</span>
         </button>
         <button class="nav-btn" onclick="switchTab('create')" data-tab="create">
-            <span class="nav-icon">✨</span>
+            <img src="/static/cooking/nav-create.png" class="nav-icon-img">
             <span>創建菜式</span>
         </button>
         <button class="nav-btn" onclick="switchTab('bookmarks')" data-tab="bookmarks">
-            <span class="nav-icon">❤️</span>
+            <img src="/static/cooking/nav-favorites.png" class="nav-icon-img">
             <span>收藏</span>
         </button>
     </nav>
