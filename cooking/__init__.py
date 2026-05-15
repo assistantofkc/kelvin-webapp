@@ -337,6 +337,7 @@ def delete_recipe(recipe_id):
     try:
         c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [recipe_id])
         c.execute('DELETE FROM custom_dishes WHERE recipe_id = ?', [recipe_id])
+        c.execute('UPDATE user_recipes SET db_recipe_id = NULL WHERE db_recipe_id = ?', [recipe_id])
         c.execute('DELETE FROM recipes WHERE id = ?', [recipe_id])
         conn.commit()
         conn.close()

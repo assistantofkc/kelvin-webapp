@@ -1305,7 +1305,7 @@
                                         <h3 style="margin:0;">${r.name}</h3>
                                         <div style="display:flex;gap:4px;">
                                             <button class="btn btn-secondary" onclick="editUserRecipe(${r.id})" style="padding:3px 8px;font-size:0.7rem;">✏️</button>
-                                            <button class="btn btn-secondary" onclick="addUserRecipeToDb(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="加入食譜庫">💾</button>
+                                            ${!r.db_recipe_id ? `<button class="btn btn-secondary" onclick="addUserRecipeToDb(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="加入食譜庫">💾</button>` : ''}
                                             ${r.db_recipe_id ? `<button class="btn btn-secondary" onclick="removeUserRecipeFromDb(${r.id})" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="從食譜庫移除">🗑️📖</button>` : ''}
                                             <button class="btn btn-secondary" onclick="deleteUserRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;">🗑️</button>
                                         </div>
