@@ -11,7 +11,7 @@ cooking_bp = Blueprint('cooking', __name__, template_folder='../templates/cookin
 MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '').strip()
 MINIMAX_URL = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=2043608871905276295'
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-GEMINI_MODEL = 'gemini-2.5-flash'
+GEMINI_MODEL = 'gemini-2.5-flash-lite'
 GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
 
 # Lazy import to avoid circular imports
@@ -184,7 +184,7 @@ Rules:
             }
         }
 
-        response = req.post(url, json=payload, timeout=25)
+        response = req.post(url, json=payload, timeout=35)
 
         if response.status_code != 200:
             err_msg = f'AI API 錯誤 ({response.status_code})。請稍後再試。'
@@ -223,7 +223,7 @@ Rules:
         return jsonify({'success': True, 'recipe': recipe})
 
     except req.exceptions.Timeout:
-        return jsonify({'success': False, 'error': 'AI 搜尋超時（25秒），請用更簡單嘅菜式名再試。'})
+        return jsonify({'success': False, 'error': 'AI 搜尋超時（35秒），請用更簡單嘅菜式名再試。'})
     except req.exceptions.RequestException as e:
         return jsonify({'success': False, 'error': f'網絡錯誤，請再試。'})
     except json.JSONDecodeError:
