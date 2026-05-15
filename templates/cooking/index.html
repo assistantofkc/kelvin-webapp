@@ -1430,7 +1430,7 @@
                 const result = await res.json();
                 if (result.success) {
                     if (result.recipes.length === 0) {
-                        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);">✨ 未有自創食譜<br><span style="font-size:0.85rem;">點擊 + 按鈕創建第一個食譜</span></div>';
+                        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-primary);text-shadow:0 0 8px rgba(255,255,255,0.4);">✨ 未有自創食譜<br><span style="font-size:0.85rem;">點擊 + 按鈕創建第一個食譜</span></div>';
                     } else {
                         container.innerHTML = result.recipes.map(r => `
                             <div class="recipe-card">
