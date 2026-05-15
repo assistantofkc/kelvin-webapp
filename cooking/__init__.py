@@ -541,6 +541,24 @@ def edit_user_recipe(recipe_id):
         params.append(recipe_id)
         sql = f'UPDATE user_recipes SET {", ".join(updates)} WHERE id = ?'
         c.execute(sql, params)
+        
+        # If this recipe was added to the main DB, sync changes there too
+        c.execute('SELECT db_recipe_id FROM user_recipes WHERE id = ?', [recipe_id])
+        row = c.fetchone()
+        if row and row['db_recipe_id']:
+            db_fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
+                        'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'image_base64', 'is_spicy', 'can_prep_early']
+            db_updates = []
+            db_params = []
+            for f in db_fields:
+                if f in data:
+                    db_updates.append(f'{f} = ?')
+                    db_params.append(data[f])
+            if db_updates:
+                db_params.append(row['db_recipe_id'])
+                db_sql = f'UPDATE recipes SET {", ".join(db_updates)} WHERE id = ?'
+                c.execute(db_sql, db_params)
+        
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': '已更新！'})
