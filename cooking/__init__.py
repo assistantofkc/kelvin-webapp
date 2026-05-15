@@ -287,3 +287,57 @@ def get_recipe(recipe_id):
     if r:
         return jsonify({'success': True, 'recipe': dict(r)})
     return jsonify({'success': False, 'error': 'Recipe not found.'})
+
+@cooking_bp.route('/api/bookmark', methods=['POST'])
+def toggle_bookmark():
+    data = request.get_json() or {}
+    recipe_id = data.get('recipe_id')
+    if not recipe_id:
+        return jsonify({'success': False, 'error': 'Recipe ID required.'})
+    conn = _get_db()
+    c = conn.cursor()
+    try:
+        c.execute('SELECT id FROM bookmarks WHERE recipe_id = ?', [recipe_id])
+        existing = c.fetchone()
+        if existing:
+            c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [recipe_id])
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True, 'bookmarked': False, 'message': '已移除收藏'})
+        else:
+            c.execute('INSERT INTO bookmarks (recipe_id) VALUES (?)', [recipe_id])
+            conn.commit()
+            conn.close()
+            return jsonify({'success': True, 'bookmarked': True, 'message': '已收藏！'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+@cooking_bp.route('/api/bookmarks', methods=['GET'])
+def list_bookmarks():
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT r.*, b.created_at as bookmarked_at
+        FROM bookmarks b
+        JOIN recipes r ON b.recipe_id = r.id
+        ORDER BY b.created_at DESC
+    ''')
+    recipes = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify({'success': True, 'bookmarks': recipes})
+
+@cooking_bp.route('/api/bookmark/status', methods=['POST'])
+def bookmark_status():
+    """Batch check bookmark status for a list of recipe IDs."""
+    data = request.get_json() or {}
+    recipe_ids = data.get('recipe_ids', [])
+    if not recipe_ids:
+        return jsonify({'success': True, 'bookmarked': {}})
+    conn = _get_db()
+    c = conn.cursor()
+    placeholders = ','.join(['?'] * len(recipe_ids))
+    c.execute(f'SELECT recipe_id FROM bookmarks WHERE recipe_id IN ({placeholders})', recipe_ids)
+    bookmarked = {str(r['recipe_id']): True for r in c.fetchall()}
+    conn.close()
+    return jsonify({'success': True, 'bookmarked': bookmarked})

@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 2
+DB_VERSION = 3
 
 def init_db():
     conn = get_db()
@@ -30,6 +30,7 @@ def init_db():
         if row and row[0] < DB_VERSION:
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
+            c.execute('DROP TABLE IF EXISTS bookmarks')
             need_reinit = True
     else:
         # Check if tables exist but no version table (old DB)
@@ -37,6 +38,7 @@ def init_db():
         if c.fetchone():
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
+            c.execute('DROP TABLE IF EXISTS bookmarks')
             need_reinit = True
     
     c.execute('''
@@ -69,6 +71,15 @@ def init_db():
             recipe_id INTEGER,
             notes TEXT DEFAULT '',
             added_by TEXT DEFAULT 'user',
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS bookmarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recipe_id INTEGER NOT NULL UNIQUE,
             created_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (recipe_id) REFERENCES recipes(id)
         )

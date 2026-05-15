@@ -153,6 +153,29 @@
         }
         .toast.show { transform: translateX(-50%) translateY(0); }
         
+        /* Bookmark button */
+        .bookmark-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.3rem; padding: 2px 6px; transition: transform 0.15s;
+            line-height: 1;
+        }
+        .bookmark-btn:hover { transform: scale(1.2); }
+        .bookmark-btn.bookmarked { color: #f59e0b; }
+        
+        /* Tab buttons */
+        .tab-row {
+            display: flex; gap: 8px; margin-bottom: 16px;
+            border-bottom: 2px solid var(--card-border);
+        }
+        .tab-btn {
+            padding: 10px 18px; border: none; background: none;
+            color: var(--text-secondary); font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: all 0.15s;
+        }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-btn:hover { color: var(--text-primary); }
+        
         /* Mobile adjustments */
         @media (max-width: 768px) {
             .container { padding: 80px 12px 12px; }
@@ -431,8 +454,16 @@
         <!-- AI Search Result -->
         <div class="ai-result card" id="ai-result"></div>
         
+        <!-- Tabs -->
+        <div class="tab-row" id="tab-row" style="display:none;">
+            <button class="tab-btn active" onclick="switchTab('results')">🎲 隨機結果</button>
+            <button class="tab-btn" onclick="switchTab('bookmarks')">📑 收藏 <span id="bookmark-count" style="font-size:0.75rem;opacity:0.7;"></span></button>
+        </div>
+        
         <!-- Results -->
         <div id="results"></div>
+        <!-- Bookmarks -->
+        <div id="bookmarks-section" style="display:none;"></div>
         <div style="text-align:center;margin-top:8px;" id="regenerate-btn" style="display:none;">
             <button class="btn btn-secondary" onclick="generateDishes()">🔄 重新生成</button>
         </div>
@@ -555,7 +586,10 @@
             const container = document.getElementById('results');
             container.innerHTML = dishes.map(r => `
                 <div class="recipe-card">
-                    <h3>${r.name}</h3>
+                    <div style="display:flex;justify-content:space-between;align-items:start;">
+                        <h3 style="margin:0;">${r.name}</h3>
+                        <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
+                    </div>
                     <div class="recipe-meta">
                         <span class="recipe-tag">${r.cuisine}</span>
                         <span class="recipe-tag">${r.cooking_method}</span>
@@ -568,6 +602,14 @@
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                 </div>
             `).join('');
+            
+            // Show tabs
+            document.getElementById('tab-row').style.display = 'flex';
+            switchTab('results');
+            
+            // Check bookmark status
+            checkBookmarkStatus(dishes.map(d => d.id));
+            
             window.scrollTo({top: container.offsetTop - 20, behavior: 'smooth'});
         }
         
@@ -593,8 +635,11 @@
                     resultDiv.innerHTML = `
                         <div class="recipe-card">
                             <div style="display:flex;justify-content:space-between;align-items:start;">
-                                <h3>🤖 ${r.name}</h3>
-                                <button class="btn btn-secondary" onclick="saveAiRecipe()" style="padding:6px 12px;font-size:0.8rem;">💾 儲存</button>
+                                <h3 style="margin:0;">🤖 ${r.name}</h3>
+                                <div style="display:flex;gap:6px;">
+                                    <button class="bookmark-btn" data-rid="${r.id || 'ai'}" onclick="toggleAiBookmark(this)" title="收藏">☆</button>
+                                    <button class="btn btn-secondary" onclick="saveAiRecipe()" style="padding:6px 12px;font-size:0.8rem;">💾 加入食譜庫</button>
+                                </div>
                             </div>
                             <div class="recipe-meta">
                                 <span class="recipe-tag">${r.cuisine || ''}</span>
@@ -626,7 +671,16 @@
                     body: JSON.stringify(window._aiRecipe)
                 });
                 const result = await res.json();
-                showToast(result.success ? '已儲存到食譜庫！' : (result.error || '儲存失敗'));
+                if (result.success) {
+                    // Update the AI recipe with the saved ID so bookmark works
+                    window._aiRecipe.id = result.id;
+                    // Update bookmark button to be clickable
+                    const aiBookmarkBtn = document.querySelector('#ai-result .bookmark-btn');
+                    if (aiBookmarkBtn) aiBookmarkBtn.dataset.rid = result.id;
+                    showToast('已加入食譜庫！可以收藏喇～');
+                } else {
+                    showToast(result.error || '儲存失敗');
+                }
             } catch(e) {
                 showToast('儲存失敗');
             }
@@ -636,6 +690,110 @@
         document.getElementById('custom-dish').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') aiSearchRecipe();
         });
+        
+        // ===== BOOKMARK FUNCTIONS =====
+        
+        async function toggleBookmark(recipeId, btn) {
+            try {
+                const res = await fetch('/cooking-ideas/api/bookmark', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({recipe_id: recipeId})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    if (btn) btn.textContent = result.bookmarked ? '★' : '☆';
+                    if (result.bookmarked) btn?.classList.add('bookmarked');
+                    else btn?.classList.remove('bookmarked');
+                    showToast(result.message);
+                }
+            } catch(e) { showToast('操作失敗'); }
+        }
+        
+        async function toggleAiBookmark(btn) {
+            if (!window._aiRecipe || !window._aiRecipe.id) {
+                showToast('請先儲存到食譜庫再收藏');
+                return;
+            }
+            await toggleBookmark(window._aiRecipe.id, btn);
+        }
+        
+        async function checkBookmarkStatus(recipeIds) {
+            try {
+                const res = await fetch('/cooking-ideas/api/bookmark/status', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({recipe_ids: recipeIds})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.querySelectorAll('.bookmark-btn[data-rid]').forEach(btn => {
+                        const rid = btn.dataset.rid;
+                        if (result.bookmarked[rid]) {
+                            btn.textContent = '★';
+                            btn.classList.add('bookmarked');
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            if (tab === 'results') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('bookmarks-section').style.display = 'none';
+                document.getElementById('regenerate-btn').style.display = 'block';
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('results').style.display = 'none';
+                document.getElementById('bookmarks-section').style.display = 'block';
+                document.getElementById('regenerate-btn').style.display = 'none';
+                loadBookmarks();
+            }
+        }
+        
+        async function loadBookmarks() {
+            const container = document.getElementById('bookmarks-section');
+            const countEl = document.getElementById('bookmark-count');
+            container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>';
+            try {
+                const res = await fetch('/cooking-ideas/api/bookmarks');
+                const result = await res.json();
+                if (result.success) {
+                    const bookmarks = result.bookmarks;
+                    countEl.textContent = bookmarks.length ? `(${bookmarks.length})` : '';
+                    if (bookmarks.length === 0) {
+                        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);">📑 未有收藏<br><span style="font-size:0.85rem;">點擊食譜右上角 ☆ 加入收藏</span></div>';
+                    } else {
+                        container.innerHTML = bookmarks.map(r => `
+                            <div class="recipe-card">
+                                <div style="display:flex;justify-content:space-between;align-items:start;">
+                                    <h3 style="margin:0;">${r.name}</h3>
+                                    <button class="bookmark-btn bookmarked" onclick="removeBookmark(${r.id}, this)" title="取消收藏">★</button>
+                                </div>
+                                <div class="recipe-meta">
+                                    <span class="recipe-tag">${r.cuisine}</span>
+                                    <span class="recipe-tag">${r.cooking_method}</span>
+                                    <span class="recipe-tag">${r.taste}</span>
+                                    <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
+                                </div>
+                                <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
+                                <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
+                                ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch(e) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入失敗</div>';
+            }
+        }
+        
+        async function removeBookmark(recipeId, btn) {
+            await toggleBookmark(recipeId, btn);
+            // Refresh bookmark list
+            loadBookmarks();
+        }
     </script>
     
     <!-- Sidebar toggle script (matches other webapps) -->
