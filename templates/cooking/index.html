@@ -7,6 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/static/cooking/manifest.json">
     <title>🍳 Cooking Ideas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -1040,6 +1041,15 @@
             const tt = document.getElementById('theme-text');
             if (ti) ti.textContent = '☀️';
             if (tt) tt.textContent = 'Light Mode';
+        }
+    </script>
+    
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/cooking/sw.js')
+                .then(() => console.log('SW registered'))
+                .catch(() => console.log('SW registration failed'));
         }
     </script>
 </body>

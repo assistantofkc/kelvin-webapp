@@ -1,0 +1,23 @@
+{
+  "name": "Cooking Ideas",
+  "short_name": "Cooking Ideas",
+  "description": "隨機生成家常菜式食譜",
+  "start_url": "/cooking-ideas",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "/static/cooking/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/cooking/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
