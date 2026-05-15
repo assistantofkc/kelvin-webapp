@@ -1084,6 +1084,9 @@
                     document.getElementById('edit-tips').value = r.tips || '';
                     document.getElementById('edit-servings').value = r.servings || 4;
                     document.getElementById('edit-modal').classList.add('show');
+                    document.body.style.overflow = 'hidden';
+                    document.body.style.position = 'fixed';
+                    document.body.style.width = '100%';
                     document.getElementById('edit-modal').querySelector('.modal-content').scrollTop = 0;
                 } else {
                     showToast(result.error || '載入失敗');
@@ -1093,6 +1096,9 @@
         
         function closeEditModal() {
             document.getElementById('edit-modal').classList.remove('show');
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             _editRecipeId = null;
         }
         
@@ -1359,11 +1365,17 @@
             }
             
             modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
             modal.querySelector('.modal-content').scrollTop = 0;
         }
         
         function closeCreateForm() {
             document.getElementById('create-modal').classList.remove('show');
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
             _editUserRecipeId = null;
             _userImageBase64 = '';
         }
