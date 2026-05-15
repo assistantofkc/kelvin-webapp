@@ -1216,12 +1216,33 @@
                 const result = await res.json();
                 if (result.success) {
                     const r = result.recipe;
+                    // Handle structured (array) or simple (string) ingredients
+                    let ingText = '';
+                    if (Array.isArray(r.ingredients)) {
+                        ingText = r.ingredients.map(i => `${i.item || ''} ${i.quantity || ''} ${i.notes ? '(' + i.notes + ')' : ''}`).join('<br>');
+                    } else {
+                        ingText = (r.ingredients || ingredients).replace(/\n/g, '<br>');
+                    }
+                    // Handle structured or simple steps
+                    let stepText = '';
+                    if (Array.isArray(r.steps)) {
+                        stepText = r.steps.map(s => `${s.step_number || ''}. ${s.instruction || ''}`).join('<br>');
+                    } else {
+                        stepText = (r.steps || steps).replace(/\n/g, '<br>');
+                    }
+                    // Handle tips array
+                    let tipsText = '';
+                    if (Array.isArray(r.tips)) {
+                        tipsText = r.tips.join('<br>');
+                    } else if (r.tips) {
+                        tipsText = r.tips;
+                    }
                     content.innerHTML = `
                         <h3 style="margin-bottom:8px;">${r.name || name}</h3>
                         <div class="recipe-meta"><span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span></div>
-                        <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients || ingredients}</div>
-                        <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || steps}</div>
-                        ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                        <div class="recipe-ingredients"><strong>材料：</strong><br>${ingText}</div>
+                        <div class="recipe-steps"><strong>步驟：</strong><br>${stepText}</div>
+                        ${tipsText ? `<div class="recipe-tips">💡 ${tipsText}</div>` : ''}
                     `;
                 } else {
                     content.innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px;">${result.error || '生成失敗'}</div>`;
