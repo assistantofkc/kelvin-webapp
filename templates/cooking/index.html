@@ -121,9 +121,20 @@
         /* Recipe Card */
         .recipe-card {
             background: var(--card-bg); border: 1px solid var(--card-border);
-            border-radius: 12px; padding: 16px; margin-bottom: 12px;
-            box-shadow: var(--shadow);
+            border-radius: 12px; padding: 0; margin-bottom: 12px;
+            box-shadow: var(--shadow); overflow: hidden;
         }
+        .recipe-card .recipe-img {
+            width: 100%; height: 180px; object-fit: cover;
+            background: var(--input-bg);
+        }
+        .recipe-card .recipe-img-placeholder {
+            width: 100%; height: 180px; object-fit: cover;
+            background: var(--input-bg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: var(--text-secondary); opacity: 0.3;
+        }
+        .recipe-card .recipe-body { padding: 16px; }
         .recipe-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
         .recipe-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
         .recipe-tag {
@@ -722,6 +733,8 @@
             const container = document.getElementById('results');
             container.innerHTML = dishes.map(r => `
                 <div class="recipe-card">
+                    <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" onerror="this.style.display='none'" loading="lazy">
+                    <div class="recipe-body">
                     <div style="display:flex;justify-content:space-between;align-items:start;">
                         <h3 style="margin:0;">${r.name}</h3>
                         <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">☆</button>
@@ -736,9 +749,11 @@
                     <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                     <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                    </div>
                 </div>
             `).join('');
             checkBookmarkStatus(dishes.map(d => d.id));
+            loadRecipeImages(dishes.map(d => d.name));
             container.scrollIntoView({behavior: 'smooth'});
         }
         
@@ -762,6 +777,8 @@
                     const r = result.recipe;
                     resultDiv.innerHTML = `
                         <div class="recipe-card">
+                            <img class="recipe-img" data-dish="${(r.name || '').replace(/"/g, '&quot;')}" src="" alt="${r.name || ''}" onerror="this.style.display='none'">
+                            <div class="recipe-body">
                             <div style="display:flex;justify-content:space-between;align-items:start;">
                                 <h3 style="margin:0;">🤖 ${r.name}</h3>
                                 <div style="display:flex;gap:6px;">
@@ -778,9 +795,11 @@
                             <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients || ''}</div>
                             <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || ''}</div>
                             ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                            </div>
                         </div>
                     `;
                     window._aiRecipe = r;
+                    if (r.name) loadRecipeImages([r.name]);
                     resultDiv.scrollIntoView({behavior: 'smooth'});
                 } else {
                     showToast(result.error || 'AI搜尋失敗');
@@ -840,6 +859,8 @@
                     } else {
                         container.innerHTML = result.results.map(r => `
                             <div class="recipe-card">
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" onerror="this.style.display='none'" loading="lazy">
+                                <div class="recipe-body">
                                 <div style="display:flex;justify-content:space-between;align-items:start;">
                                     <h3 style="margin:0;">${r.name}</h3>
                                     <div style="display:flex;gap:4px;">
@@ -857,9 +878,10 @@
                                 <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                                 <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                                 ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
-                            </div>
+                            </div></div>
                         `).join('');
                         checkBookmarkStatus(result.results.map(d => d.id));
+                        loadRecipeImages(result.results.map(d => d.name));
                     }
                     container.scrollIntoView({behavior: 'smooth'});
                 } else {
@@ -942,6 +964,27 @@
             } catch(e) { showToast('刪除失敗'); }
         }
         
+        // ===== IMAGE LOADING =====
+        async function loadRecipeImages(dishNames) {
+            try {
+                const res = await fetch('/cooking-ideas/api/images', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({dishes: dishNames})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    document.querySelectorAll('.recipe-img[data-dish]').forEach(img => {
+                        const dish = img.dataset.dish;
+                        if (result.images[dish]) {
+                            img.src = result.images[dish];
+                        } else {
+                            img.style.display = 'none';
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+        
         // ===== BOOKMARK FUNCTIONS =====
         async function toggleBookmark(recipeId, btn) {
             try {
@@ -999,6 +1042,8 @@
                     } else {
                         container.innerHTML = bookmarks.map(r => `
                             <div class="recipe-card">
+                                <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" src="" alt="${r.name}" onerror="this.style.display='none'" loading="lazy">
+                                <div class="recipe-body">
                                 <div style="display:flex;justify-content:space-between;align-items:start;">
                                     <h3 style="margin:0;">${r.name}</h3>
                                     <button class="bookmark-btn bookmarked" onclick="removeBookmark(${r.id}, this)" title="取消收藏">★</button>
@@ -1012,8 +1057,9 @@
                                 <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                                 <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                                 ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
-                            </div>
+                            </div></div>
                         `).join('');
+                        loadRecipeImages(bookmarks.map(d => d.name));
                     }
                 }
             } catch(e) {

@@ -13,6 +13,7 @@ MINIMAX_URL = 'https://api.minimax.io/v1/text/chatcompletion_v2?GroupId=20436088
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
 GEMINI_MODEL = 'gemini-2.5-flash-lite'
 GEMINI_URL = f'https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent'
+PEXELS_API_KEY = os.environ.get('PEXELS_API_KEY', '').strip()
 
 # Lazy import to avoid circular imports
 def _get_db():
@@ -421,3 +422,33 @@ def search_db():
     results = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify({'success': True, 'results': results, 'count': len(results)})
+
+@cooking_bp.route('/api/images', methods=['POST'])
+def recipe_images():
+    """Search Pexels for dish images. Returns hotlink URLs (no storage)."""
+    if not PEXELS_API_KEY:
+        return jsonify({'success': False, 'error': 'Image search not configured.'})
+    data = request.get_json() or {}
+    dishes = data.get('dishes', [])
+    if not dishes:
+        return jsonify({'success': True, 'images': {}})
+    
+    images = {}
+    for dish in dishes[:6]:  # Max 6 per batch to stay within rate limits
+        try:
+            resp = req.get(
+                'https://api.pexels.com/v1/search',
+                headers={'Authorization': PEXELS_API_KEY},
+                params={'query': f'{dish} food', 'per_page': 1, 'size': 'medium', 'locale': 'zh-Hant'},
+                timeout=8
+            )
+            if resp.status_code == 200:
+                photos = resp.json().get('photos', [])
+                if photos:
+                    # Use medium size for recipe cards (~350px wide)
+                    src = photos[0]['src'].get('medium') or photos[0]['src'].get('small') or photos[0]['src']['original']
+                    images[dish] = src
+        except Exception:
+            pass  # Skip failed lookups silently
+    
+    return jsonify({'success': True, 'images': images})
