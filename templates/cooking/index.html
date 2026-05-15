@@ -204,7 +204,7 @@
         }
         .bottom-nav .nav-btn .nav-icon { font-size: 1.3rem; }
         .bottom-nav .nav-btn .nav-icon-img { width: 40px; height: 40px; object-fit: contain; }
-        .bottom-nav .nav-btn.active { color: var(--accent); }
+        .bottom-nav .nav-btn.active { color: var(--accent); background: rgba(139, 90, 43, 0.2); border-radius: 12px; }
         .bottom-nav .nav-btn:hover { color: var(--text-primary); }
         
         /* Tab content visibility */
@@ -392,6 +392,7 @@
         .theme-switch:hover { opacity: 0.8; }
         
         /* Light mode hamburger fix */
+        body.light-mode .bottom-nav .nav-btn.active { background: rgba(0, 0, 0, 0.06); }
         body.light-mode .hamburger {
             background: #ffffff !important;
             border: 1px solid #ddd !important;
