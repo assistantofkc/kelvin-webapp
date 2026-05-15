@@ -425,7 +425,7 @@ def search_db():
 
 @cooking_bp.route('/api/images', methods=['POST'])
 def recipe_images():
-    """Search Pexels for dish images. Returns hotlink URLs (no storage)."""
+    """Search Pexels for dish images. Translates Chinese names to English via Gemini for better results."""
     if not PEXELS_API_KEY:
         return jsonify({'success': False, 'error': 'Image search not configured.'})
     data = request.get_json() or {}
@@ -433,22 +433,47 @@ def recipe_images():
     if not dishes:
         return jsonify({'success': True, 'images': {}})
     
+    # Batch translate Chinese dish names to English via Gemini
+    search_terms = {}
+    if GEMINI_API_KEY and dishes:
+        try:
+            names_list = '\n'.join(dishes[:6])
+            prompt = f"""Translate these Chinese dish names to simple English search keywords for stock photo search. Output ONLY a JSON object mapping each original name to 2-3 English keywords:
+{names_list}
+
+Example format:
+{{"番茄炒蛋": "tomato scrambled eggs", "薯仔燜雞翼": "braised chicken wings potato"}}"""
+            resp = req.post(
+                f'{GEMINI_URL}?key={GEMINI_API_KEY}',
+                json={'contents': [{'parts': [{'text': prompt}]}], 'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 500}},
+                timeout=15
+            )
+            if resp.status_code == 200:
+                raw = resp.json()['candidates'][0]['content']['parts'][0]['text']
+                raw = re.sub(r'```json|```', '', raw).strip()
+                s = raw.find('{'); e = raw.rfind('}') + 1
+                if s >= 0 and e > 0:
+                    search_terms = json.loads(raw[s:e])
+        except Exception:
+            pass
+    
     images = {}
-    for dish in dishes[:6]:  # Max 6 per batch to stay within rate limits
+    for dish in dishes[:6]:
+        # Use English translation if available, otherwise original name
+        query = search_terms.get(dish, dish)
         try:
             resp = req.get(
                 'https://api.pexels.com/v1/search',
                 headers={'Authorization': PEXELS_API_KEY},
-                params={'query': f'{dish} food', 'per_page': 1, 'size': 'medium', 'locale': 'zh-Hant'},
+                params={'query': query, 'per_page': 1, 'size': 'medium'},
                 timeout=8
             )
             if resp.status_code == 200:
                 photos = resp.json().get('photos', [])
                 if photos:
-                    # Use medium size for recipe cards (~350px wide)
                     src = photos[0]['src'].get('medium') or photos[0]['src'].get('small') or photos[0]['src']['original']
                     images[dish] = src
         except Exception:
-            pass  # Skip failed lookups silently
+            pass
     
     return jsonify({'success': True, 'images': images})
