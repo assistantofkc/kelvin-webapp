@@ -276,16 +276,8 @@ def save_recipe():
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
 
-@cooking_bp.route('/api/recipe/<int:recipe_id>', methods=['GET', 'PUT', 'DELETE'])
-def manage_recipe(recipe_id):
-    if request.method == 'GET':
-        return _get_recipe(recipe_id)
-    elif request.method == 'PUT':
-        return _update_recipe(recipe_id)
-    elif request.method == 'DELETE':
-        return _delete_recipe(recipe_id)
-
-def _get_recipe(recipe_id):
+@cooking_bp.route('/api/recipe/<int:recipe_id>', methods=['GET'])
+def get_recipe(recipe_id):
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM recipes WHERE id = ?', [recipe_id])
@@ -295,7 +287,8 @@ def _get_recipe(recipe_id):
         return jsonify({'success': True, 'recipe': dict(r)})
     return jsonify({'success': False, 'error': 'Recipe not found.'})
 
-def _update_recipe(recipe_id):
+@cooking_bp.route('/api/recipe/<int:recipe_id>/edit', methods=['POST'])
+def update_recipe(recipe_id):
     data = request.get_json() or {}
     conn = _get_db()
     c = conn.cursor()
@@ -325,15 +318,15 @@ def _update_recipe(recipe_id):
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
 
-def _delete_recipe(recipe_id):
+@cooking_bp.route('/api/recipe/<int:recipe_id>/delete', methods=['POST'])
+def delete_recipe(recipe_id):
     conn = _get_db()
     c = conn.cursor()
-    c.execute('SELECT id, source FROM recipes WHERE id = ?', [recipe_id])
+    c.execute('SELECT id, source, name FROM recipes WHERE id = ?', [recipe_id])
     r = c.fetchone()
     if not r:
         conn.close()
         return jsonify({'success': False, 'error': 'Recipe not found.'})
-    # Don't allow deleting seed recipes via UI (protect the base 100)
     if r['source'] == 'seed':
         conn.close()
         return jsonify({'success': False, 'error': '不能刪除內置食譜，只可以刪除 AI 加入嘅食譜。'})

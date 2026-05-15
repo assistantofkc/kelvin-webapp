@@ -893,8 +893,8 @@
             };
             if (!data.name) { showToast('請輸入菜式名'); return; }
             try {
-                const res = await fetch('/cooking-ideas/api/recipe/' + _editRecipeId, {
-                    method: 'PUT', headers: {'Content-Type': 'application/json'},
+                const res = await fetch('/cooking-ideas/api/recipe/' + _editRecipeId + '/edit', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
@@ -911,7 +911,7 @@
         async function deleteRecipe(recipeId, name) {
             if (!confirm(`確定要刪除「${name}」？此操作不能還原。`)) return;
             try {
-                const res = await fetch('/cooking-ideas/api/recipe/' + recipeId, { method: 'DELETE' });
+                const res = await fetch('/cooking-ideas/api/recipe/' + recipeId + '/delete', { method: 'POST' });
                 const result = await res.json();
                 showToast(result.success ? result.message : (result.error || '刪除失敗'));
                 if (result.success) searchDB(); // Refresh search results
