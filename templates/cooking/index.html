@@ -60,7 +60,7 @@
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: calc(24px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom)) 16px;
+            padding: calc(24px + env(safe-area-inset-top)) 16px calc(140px + env(safe-area-inset-bottom)) 16px;
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
@@ -161,7 +161,7 @@
         
         /* Toast */
         .toast {
-            position: fixed; bottom: calc(110px + env(safe-area-inset-bottom)); left: 50%;
+            position: fixed; bottom: calc(130px + env(safe-area-inset-bottom)); left: 50%;
             background: #333; color: #fff; padding: 10px 24px; border-radius: 24px;
             font-size: 0.85rem; z-index: 9999;
             opacity: 0; transform: translateX(-50%) translateY(20px);
@@ -196,13 +196,13 @@
         .bottom-nav .nav-btn {
             flex: 1; max-width: 200px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 12px 4px 14px; border: none; background: none;
+            padding: 14px 4px 18px; border: none; background: none;
             color: var(--text-secondary); font-size: 0.75rem; font-weight: 500;
-            cursor: pointer; transition: all 0.15s; gap: 4px;
+            cursor: pointer; transition: all 0.15s; gap: 5px;
             -webkit-tap-highlight-color: transparent;
         }
         .bottom-nav .nav-btn .nav-icon { font-size: 1.3rem; }
-        .bottom-nav .nav-btn .nav-icon-img { width: 32px; height: 32px; object-fit: contain; }
+        .bottom-nav .nav-btn .nav-icon-img { width: 40px; height: 40px; object-fit: contain; }
         .bottom-nav .nav-btn.active { color: var(--accent); }
         .bottom-nav .nav-btn:hover { color: var(--text-primary); }
         
@@ -236,7 +236,7 @@
         
         /* Circle Add Button */
         .circle-add-btn {
-            position: fixed; bottom: calc(100px + env(safe-area-inset-bottom));
+            position: fixed; bottom: calc(120px + env(safe-area-inset-bottom));
             right: 20px; z-index: 996;
             width: 56px; height: 56px; border-radius: 50%;
             background: var(--accent); color: #fff;
@@ -260,13 +260,13 @@
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
-            .container { padding: calc(80px + env(safe-area-inset-top)) 12px calc(130px + env(safe-area-inset-bottom)) 12px; }
+            .container { padding: calc(80px + env(safe-area-inset-top)) 12px calc(150px + env(safe-area-inset-bottom)) 12px; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
             .bottom-nav .nav-btn { padding: 6px 2px 8px; font-size: 0.65rem; }
             .bottom-nav .nav-btn .nav-icon { font-size: 1.1rem; }
-            .bottom-nav .nav-btn .nav-icon-img { width: 28px; height: 28px; }
+            .bottom-nav .nav-btn .nav-icon-img { width: 34px; height: 34px; }
             .modal-content { margin: 20px; max-height: 85vh; }
         }
         
