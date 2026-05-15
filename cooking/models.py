@@ -14,9 +14,30 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+DB_VERSION = 2
+
 def init_db():
     conn = get_db()
     c = conn.cursor()
+    
+    # Check DB version and force re-init if schema changed
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='db_version'")
+    has_version = c.fetchone()
+    need_reinit = False
+    if has_version:
+        c.execute('SELECT version FROM db_version')
+        row = c.fetchone()
+        if row and row[0] < DB_VERSION:
+            c.execute('DROP TABLE IF EXISTS recipes')
+            c.execute('DROP TABLE IF EXISTS custom_dishes')
+            need_reinit = True
+    else:
+        # Check if tables exist but no version table (old DB)
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='recipes'")
+        if c.fetchone():
+            c.execute('DROP TABLE IF EXISTS recipes')
+            c.execute('DROP TABLE IF EXISTS custom_dishes')
+            need_reinit = True
     
     c.execute('''
         CREATE TABLE IF NOT EXISTS recipes (
@@ -53,11 +74,19 @@ def init_db():
         )
     ''')
     
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS db_version (
+            version INTEGER
+        )
+    ''')
+    
     c.execute('SELECT COUNT(*) FROM recipes')
     count = c.fetchone()[0]
     
-    if count == 0:
+    if count == 0 or need_reinit:
         _seed_recipes(c)
+        c.execute('DELETE FROM db_version')
+        c.execute('INSERT INTO db_version (version) VALUES (?)', (DB_VERSION,))
     
     conn.commit()
     conn.close()
