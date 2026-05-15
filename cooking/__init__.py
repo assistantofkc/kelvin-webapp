@@ -2,7 +2,7 @@
 Cooking Ideas - Blueprint + Routes
 Single module pattern (matches pronunciation_bp.py)
 """
-import json, re, os, secrets
+import json, re, os, secrets, random
 import requests as req
 from flask import Blueprint, render_template, request, jsonify
 
