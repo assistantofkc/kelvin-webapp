@@ -24,6 +24,8 @@
             --chip-active-bg: #667eea;
             --chip-active-text: #fff;
             --shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --nav-bg: rgba(26, 26, 46, 0.95);
+            --nav-border: rgba(255, 255, 255, 0.1);
         }
         body.light-mode {
             --bg-primary: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
@@ -39,6 +41,8 @@
             --chip-active-bg: #4a5fd6;
             --chip-active-text: #fff;
             --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --nav-bg: rgba(255, 255, 255, 0.95);
+            --nav-border: rgba(0, 0, 0, 0.1);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -51,7 +55,7 @@
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: 24px 16px 16px;
+            padding: 24px 16px 100px 16px;
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
@@ -73,10 +77,7 @@
             cursor: pointer; font-size: 0.9rem; color: var(--text-primary);
             width: 100%; justify-content: space-between;
         }
-        .settings-panel { 
-            display: none; 
-            margin-top: 12px;
-        }
+        .settings-panel { display: none; margin-top: 12px; }
         .settings-panel.open { display: block; }
         
         /* Chips */
@@ -132,10 +133,6 @@
         .recipe-ingredients { font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
         .recipe-tips { font-size: 0.8rem; color: var(--accent); margin-top: 8px; font-style: italic; }
         
-        /* AI result section */
-        .ai-result { display: none; }
-        .ai-result.show { display: block; }
-        
         /* Loading */
         .spinner {
             display: none; width: 20px; height: 20px; border: 2px solid var(--card-border);
@@ -147,7 +144,7 @@
         
         /* Toast */
         .toast {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(100px);
             background: #333; color: #fff; padding: 10px 24px; border-radius: 24px;
             font-size: 0.85rem; z-index: 9999; transition: transform 0.3s; pointer-events: none;
         }
@@ -162,26 +159,39 @@
         .bookmark-btn:hover { transform: scale(1.2); }
         .bookmark-btn.bookmarked { color: #f59e0b; }
         
-        /* Tab buttons */
-        .tab-row {
-            display: flex; gap: 8px; margin-bottom: 16px;
-            border-bottom: 2px solid var(--card-border);
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--nav-bg); backdrop-filter: blur(10px);
+            border-top: 1px solid var(--nav-border);
+            display: flex; justify-content: center; gap: 0;
+            z-index: 997; padding: 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
         }
-        .tab-btn {
-            padding: 10px 18px; border: none; background: none;
-            color: var(--text-secondary); font-size: 0.9rem; font-weight: 600;
-            cursor: pointer; border-bottom: 2px solid transparent;
-            margin-bottom: -2px; transition: all 0.15s;
+        .bottom-nav .nav-btn {
+            flex: 1; max-width: 200px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 8px 4px 10px; border: none; background: none;
+            color: var(--text-secondary); font-size: 0.7rem; font-weight: 500;
+            cursor: pointer; transition: all 0.15s; gap: 3px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-        .tab-btn:hover { color: var(--text-primary); }
+        .bottom-nav .nav-btn .nav-icon { font-size: 1.3rem; }
+        .bottom-nav .nav-btn.active { color: var(--accent); }
+        .bottom-nav .nav-btn:hover { color: var(--text-primary); }
+        
+        /* Tab content visibility */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
-            .container { padding: 80px 12px 12px; }
+            .container { padding: 80px 12px 110px 12px; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
+            .bottom-nav .nav-btn { padding: 6px 2px 8px; font-size: 0.65rem; }
+            .bottom-nav .nav-btn .nav-icon { font-size: 1.1rem; }
         }
         
         /* Accordion chevron */
@@ -304,170 +314,190 @@
             <span style="position:absolute;right:0;font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.20</span>
         </div>
         
-        <!-- Settings Panel -->
-        <div class="card">
-            <div class="settings-toggle" onclick="toggleSettings()" id="settings-toggle">
-                <span>⚙️ 晚餐設定</span>
-                <span class="chevron">▼</span>
+        <!-- ===== TAB 1: 隨機生成菜式 ===== -->
+        <div class="tab-content active" id="tab-random">
+            <!-- Settings Panel -->
+            <div class="card">
+                <div class="settings-toggle" onclick="toggleSettings()" id="settings-toggle">
+                    <span>⚙️ 晚餐設定</span>
+                    <span class="chevron">▼</span>
+                </div>
+                <div class="settings-panel open" id="settings-panel">
+                    <!-- People count -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">人數</div>
+                        <div class="counter-row">
+                            <label>大人</label>
+                            <button onclick="adjustCounter('adults', -1)">−</button>
+                            <span class="counter-value" id="adults-count">2</span>
+                            <button onclick="adjustCounter('adults', 1)">+</button>
+                        </div>
+                        <div class="counter-row" id="kids-row" style="display:none;">
+                            <label>小孩</label>
+                            <button onclick="adjustCounter('kids', -1)">−</button>
+                            <span class="counter-value" id="kids-count">0</span>
+                            <button onclick="adjustCounter('kids', 1)">+</button>
+                            <span style="font-size:0.75rem;color:var(--text-secondary);">歲</span>
+                            <input type="number" id="kids-age" value="5" min="1" max="17" style="width:50px;padding:4px;text-align:center;">
+                        </div>
+                        <div class="toggle-row">
+                            <input type="checkbox" id="has-kids" onchange="toggleKids()">
+                            <label>有小孩</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Taste -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">口味</div>
+                        <div class="chip-group" id="taste-chips">
+                            <span class="chip" data-val="清淡" onclick="toggleChip(this)">清淡</span>
+                            <span class="chip" data-val="濃味" onclick="toggleChip(this)">濃味</span>
+                            <span class="chip" data-val="辣" onclick="toggleChip(this)">辣</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Cuisine -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">菜式</div>
+                        <div class="chip-group" id="cuisine-chips">
+                            <span class="chip active" data-val="中式" onclick="toggleChip(this)">中式</span>
+                            <span class="chip active" data-val="西式" onclick="toggleChip(this)">西式</span>
+                            <span class="chip active" data-val="日式" onclick="toggleChip(this)">日式</span>
+                            <span class="chip active" data-val="東南亞" onclick="toggleChip(this)">東南亞</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Cooking method -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">煮法</div>
+                        <div class="chip-group" id="method-chips">
+                            <span class="chip" data-val="蒸" onclick="toggleChip(this)">蒸</span>
+                            <span class="chip" data-val="炒" onclick="toggleChip(this)">炒</span>
+                            <span class="chip" data-val="炆" onclick="toggleChip(this)">炆</span>
+                            <span class="chip" data-val="燉" onclick="toggleChip(this)">燉</span>
+                            <span class="chip" data-val="煎" onclick="toggleChip(this)">煎</span>
+                            <span class="chip" data-val="焗" onclick="toggleChip(this)">焗</span>
+                            <span class="chip" data-val="炸" onclick="toggleChip(this)">炸</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Nutrition -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">營養考慮</div>
+                        <div class="chip-group" id="nutrition-chips">
+                            <span class="chip" data-val="菜" onclick="toggleChip(this)">🥬 菜</span>
+                            <span class="chip" data-val="魚" onclick="toggleChip(this)">🐟 魚</span>
+                            <span class="chip" data-val="白肉" onclick="toggleChip(this)">🍗 白肉</span>
+                            <span class="chip" data-val="紅肉" onclick="toggleChip(this)">🥩 紅肉</span>
+                            <span class="chip" data-val="澱粉質" onclick="toggleChip(this)">🍚 澱粉質</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Prep early -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">提前準備</div>
+                        <div class="chip-group" id="prep-chips">
+                            <span class="chip" data-val="yes" onclick="selectOne(this, 'prep-chips')">可早一晚/假期準備</span>
+                            <span class="chip" data-val="no" onclick="selectOne(this, 'prep-chips')">當天現做</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Available ingredients -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">已有材料</div>
+                        <input type="text" id="have-ingredients" placeholder="例如：雞蛋、洋蔥、番茄..." style="margin-bottom:4px;">
+                    </div>
+                    
+                    <!-- Time -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">
+                            時間：<span id="time-label">60分鐘內</span>
+                        </div>
+                        <input type="range" id="max-time" min="15" max="120" value="60" step="5" oninput="updateTimeLabel(this.value)">
+                    </div>
+                    
+                    <!-- Count + Soup/Cold dish -->
+                    <div style="margin-bottom:8px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">菜式數目</div>
+                        <div class="counter-row">
+                            <button onclick="adjustCounter('dishCount', -1)">−</button>
+                            <span class="counter-value" id="dish-count">3</span>
+                            <button onclick="adjustCounter('dishCount', 1)">+</button>
+                        </div>
+                        <div class="toggle-row">
+                            <input type="checkbox" id="include-soup">
+                            <label>包括湯</label>
+                        </div>
+                        <div class="toggle-row">
+                            <input type="checkbox" id="include-cold">
+                            <label>包括冷盤</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Allergy -->
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">食物敏感</div>
+                        <div class="chip-group" id="allergy-chips">
+                            <span class="chip active" data-val="no" onclick="selectOne(this, 'allergy-chips')">沒有</span>
+                            <span class="chip" data-val="yes" onclick="selectOne(this, 'allergy-chips')">有</span>
+                        </div>
+                        <input type="text" id="allergy-details" placeholder="請註明敏感食物..." style="display:none;margin-top:8px;">
+                    </div>
+                </div>
             </div>
-            <div class="settings-panel open" id="settings-panel">
-                <!-- People count -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">人數</div>
-                    <div class="counter-row">
-                        <label>大人</label>
-                        <button onclick="adjustCounter('adults', -1)">−</button>
-                        <span class="counter-value" id="adults-count">2</span>
-                        <button onclick="adjustCounter('adults', 1)">+</button>
-                    </div>
-                    <div class="counter-row" id="kids-row" style="display:none;">
-                        <label>小孩</label>
-                        <button onclick="adjustCounter('kids', -1)">−</button>
-                        <span class="counter-value" id="kids-count">0</span>
-                        <button onclick="adjustCounter('kids', 1)">+</button>
-                        <span style="font-size:0.75rem;color:var(--text-secondary);">歲</span>
-                        <input type="number" id="kids-age" value="5" min="1" max="17" style="width:50px;padding:4px;text-align:center;">
-                    </div>
-                    <div class="toggle-row">
-                        <input type="checkbox" id="has-kids" onchange="toggleKids()">
-                        <label>有小孩</label>
-                    </div>
-                </div>
-                
-                <!-- Taste -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">口味</div>
-                    <div class="chip-group" id="taste-chips">
-                        <span class="chip" data-val="清淡" onclick="toggleChip(this)">清淡</span>
-                        <span class="chip" data-val="濃味" onclick="toggleChip(this)">濃味</span>
-                        <span class="chip" data-val="辣" onclick="toggleChip(this)">辣</span>
-                    </div>
-                </div>
-                
-                <!-- Cuisine -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">菜式</div>
-                    <div class="chip-group" id="cuisine-chips">
-                        <span class="chip active" data-val="中式" onclick="toggleChip(this)">中式</span>
-                        <span class="chip active" data-val="西式" onclick="toggleChip(this)">西式</span>
-                        <span class="chip active" data-val="日式" onclick="toggleChip(this)">日式</span>
-                        <span class="chip active" data-val="東南亞" onclick="toggleChip(this)">東南亞</span>
-                    </div>
-                </div>
-                
-                <!-- Cooking method -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">煮法</div>
-                    <div class="chip-group" id="method-chips">
-                        <span class="chip" data-val="蒸" onclick="toggleChip(this)">蒸</span>
-                        <span class="chip" data-val="炒" onclick="toggleChip(this)">炒</span>
-                        <span class="chip" data-val="炆" onclick="toggleChip(this)">炆</span>
-                        <span class="chip" data-val="燉" onclick="toggleChip(this)">燉</span>
-                        <span class="chip" data-val="煎" onclick="toggleChip(this)">煎</span>
-                        <span class="chip" data-val="焗" onclick="toggleChip(this)">焗</span>
-                        <span class="chip" data-val="炸" onclick="toggleChip(this)">炸</span>
-                    </div>
-                </div>
-                
-                <!-- Nutrition -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">營養考慮</div>
-                    <div class="chip-group" id="nutrition-chips">
-                        <span class="chip" data-val="菜" onclick="toggleChip(this)">🥬 菜</span>
-                        <span class="chip" data-val="魚" onclick="toggleChip(this)">🐟 魚</span>
-                        <span class="chip" data-val="白肉" onclick="toggleChip(this)">🍗 白肉</span>
-                        <span class="chip" data-val="紅肉" onclick="toggleChip(this)">🥩 紅肉</span>
-                        <span class="chip" data-val="澱粉質" onclick="toggleChip(this)">🍚 澱粉質</span>
-                    </div>
-                </div>
-                
-                <!-- Prep early -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">提前準備</div>
-                    <div class="chip-group" id="prep-chips">
-                        <span class="chip" data-val="yes" onclick="selectOne(this, 'prep-chips')">可早一晚/假期準備</span>
-                        <span class="chip" data-val="no" onclick="selectOne(this, 'prep-chips')">當天現做</span>
-                    </div>
-                </div>
-                
-                <!-- Available ingredients -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">已有材料</div>
-                    <input type="text" id="have-ingredients" placeholder="例如：雞蛋、洋蔥、番茄..." style="margin-bottom:4px;">
-                    <div id="ingredient-tags" class="chip-group" style="margin-bottom:4px;"></div>
-                </div>
-                
-                <!-- Time -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">
-                        時間：<span id="time-label">60分鐘內</span>
-                    </div>
-                    <input type="range" id="max-time" min="15" max="120" value="60" step="5" oninput="updateTimeLabel(this.value)">
-                </div>
-                
-                <!-- Count + Soup/Cold dish -->
-                <div style="margin-bottom:8px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">菜式數目</div>
-                    <div class="counter-row">
-                        <button onclick="adjustCounter('dishCount', -1)">−</button>
-                        <span class="counter-value" id="dish-count">3</span>
-                        <button onclick="adjustCounter('dishCount', 1)">+</button>
-                    </div>
-                    <div class="toggle-row">
-                        <input type="checkbox" id="include-soup">
-                        <label>包括湯</label>
-                    </div>
-                    <div class="toggle-row">
-                        <input type="checkbox" id="include-cold">
-                        <label>包括冷盤</label>
-                    </div>
-                </div>
-                
-                <!-- Allergy -->
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">食物敏感</div>
-                    <div class="chip-group" id="allergy-chips">
-                        <span class="chip active" data-val="no" onclick="selectOne(this, 'allergy-chips')">沒有</span>
-                        <span class="chip" data-val="yes" onclick="selectOne(this, 'allergy-chips')">有</span>
-                    </div>
-                    <input type="text" id="allergy-details" placeholder="請註明敏感食物..." style="display:none;margin-top:8px;">
-                </div>
-            </div>
-        </div>
-        
-        <!-- Action Buttons -->
-        <button class="btn btn-primary" onclick="generateDishes()" id="generate-btn">
-            <span class="spinner" id="generate-spinner"></span>
-            🎲 隨機生成菜式
-        </button>
-        
-        <div style="text-align:center;margin:12px 0;color:var(--text-secondary);font-size:0.85rem;">或</div>
-        
-        <div style="display:flex;gap:8px;margin-bottom:16px;">
-            <input type="text" id="custom-dish" placeholder="自訂菜式 (例如：清蒸石斑)" style="flex:1;">
-            <button class="btn btn-secondary" onclick="aiSearchRecipe()" id="ai-search-btn">
-                <span class="spinner" id="ai-spinner"></span>
-                🤖 AI 搜尋食譜
+            
+            <!-- Generate Button -->
+            <button class="btn btn-primary" onclick="generateDishes()" id="generate-btn">
+                <span class="spinner" id="generate-spinner"></span>
+                🎲 隨機生成菜式
             </button>
+            
+            <!-- Results -->
+            <div id="results" style="margin-top:16px;"></div>
+            <div style="text-align:center;margin-top:8px;" id="regenerate-btn" style="display:none;">
+                <button class="btn btn-secondary" onclick="generateDishes()">🔄 重新生成</button>
+            </div>
         </div>
         
-        <!-- AI Search Result -->
-        <div class="ai-result card" id="ai-result"></div>
-        
-        <!-- Tabs -->
-        <div class="tab-row" id="tab-row" style="display:none;">
-            <button class="tab-btn active" onclick="switchTab('results')">🎲 隨機結果</button>
-            <button class="tab-btn" onclick="switchTab('bookmarks')">📑 收藏 <span id="bookmark-count" style="font-size:0.75rem;opacity:0.7;"></span></button>
+        <!-- ===== TAB 2: AI 搜尋食譜 ===== -->
+        <div class="tab-content" id="tab-ai">
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <input type="text" id="custom-dish" placeholder="輸入菜式名稱 (例如：粟米斑塊)" style="flex:1;">
+                <button class="btn btn-secondary" onclick="aiSearchRecipe()" id="ai-search-btn">
+                    <span class="spinner" id="ai-spinner"></span>
+                    🤖 搜尋
+                </button>
+            </div>
+            
+            <!-- AI Search Result -->
+            <div id="ai-result"></div>
         </div>
         
-        <!-- Results -->
-        <div id="results"></div>
-        <!-- Bookmarks -->
-        <div id="bookmarks-section" style="display:none;"></div>
-        <div style="text-align:center;margin-top:8px;" id="regenerate-btn" style="display:none;">
-            <button class="btn btn-secondary" onclick="generateDishes()">🔄 重新生成</button>
+        <!-- ===== TAB 3: 收藏 ===== -->
+        <div class="tab-content" id="tab-bookmarks">
+            <div id="bookmarks-section">
+                <div style="text-align:center;padding:40px;color:var(--text-secondary);">
+                    📑 載入中...
+                </div>
+            </div>
         </div>
     </div>
+    
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" id="bottom-nav">
+        <button class="nav-btn active" onclick="switchTab('random')" data-tab="random">
+            <span class="nav-icon">🎲</span>
+            <span>隨機生成</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('ai')" data-tab="ai">
+            <span class="nav-icon">🤖</span>
+            <span>AI 搜尋</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('bookmarks')" data-tab="bookmarks">
+            <span class="nav-icon">📑</span>
+            <span>收藏</span>
+        </button>
+    </nav>
     
     <!-- Toast -->
     <div class="toast" id="toast"></div>
@@ -509,9 +539,7 @@
             document.getElementById('settings-toggle').classList.toggle('open');
         }
         
-        function toggleChip(el) {
-            el.classList.toggle('active');
-        }
+        function toggleChip(el) { el.classList.toggle('active'); }
         
         function selectOne(el, groupId) {
             document.querySelectorAll('#' + groupId + ' .chip').forEach(c => c.classList.remove('active'));
@@ -543,8 +571,25 @@
             setTimeout(() => t.classList.remove('show'), 2500);
         }
         
+        // ===== TAB SWITCHING =====
+        function switchTab(tab) {
+            // Update content visibility
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            // Update nav buttons
+            document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.bottom-nav .nav-btn[data-tab="' + tab + '"]').classList.add('active');
+            
+            // Load bookmarks when switching to bookmarks tab
+            if (tab === 'bookmarks') loadBookmarks();
+            
+            // Scroll to top of content
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+        
+        // ===== TAB 1: RANDOM GENERATION =====
         async function generateDishes() {
-            const btn = document.getElementById('generate-btn');
             const spinner = document.getElementById('generate-spinner');
             spinner.classList.add('show');
             
@@ -562,7 +607,7 @@
             };
             
             const allergyChip = document.querySelector('#allergy-chips .chip.active');
-            if (allergyChip?.dataset.val === 'yes') data.spicy = 'yes'; // placeholder
+            if (allergyChip?.dataset.val === 'yes') data.spicy = 'yes';
             
             try {
                 const res = await fetch('/cooking-ideas/api/random', {
@@ -602,23 +647,16 @@
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                 </div>
             `).join('');
-            
-            // Show tabs
-            document.getElementById('tab-row').style.display = 'flex';
-            switchTab('results');
-            
-            // Check bookmark status
             checkBookmarkStatus(dishes.map(d => d.id));
-            
-            window.scrollTo({top: container.offsetTop - 20, behavior: 'smooth'});
+            container.scrollIntoView({behavior: 'smooth'});
         }
         
+        // ===== TAB 2: AI SEARCH =====
         async function aiSearchRecipe() {
             const dishName = document.getElementById('custom-dish').value.trim();
             if (!dishName) { showToast('請輸入菜式名稱'); return; }
             
             const spinner = document.getElementById('ai-spinner');
-            const btn = document.getElementById('ai-search-btn');
             const resultDiv = document.getElementById('ai-result');
             spinner.classList.add('show');
             
@@ -631,7 +669,6 @@
                 
                 if (result.success) {
                     const r = result.recipe;
-                    resultDiv.classList.add('show');
                     resultDiv.innerHTML = `
                         <div class="recipe-card">
                             <div style="display:flex;justify-content:space-between;align-items:start;">
@@ -672,18 +709,14 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    // Update the AI recipe with the saved ID so bookmark works
                     window._aiRecipe.id = result.id;
-                    // Update bookmark button to be clickable
                     const aiBookmarkBtn = document.querySelector('#ai-result .bookmark-btn');
                     if (aiBookmarkBtn) aiBookmarkBtn.dataset.rid = result.id;
                     showToast('已加入食譜庫！可以收藏喇～');
                 } else {
                     showToast(result.error || '儲存失敗');
                 }
-            } catch(e) {
-                showToast('儲存失敗');
-            }
+            } catch(e) { showToast('儲存失敗'); }
         }
         
         // Enter key to search
@@ -692,7 +725,6 @@
         });
         
         // ===== BOOKMARK FUNCTIONS =====
-        
         async function toggleBookmark(recipeId, btn) {
             try {
                 const res = await fetch('/cooking-ideas/api/bookmark', {
@@ -736,34 +768,16 @@
             } catch(e) {}
         }
         
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            if (tab === 'results') {
-                document.querySelector('.tab-btn:first-child').classList.add('active');
-                document.getElementById('results').style.display = 'block';
-                document.getElementById('bookmarks-section').style.display = 'none';
-                document.getElementById('regenerate-btn').style.display = 'block';
-            } else {
-                document.querySelector('.tab-btn:last-child').classList.add('active');
-                document.getElementById('results').style.display = 'none';
-                document.getElementById('bookmarks-section').style.display = 'block';
-                document.getElementById('regenerate-btn').style.display = 'none';
-                loadBookmarks();
-            }
-        }
-        
         async function loadBookmarks() {
             const container = document.getElementById('bookmarks-section');
-            const countEl = document.getElementById('bookmark-count');
             container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>';
             try {
                 const res = await fetch('/cooking-ideas/api/bookmarks');
                 const result = await res.json();
                 if (result.success) {
                     const bookmarks = result.bookmarks;
-                    countEl.textContent = bookmarks.length ? `(${bookmarks.length})` : '';
                     if (bookmarks.length === 0) {
-                        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);">📑 未有收藏<br><span style="font-size:0.85rem;">點擊食譜右上角 ☆ 加入收藏</span></div>';
+                        container.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--text-secondary);">📑 未有收藏<br><span style="font-size:0.85rem;">喺其他 Tab 點擊食譜右上角 ☆ 加入收藏</span></div>';
                     } else {
                         container.innerHTML = bookmarks.map(r => `
                             <div class="recipe-card">
@@ -791,12 +805,11 @@
         
         async function removeBookmark(recipeId, btn) {
             await toggleBookmark(recipeId, btn);
-            // Refresh bookmark list
             loadBookmarks();
         }
     </script>
     
-    <!-- Sidebar toggle script (matches other webapps) -->
+    <!-- Sidebar toggle script -->
     <script>
         const hamburger = document.querySelector('.hamburger');
         const sidebar = document.getElementById('sidebar');
@@ -816,7 +829,6 @@
             }
         });
         
-        // Theme toggle (matches sidebar)
         window.toggleTheme = function() {
             document.body.classList.toggle('light-mode');
             const isLight = document.body.classList.contains('light-mode');
@@ -825,7 +837,6 @@
             localStorage.setItem('theme', isLight ? 'light-mode' : 'dark');
         };
         
-        // Load saved theme
         if (localStorage.getItem('theme') === 'light-mode') {
             document.body.classList.add('light-mode');
             const ti = document.getElementById('theme-icon');
