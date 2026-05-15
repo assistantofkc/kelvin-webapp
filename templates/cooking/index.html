@@ -1080,6 +1080,7 @@
                     document.getElementById('edit-tips').value = r.tips || '';
                     document.getElementById('edit-servings').value = r.servings || 4;
                     document.getElementById('edit-modal').classList.add('show');
+                    document.getElementById('edit-modal').querySelector('.modal-content').scrollTop = 0;
                 } else {
                     showToast(result.error || '載入失敗');
                 }
@@ -1354,6 +1355,7 @@
             }
             
             modal.classList.add('show');
+            modal.querySelector('.modal-content').scrollTop = 0;
         }
         
         function closeCreateForm() {
