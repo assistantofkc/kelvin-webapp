@@ -1239,7 +1239,16 @@
                     // Handle structured or simple steps
                     let stepText = '';
                     if (Array.isArray(r.steps)) {
-                        stepText = r.steps.map(s => `<div style="margin-bottom:10px;"><strong>${s.step_number || ''}.</strong> ${s.instruction || ''} ${s.technique ? '<span style="color:var(--accent);font-size:0.85rem;">(' + s.technique + ')</span>' : ''}</div>`).join('');
+                        stepText = r.steps.map(s => {
+                            const instr = s.instruction || '';
+                            const colonIdx = instr.indexOf('：');
+                            let prefix = '', rest = instr;
+                            if (colonIdx > 0) {
+                                prefix = instr.substring(0, colonIdx + 1);
+                                rest = instr.substring(colonIdx + 1);
+                            }
+                            return `<div style="margin-bottom:10px;"><strong>${s.step_number || ''}. ${prefix}</strong>${rest} ${s.technique ? '<span style="color:var(--accent);font-size:0.85rem;">(' + s.technique + ')</span>' : ''}</div>`;
+                        }).join('');
                     } else {
                         stepText = (r.steps || steps).replace(/\n/g, '<br>');
                     }
@@ -1252,9 +1261,9 @@
                     }
                     content.innerHTML = `
                         <div style="font-size:1.05rem;">
-                        <h3 style="margin-bottom:8px;">${r.name || name}</h3>
+                        <h3 style="margin-bottom:8px;"><strong>${r.name || name}</strong></h3>
                         <div class="recipe-meta"><span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span></div>
-                        <div style="margin:12px 0;"><strong style="font-size:1rem;">材料：</strong><br><span style="line-height:2;">${ingText}</span></div>
+                        <div style="margin:12px 0;"><strong style="font-size:1rem;">材料：</strong><br><strong style="line-height:2;">${ingText}</strong></div>
                         <div style="margin:12px 0;"><strong style="font-size:1rem;">步驟：</strong><br>${stepText}</div>
                         ${tipsText ? `<div style="margin:12px 0;"><strong style="font-size:1rem;">💡 小貼士：</strong><br><span style="line-height:1.8;">${tipsText}</span></div>` : ''}
                         </div>
