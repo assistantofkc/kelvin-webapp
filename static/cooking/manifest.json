@@ -4,8 +4,9 @@
   "description": "隨機生成家常菜式食譜",
   "start_url": "/cooking-ideas",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "display_override": ["window-controls-overlay"],
+  "background_color": "#3c1e0a",
+  "theme_color": "#3c1e0a",
   "icons": [
     {
       "src": "/static/cooking/icon-192.png",

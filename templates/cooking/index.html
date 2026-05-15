@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#1a1a2e">
+    <meta name="theme-color" content="#3c1e0a">
     <link rel="manifest" href="/static/cooking/manifest.json">
     <title>🍳 Cooking Ideas</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -46,7 +46,7 @@
             --nav-border: rgba(0, 0, 0, 0.1);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { background: #1a1a2e; height: 100%; overflow-x: hidden; }
+        html { background: #3c1e0a; height: 100%; overflow-x: hidden; }
         body.light-mode ~ html, html:has(body.light-mode) { background: #f5f7fa; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -60,7 +60,7 @@
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: 20px 16px calc(140px + env(safe-area-inset-bottom)) 16px;
+            padding: calc(20px + env(safe-area-inset-top)) 16px calc(140px + env(safe-area-inset-bottom)) 16px;
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         body.light-mode .header-logo { filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.25)); }
@@ -261,7 +261,7 @@
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
-            .container { padding: 20px 12px calc(150px + env(safe-area-inset-bottom)) 12px; }
+            .container { padding: calc(20px + env(safe-area-inset-top)) 12px calc(150px + env(safe-area-inset-bottom)) 12px; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
@@ -1483,7 +1483,7 @@
             const isLight = document.body.classList.contains('light-mode');
             document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
             document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
-            document.documentElement.style.background = isLight ? '#f5f7fa' : '#1a1a2e';
+            document.documentElement.style.background = isLight ? '#f5f7fa' : '#3c1e0a';
             localStorage.setItem('theme', isLight ? 'light-mode' : 'dark');
         };
         
