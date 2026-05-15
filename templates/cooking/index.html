@@ -562,7 +562,7 @@
             <!-- Sub-tab pill nav -->
             <div class="sub-tab-nav">
                 <button class="pill-btn active" onclick="switchSubTab('db')">🔍 搜尋食譜庫</button>
-                <button class="pill-btn" onclick="switchSubTab('ai')">🤖 AI 生成</button>
+                <button class="pill-btn" onclick="switchSubTab('ai')">🤖 AI 網絡搜尋</button>
             </div>
             
             <!-- DB Search -->
@@ -673,7 +673,7 @@
             <div id="expand-content">
                 <div style="text-align:center;padding:40px;color:var(--text-secondary);">
                     <span class="spinner show" style="margin:0 auto 12px;"></span>
-                    <div>AI 生成中...</div>
+                    <div>AI 網絡搜尋中...</div>
                 </div>
             </div>
         </div>
@@ -1270,7 +1270,7 @@
             document.body.style.overflow = 'hidden';
             document.body.style.position = 'fixed';
             document.body.style.width = '100%';
-            content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 生成中...</div></div>';
+            content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 網絡搜尋中...</div></div>';
             try {
                 const res = await fetch('/cooking-ideas/api/search', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
