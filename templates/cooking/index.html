@@ -1241,7 +1241,10 @@
                     // Handle structured (array) or simple (string) ingredients
                     let ingText = '';
                     if (Array.isArray(r.ingredients)) {
-                        ingText = r.ingredients.map(i => `${i.item || ''}：${i.quantity || ''}`).join('<br>');
+                        ingText = r.ingredients.map(i => {
+                            if (typeof i === 'string') return i;
+                            return `${i.item || ''}：${i.quantity || ''}`;
+                        }).join('<br>');
                     } else {
                         ingText = (r.ingredients || ingredients).replace(/\n/g, '<br>');
                     }
