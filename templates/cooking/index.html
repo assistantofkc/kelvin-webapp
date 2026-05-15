@@ -408,7 +408,7 @@
         <!-- Header -->
         <div style="text-align:center;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.50</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.51</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -818,28 +818,18 @@
             setTimeout(() => t.classList.remove('show'), 2500);
         }
         
-        // ===== SLIDER BEHAVIOR: only change by dragging thumb, not tapping track =====
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('input[type="range"]').forEach(slider => {
-                let dragging = false;
-                let startVal;
-                slider.addEventListener('mousedown', function(e) {
-                    startVal = slider.value;
-                    dragging = false;
-                });
-                slider.addEventListener('touchstart', function(e) {
-                    startVal = slider.value;
-                    dragging = false;
-                }, {passive: true});
-                slider.addEventListener('input', function() {
-                    dragging = true;
-                });
-                slider.addEventListener('change', function() {
-                    if (!dragging && startVal !== undefined) {
-                        slider.value = startVal;
-                        slider.dispatchEvent(new Event('input', {bubbles: true}));
-                    }
-                });
+        // ===== SLIDER: only change by dragging dot, not tapping track =====
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            let dragStartVal, isDragging = false;
+            slider.addEventListener('mousedown', e => { dragStartVal = slider.value; isDragging = false; });
+            slider.addEventListener('touchstart', e => { dragStartVal = slider.value; isDragging = false; }, {passive: true});
+            slider.addEventListener('input', () => { isDragging = true; });
+            slider.addEventListener('mouseup', () => { if (!isDragging) slider.value = dragStartVal; });
+            slider.addEventListener('touchend', () => { if (!isDragging) slider.value = dragStartVal; });
+            // Also reset on change if not dragged
+            slider.addEventListener('change', function() {
+                if (!isDragging) { slider.value = dragStartVal; slider.dispatchEvent(new Event('input', {bubbles: true})); }
+                isDragging = false;
             });
         });
         function switchTab(tab) {
