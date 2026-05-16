@@ -152,6 +152,15 @@ def init_db():
     ''')
     
     c.execute('''
+        CREATE TABLE IF NOT EXISTS user_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_key TEXT NOT NULL UNIQUE,
+            preferences TEXT NOT NULL DEFAULT '{}',
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    
+    c.execute('''
         CREATE TABLE IF NOT EXISTS db_version (
             version INTEGER
         )

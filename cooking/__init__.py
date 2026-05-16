@@ -1081,6 +1081,45 @@ Output ONLY valid JSON:
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+# ===== USER PREFERENCES (設成預設) =====
+
+@cooking_bp.route('/api/preferences/save', methods=['POST'])
+def save_preferences():
+    data = request.get_json() or {}
+    user_key = data.get('user_key', 'default')
+    preferences = data.get('preferences', {})
+    if not isinstance(preferences, dict):
+        return jsonify({'success': False, 'error': 'Invalid preferences format'})
+    conn = _get_db()
+    c = conn.cursor()
+    prefs_json = json.dumps(preferences, ensure_ascii=False)
+    c.execute('''
+        INSERT INTO user_preferences (user_key, preferences, updated_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(user_key) DO UPDATE SET
+            preferences = excluded.preferences,
+            updated_at = excluded.updated_at
+    ''', [user_key, prefs_json])
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': '已儲存預設'})
+
+@cooking_bp.route('/api/preferences/load', methods=['GET'])
+def load_preferences():
+    user_key = request.args.get('user_key', 'default')
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT preferences FROM user_preferences WHERE user_key = ?', [user_key])
+    row = c.fetchone()
+    conn.close()
+    if row:
+        try:
+            prefs = json.loads(row['preferences'])
+            return jsonify({'success': True, 'preferences': prefs})
+        except json.JSONDecodeError:
+            return jsonify({'success': True, 'preferences': {}})
+    return jsonify({'success': True, 'preferences': {}})
+
 # ===== USER RECIPES (創建菜式) =====
 
 @cooking_bp.route('/api/user-recipes', methods=['GET', 'POST'])

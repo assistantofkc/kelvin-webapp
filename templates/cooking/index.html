@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.18</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.19</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -601,6 +601,9 @@
                         </div>
                         <input type="text" id="allergy-details" placeholder="請註明敏感食物..." style="display:none;margin-top:8px;">
                     </div>
+                    
+                    <!-- Save Preferences -->
+                    <button class="btn btn-secondary" onclick="savePreferences()" style="width:100%;margin-top:4px;">💾 設成預設</button>
                 </div>
             </div>
             
@@ -939,6 +942,9 @@
             document.getElementById('user-badge').style.opacity = '0.6';
         }
         
+        // Load saved preferences on startup
+        loadPreferences();
+        
         // Settings state
         let adults = 2, kids = 1, dishCount = 3;
         
@@ -1010,6 +1016,97 @@
             document.getElementById('sub-' + tab).classList.add('active');
             document.querySelectorAll('.sub-tab-nav .pill-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('.sub-tab-nav .pill-btn[onclick*="' + tab + '"]').classList.add('active');
+        }
+        
+        // ===== PREFERENCES: SAVE / LOAD =====
+        
+        async function savePreferences() {
+            const prefs = {
+                count: dishCount,
+                adults: adults,
+                kids: kids,
+                has_kid: document.getElementById('has-kids').checked,
+                kid_age: parseInt(document.getElementById('kids-age').value) || 11,
+                tastes: getSelected('taste-chips'),
+                cuisines: getSelected('cuisine-chips'),
+                methods: getSelected('method-chips'),
+                nutrition: getSelected('nutrition-chips'),
+                prep: document.querySelector('#prep-chips .chip.active')?.dataset.val || null,
+                max_time: parseInt(document.getElementById('max-time').value),
+                include_soup: document.getElementById('include-soup').checked,
+                include_cold: document.getElementById('include-cold').checked,
+                ingredients: document.getElementById('have-ingredients').value.trim(),
+                allergy_val: document.querySelector('#allergy-chips .chip.active')?.dataset.val || 'no',
+                allergy_details: document.getElementById('allergy-details').value.trim()
+            };
+            try {
+                const res = await fetch('/cooking-ideas/api/preferences/save', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_key: USER_KEY, preferences: prefs})
+                });
+                const result = await res.json();
+                showToast(result.success ? result.message : (result.error || '儲存失敗'));
+            } catch(e) { showToast('網絡錯誤'); }
+        }
+        
+        async function loadPreferences() {
+            try {
+                const res = await fetch('/cooking-ideas/api/preferences/load?user_key=' + USER_KEY);
+                const result = await res.json();
+                if (!result.success || !result.preferences || !Object.keys(result.preferences).length) return;
+                const p = result.preferences;
+                
+                // Counters
+                if (p.count != null) { dishCount = p.count; document.getElementById('dish-count').textContent = p.count; }
+                if (p.adults != null) { adults = p.adults; document.getElementById('adults-count').textContent = p.adults; }
+                if (p.kids != null) { kids = p.kids; document.getElementById('kids-count').textContent = p.kids; }
+                
+                // Kids
+                if (p.has_kid != null) { document.getElementById('has-kids').checked = p.has_kid; toggleKids(); }
+                if (p.kid_age != null) document.getElementById('kids-age').value = p.kid_age;
+                
+                // Chips
+                if (p.tastes) setChips('taste-chips', p.tastes);
+                if (p.cuisines) setChips('cuisine-chips', p.cuisines);
+                if (p.methods) setChips('method-chips', p.methods);
+                if (p.nutrition) setChips('nutrition-chips', p.nutrition);
+                
+                // Prep
+                if (p.prep) selectOneByVal('prep-chips', p.prep);
+                
+                // Sliders & checkboxes
+                if (p.max_time != null) { document.getElementById('max-time').value = p.max_time; updateTimeLabel(p.max_time); }
+                if (p.include_soup != null) document.getElementById('include-soup').checked = p.include_soup;
+                if (p.include_cold != null) document.getElementById('include-cold').checked = p.include_cold;
+                
+                // Ingredients
+                if (p.ingredients) document.getElementById('have-ingredients').value = p.ingredients;
+                
+                // Allergy
+                if (p.allergy_val) {
+                    selectOneByVal('allergy-chips', p.allergy_val);
+                    if (p.allergy_val === 'yes') document.getElementById('allergy-details').style.display = 'block';
+                    if (p.allergy_details) document.getElementById('allergy-details').value = p.allergy_details;
+                }
+            } catch(e) { /* silent fail on load */ }
+        }
+        
+        function setChips(groupId, values) {
+            const group = document.getElementById(groupId);
+            if (!group) return;
+            const chips = group.querySelectorAll('.chip');
+            chips.forEach(c => {
+                if (values.includes(c.dataset.val)) c.classList.add('active');
+                else c.classList.remove('active');
+            });
+        }
+        
+        function selectOneByVal(groupId, val) {
+            const group = document.getElementById(groupId);
+            if (!group) return;
+            group.querySelectorAll('.chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.val === val);
+            });
         }
         
         // ===== TAB 1: RANDOM GENERATION =====
