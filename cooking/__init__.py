@@ -404,18 +404,26 @@ def replace_dish():
         candidates = [r for r in candidates if r['has_cold_dish'] == 0]
     
     # If soup/cold is included, non-soup/cold slots should NOT get soup/cold replacements
-    soup_slot = 0 if wants_soup else -1
-    cold_slot = (1 if wants_soup else 0) if wants_cold else -1
+    # Detect actual soup/cold positions from current dishes (may be shuffled)
+    soup_slot = -1
+    cold_slot = -1
+    for i, rid in enumerate(current_ids):
+        for r in all_candidates:
+            if r['id'] == rid:
+                if r.get('has_soup') == 1:
+                    soup_slot = i
+                if r.get('has_cold_dish') == 1:
+                    cold_slot = i
+                break
     if wants_soup and replace_idx != soup_slot:
         candidates = [r for r in candidates if r['has_soup'] == 0]
     if wants_cold and replace_idx != cold_slot:
         candidates = [r for r in candidates if r['has_cold_dish'] == 0]
     
-    # Match type of replaced dish: soup at index 0, cold at index 1 (or 0 if no soup)
-    if wants_soup and replace_idx == 0:
+    # Match type of replaced dish: if replacing soup/cold slot, must be same type
+    if wants_soup and replace_idx == soup_slot:
         candidates = [r for r in candidates if r['has_soup'] == 1]
-    cold_idx = 1 if wants_soup else 0
-    if wants_cold and replace_idx == cold_idx:
+    if wants_cold and replace_idx == cold_slot:
         candidates = [r for r in candidates if r['has_cold_dish'] == 1]
     
     if not candidates:
