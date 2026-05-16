@@ -611,32 +611,37 @@ def ai_search():
     if not GEMINI_API_KEY:
         return jsonify({'success': False, 'error': 'AI search not configured.'})
 
-    prompt = f"""Generate a complete recipe for "{dish_name}" in Traditional Chinese (繁體中文).
+    prompt = f"""Generate 3 complete recipe variations for "{dish_name}" in Traditional Chinese (繁體中文).
+Each variation should use slightly different cooking methods, ingredients, or styles.
 
-Output ONLY valid JSON, no markdown, no explanation:
+Output ONLY a valid JSON array with 3 recipe objects, no markdown, no explanation:
 
-{{
-  "name": "菜名",
-  "cuisine": "中式/西式/日式/東南亞",
-  "cooking_method": "蒸/炒/炆/燉/煎/焗/炸",
-  "taste": "清淡/濃味/辣",
-  "is_spicy": 0或1,
-  "kid_friendly": 0或1,
-  "ingredients": "材料列表(每項用逗號分隔)",
-  "steps": "步驟(用\\n分隔每步)",
-  "tips": "小貼士",
-  "prep_time_min": 15,
-  "can_prep_early": 0或1,
-  "nutrition_tags": "營養標籤(e.g. 菜,魚,白肉,紅肉,澱粉質,蛋白質)",
-  "servings": 4
-}}
+[
+  {{
+    "name": "菜名（變化一）",
+    "cuisine": "中式/西式/日式/東南亞",
+    "cooking_method": "蒸/炒/炆/燉/煎/焗/炸",
+    "taste": "清淡/濃味/辣",
+    "is_spicy": 0或1,
+    "kid_friendly": 0或1,
+    "ingredients": "材料列表(每項用逗號分隔)",
+    "steps": "步驟(用\\n分隔每步)",
+    "tips": "小貼士",
+    "prep_time_min": 15,
+    "can_prep_early": 0或1,
+    "nutrition_tags": "營養標籤(e.g. 菜,魚,白肉,紅肉,澱粉質,蛋白質)",
+    "servings": 4
+  }},
+  ...(total 3 recipes)
+]
 
 Rules:
 - ALL text MUST be Traditional Chinese (繁體中文)
+- Each recipe must be genuinely different (different cooking method, ingredient focus, or style)
 - Steps numbered, separated by \\n
 - Give realistic home-cooking recipes
 - kid_friendly=1 if non-spicy AND no alcohol (酒/清酒/味醂/紹興酒/料酒) in ingredients, otherwise 0
-- Output ONLY the JSON, nothing else"""
+- Output ONLY the JSON array, nothing else"""
 
     try:
         url = f'{GEMINI_URL}?key={GEMINI_API_KEY}'
@@ -675,16 +680,25 @@ Rules:
         content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
         content = re.sub(r'```', '', content, flags=re.IGNORECASE)
         content = content.strip()
-        start = content.find('{')
-        end = content.rfind('}') + 1
+        start = content.find('[')
+        if start == -1:
+            start = content.find('{')
+        end = content.rfind(']') + 1
+        if end == 0:
+            end = content.rfind('}') + 1
         if start == -1 or end == 0:
             return jsonify({'success': False, 'error': 'AI response format error.'})
 
-        recipe = json.loads(content[start:end])
-        recipe['source'] = 'ai_search'
-        recipe['from_ai'] = True
+        parsed = json.loads(content[start:end])
+        if isinstance(parsed, list):
+            recipes = parsed
+        else:
+            recipes = [parsed]
+        for r in recipes:
+            r['source'] = 'ai_search'
+            r['from_ai'] = True
 
-        return jsonify({'success': True, 'recipe': recipe})
+        return jsonify({'success': True, 'recipes': recipes})
 
     except req.exceptions.Timeout:
         return jsonify({'success': False, 'error': 'AI 搜尋超時（35秒），請用更簡單嘅菜式名再試。'})

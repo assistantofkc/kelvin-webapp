@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.22</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.23</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -1256,15 +1256,15 @@
                 const result = await res.json();
                 
                 if (result.success) {
-                    const r = result.recipe;
-                    resultDiv.innerHTML = `
+                    const recipes = result.recipes || (result.recipe ? [result.recipe] : []);
+                    resultDiv.innerHTML = recipes.map((r, i) => `
                         <div class="recipe-card">
                             <div class="recipe-body">
                             <div style="display:flex;justify-content:space-between;align-items:start;">
                                 <h3 style="margin:0;">🤖 ${r.name}</h3>
                                 <div style="display:flex;gap:6px;">
-                                    <button class="bookmark-btn" data-rid="${r.id || 'ai'}" onclick="toggleAiBookmark(this)" title="收藏">♡</button>
-                                    <button class="btn btn-secondary" onclick="saveAiRecipe()" style="padding:6px 12px;font-size:0.8rem;">💾 加入食譜庫</button>
+                                    <button class="bookmark-btn" data-rid="ai_${i}" onclick="toggleAiBookmark(this)" title="收藏">♡</button>
+                                    <button class="btn btn-secondary" onclick="saveAiRecipe(${i})" style="padding:6px 12px;font-size:0.8rem;">💾 加入食譜庫</button>
                                 </div>
                             </div>
                             <img class="recipe-img" data-dish="${(r.name || '').replace(/"/g, '&quot;')}" src="" alt="${r.name || ''}" style="display:none">
@@ -1279,11 +1279,13 @@
                             <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || ''}</div>
                             ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
                             </div>
-                            
                         </div>
-                    `;
-                    window._aiRecipe = r;
-                    if (r.name) loadRecipeImages([r.name]);
+                    `).join('');
+                    window._aiRecipes = recipes;
+                    if (recipes.length > 0) {
+                        const names = recipes.map(r => r.name).filter(Boolean);
+                        if (names.length) loadRecipeImages(names);
+                    }
                     resultDiv.scrollIntoView({behavior: 'smooth'});
                 } else {
                     showToast(result.error || 'AI搜尋失敗');
@@ -1294,18 +1296,18 @@
             spinner.classList.remove('show');
         }
         
-        async function saveAiRecipe() {
-            if (!window._aiRecipe) return;
+        async function saveAiRecipe(idx) {
+            const recipe = window._aiRecipes ? window._aiRecipes[idx] : null;
+            if (!recipe) return;
             try {
                 const res = await fetch('/cooking-ideas/api/save', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(window._aiRecipe)
+                    body: JSON.stringify(recipe)
                 });
                 const result = await res.json();
                 if (result.success) {
-                    window._aiRecipe.id = result.id;
-                    const aiBookmarkBtn = document.querySelector('#ai-result .bookmark-btn');
-                    if (aiBookmarkBtn) aiBookmarkBtn.dataset.rid = result.id;
+                    recipe.id = result.id;
+                    window._aiRecipes[idx] = recipe;
                     showToast('已加入食譜庫！可以收藏喇～');
                 } else {
                     showToast(result.error || '儲存失敗');
@@ -1532,11 +1534,15 @@
         }
         
         async function toggleAiBookmark(btn) {
-            if (!window._aiRecipe || !window._aiRecipe.id) {
+            const rid = btn.dataset.rid;  // e.g. "ai_0", "ai_1"
+            const idx = parseInt(rid.replace('ai_', ''));
+            const recipe = window._aiRecipes ? window._aiRecipes[idx] : null;
+            if (!recipe || !recipe.id) {
                 showToast('請先儲存到食譜庫再收藏');
                 return;
             }
-            await toggleBookmark(window._aiRecipe.id, btn);
+            btn.dataset.rid = recipe.id;
+            await toggleBookmark(recipe.id, btn);
         }
         
         async function checkBookmarkStatus(recipeIds) {
