@@ -401,8 +401,11 @@ def replace_dish():
             recipe_ingredients = r['ingredients'].lower()
             r['_score'] = sum(1 for item in have_list if item in recipe_ingredients)
     
-    # Exclude current dishes
+    # Exclude current dishes + slot history (to prevent A→B→A cycling)
     exclude_ids = set(current_ids)
+    extra_exclude = data.get('exclude_ids', [])
+    if extra_exclude:
+        exclude_ids.update(extra_exclude)
     candidates = [r for r in all_candidates if r['id'] not in exclude_ids]
     
     # Also remove soup/cold if not wanted

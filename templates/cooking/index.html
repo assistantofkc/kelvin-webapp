@@ -911,6 +911,7 @@
                 if (result.success) {
                     window._currentDishes = result.dishes;
                     window._lastSearchParams = data;
+                    window._slotHistory = {};  // reset per-slot replace history
                     renderResults(result.dishes);
                     document.getElementById('regenerate-btn').style.display = 'block';
                 } else {
@@ -967,7 +968,11 @@
             const card = document.querySelector(`.recipe-card[data-index="${index}"]`);
             const replaceBtn = card ? card.querySelector('.replace-btn') : null;
             if (replaceBtn) replaceBtn.textContent = '⏳';
-            const params = { ...window._lastSearchParams, current_ids: window._currentDishes.map(d => d.id), replace_index: index };
+            // Track per-slot history so replaced dishes don't come back
+            window._slotHistory = window._slotHistory || {};
+            window._slotHistory[index] = window._slotHistory[index] || new Set();
+            window._slotHistory[index].add(window._currentDishes[index].id);
+            const params = { ...window._lastSearchParams, current_ids: window._currentDishes.map(d => d.id), replace_index: index, exclude_ids: [...window._slotHistory[index]] };
             try {
                 const res = await fetch('/cooking-ideas/api/replace', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(params)
