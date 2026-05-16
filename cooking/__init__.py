@@ -270,6 +270,16 @@ def random_recipes():
             candidates = [r for r in all_candidates
                          if r['id'] not in {s['id'] for s in selected}]
 
+        # If target is 菜, prefer pure vegetable dishes (no tomato/egg/meat in name)
+        if target_nut == '菜' and candidates:
+            VEG_PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
+            VEG_TOMATO_KW = ['蕃茄', '番茄']
+            pure_veg = [c for c in candidates
+                        if not any(tk in c['name'] for tk in VEG_TOMATO_KW)
+                        and not any(pk in c['name'] for pk in VEG_PROTEIN_KW)]
+            if pure_veg:
+                candidates = pure_veg
+
         if not candidates:
             continue  # skip if no match
 
