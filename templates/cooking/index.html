@@ -326,33 +326,34 @@
         }
         
         .theme-btn {
-            position: fixed;
-            top: calc(20px + env(safe-area-inset-top));
-            left: 20px;
-            z-index: 1000;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 20px;
+            padding: 6px 14px;
             cursor: pointer;
-            padding: 8px 10px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            font-size: 1.2rem;
+            font-size: 0.85rem;
+            color: var(--text-primary);
             transition: background 0.3s;
             -webkit-tap-highlight-color: transparent;
         }
         .theme-btn:hover { background: var(--card-border); }
         
         .user-badge {
-            position: fixed;
-            top: calc(20px + env(safe-area-inset-top));
-            right: 20px;
-            z-index: 1000;
-            padding: 6px 12px;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
             font-size: 0.85rem;
-            color: var(--text-primary);
-            -webkit-tap-highlight-color: transparent;
+            color: var(--text-secondary);
+        }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 4px;
+            margin-bottom: 12px;
         }
         .hamburger:hover { background: var(--card-border); }
         .hamburger-icon {
@@ -441,7 +442,15 @@
         <!-- Header -->
         <div style="text-align:center;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v1.57</span>
+        </div>
+        
+        <!-- Top Bar: theme toggle + user badge -->
+        <div class="top-bar">
+            <div class="theme-btn" onclick="toggleTheme()" id="theme-btn">
+                <span id="theme-icon">🌙</span>
+                <span>深色模式</span>
+            </div>
+            <div class="user-badge" id="user-badge">👤</div>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -861,9 +870,6 @@
     <div class="toast" id="toast"></div>
 
     <!-- Hamburger Menu -->
-    <div class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle dark/light mode">🌙</div>
-    <div class="user-badge" id="user-badge">👤</div>
-    
     <div class="hamburger" onclick="toggleSidebar()">
         <span class="hamburger-icon"></span>
         <span class="hamburger-icon"></span>
@@ -1739,23 +1745,22 @@
         window.toggleTheme = function() {
             document.body.classList.toggle('light-mode');
             const isLight = document.body.classList.contains('light-mode');
-            document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
-            document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
-            document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
+            const tb = document.getElementById('theme-btn');
+            if (tb) tb.innerHTML = isLight ? '<span>☀️</span><span>淺色模式</span>' : '<span>🌙</span><span>深色模式</span>';
+            const ti = document.getElementById('theme-icon');
+            const tt = document.getElementById('theme-text');
+            if (ti) ti.textContent = isLight ? '☀️' : '🌙';
+            if (tt) tt.textContent = isLight ? 'Light Mode' : 'Dark Mode';
             document.documentElement.style.background = isLight ? '#f5f7fa' : '#3c1e0a';
             localStorage.setItem('theme', isLight ? 'light-mode' : 'dark');
         };
         
-        // Set initial html background based on saved theme
+        // Set initial theme
         if (localStorage.getItem('theme') === 'light-mode') {
             document.body.classList.add('light-mode');
             document.documentElement.style.background = '#f5f7fa';
-            const ti = document.getElementById('theme-icon');
-            const tt = document.getElementById('theme-text');
             const tb = document.getElementById('theme-btn');
-            if (ti) ti.textContent = '☀️';
-            if (tb) tb.textContent = '☀️';
-            if (tt) tt.textContent = 'Light Mode';
+            if (tb) tb.innerHTML = '<span>☀️</span><span>淺色模式</span>';
         }
     </script>
     
