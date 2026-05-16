@@ -340,6 +340,20 @@
             -webkit-tap-highlight-color: transparent;
         }
         .theme-btn:hover { background: var(--card-border); }
+        
+        .user-badge {
+            position: fixed;
+            top: calc(20px + env(safe-area-inset-top));
+            right: 20px;
+            z-index: 1000;
+            padding: 6px 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            -webkit-tap-highlight-color: transparent;
+        }
         .hamburger:hover { background: var(--card-border); }
         .hamburger-icon {
             display: block;
@@ -848,6 +862,7 @@
 
     <!-- Hamburger Menu -->
     <div class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle dark/light mode">🌙</div>
+    <div class="user-badge" id="user-badge">👤 User: Mary</div>
     
     <div class="hamburger" onclick="toggleSidebar()">
         <span class="hamburger-icon"></span>
@@ -879,6 +894,7 @@
     <script>
         // User context (from URL: /cooking-ideas/mary → user_key = 'mary')
         const USER_KEY = '{{ user_key }}';
+        document.getElementById('user-badge').textContent = '👤 ' + USER_KEY;
         
         // Settings state
         let adults = 2, kids = 1, dishCount = 3;
