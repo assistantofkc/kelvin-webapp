@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 8
+DB_VERSION = 9
 
 def init_db():
     conn = get_db()
@@ -333,5 +333,19 @@ def _build_extra_recipes():
         {"name":"口水雞","cuisine":"中式","method":"炆","taste":"辣","nutrition":"白肉,蛋白質","time":40,"early":1,"has_cold_dish":1,"spicy":1,"ingredients":"雞腿2隻,花椒油,辣椒油,芝麻醬,蒜蓉,芝麻,蔥花,青瓜絲","steps":"1. 雞腿煮熟後放入冰水定皮\n2. 去骨切件，鋪在青瓜絲上\n3. 花椒油+辣椒油+芝麻醬+蒜蓉調成醬汁\n4. 淋在雞上，灑芝麻蔥花\n5. 雪凍食更佳","tips":"煮雞時加薑蔥可以去腥"},
         {"name":"蒜泥白肉","cuisine":"中式","method":"炆","taste":"濃味","nutrition":"紅肉,蛋白質","time":30,"early":1,"has_cold_dish":1,"spicy":0,"ingredients":"五花腩300g,蒜蓉,生抽,醋,麻油,辣椒油,青瓜絲","steps":"1. 五花腩汆水後煮熟\n2. 放涼後切薄片\n3. 青瓜絲墊底，鋪上白肉\n4. 蒜蓉+生抽+醋+麻油+辣椒油攪勻淋上\n5. 雪凍食更佳","tips":"肉要切得越薄越好，雪過先切更薄"},
         {"name":"涼拌海蜇","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"白肉,菜","time":20,"early":1,"has_cold_dish":1,"spicy":0,"ingredients":"海蜇200g,青瓜絲,甘筍絲,蒜蓉,醋,生抽,麻油,糖","steps":"1. 海蜇浸水2小時去鹹味，換水幾次\n2. 汆水10秒立即撈起浸凍水\n3. 瀝乾水份\n4. 加青瓜絲、甘筍絲、蒜蓉、醋、生抽、麻油、糖拌勻\n5. 雪凍30分鐘","tips":"海蜇汆水唔好太耐，要保持爽脆"},
+        
+        # ===== 中式純菜 (12 new, vegetable-only dishes) =====
+        {"name":"蒜蓉炒芥蘭","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":8,"early":0,"spicy":0,"ingredients":"芥蘭300g,蒜蓉,鹽,油,糖","steps":"1. 芥蘭洗淨，摘去老葉，切段\n2. 燒熱水加少少糖，汆水1分鐘撈起\n3. 熱油爆香蒜蓉\n4. 落芥蘭大火快炒\n5. 加鹽調味上碟","tips":"汆水加糖可以保持芥蘭翠綠"},
+        {"name":"清炒白菜","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":7,"early":0,"spicy":0,"ingredients":"白菜300g,蒜蓉,鹽,油","steps":"1. 白菜洗淨，切段\n2. 熱油爆香蒜蓉\n3. 落白菜大火快炒\n4. 加少少水焗1分鐘\n5. 加鹽調味上碟","tips":"白菜要大火快炒，保持爽脆"},
+        {"name":"白灼生菜","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":5,"early":0,"spicy":0,"ingredients":"生菜300g,蠔油,生抽,油,蒜蓉","steps":"1. 生菜洗淨剝開\n2. 燒滾一鍋水，加少少油\n3. 生菜汆水30秒立即撈起\n4. 瀝乾上碟\n5. 蒜蓉+蠔油+生抽+油煮滾淋上面","tips":"汆水加油可以保持生菜翠綠唔變黃"},
+        {"name":"上湯娃娃菜","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜","time":15,"early":0,"spicy":0,"ingredients":"娃娃菜2棵,雞湯200ml,蒜蓉,薑片,鹽","steps":"1. 娃娃菜洗淨，切開四份\n2. 熱油爆香蒜蓉薑片\n3. 加入雞湯煮滾\n4. 放入娃娃菜\n5. 小火煮5-8分鐘至軟腍\n6. 加鹽調味","tips":"娃娃菜用上湯燴先入味，唔好煮太腍"},
+        {"name":"蠔油炒豆苗","cuisine":"中式","method":"炒","taste":"濃味","nutrition":"菜","time":6,"early":0,"spicy":0,"ingredients":"豆苗300g,蠔油,蒜蓉,鹽,油","steps":"1. 豆苗洗淨瀝乾\n2. 熱油爆香蒜蓉\n3. 落豆苗大火快炒\n4. 加蠔油、鹽調味\n5. 快炒至軟身即上碟","tips":"豆苗好易熟，全程大火唔好炒太耐"},
+        {"name":"蒜蓉炒西蘭花","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":10,"early":0,"spicy":0,"ingredients":"西蘭花1個,蒜蓉,鹽,油","steps":"1. 西蘭花切小朵，汆水1分鐘\n2. 熱油爆香蒜蓉\n3. 落西蘭花大火快炒\n4. 加鹽調味\n5. 兜勻上碟","tips":"汆水可以保持西蘭花翠綠爽脆"},
+        {"name":"乾煸四季豆","cuisine":"中式","method":"炒","taste":"濃味","nutrition":"菜","time":15,"early":0,"spicy":0,"ingredients":"四季豆300g,蒜蓉,薑蓉,生抽,糖,油","steps":"1. 四季豆去筋，摘段\n2. 熱油大火將四季豆炒至表皮起皺\n3. 撈起瀝油\n4. 原鑊爆香蒜蓉薑蓉\n5. 四季豆回鑊，加生抽、糖兜勻","tips":"四季豆一定要炒熟，半生唔熟會中毒"},
+        {"name":"清炒椰菜花","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":10,"early":0,"spicy":0,"ingredients":"椰菜花1個,蒜蓉,鹽,油","steps":"1. 椰菜花切小朵，汆水1分鐘\n2. 熱油爆香蒜蓉\n3. 落椰菜花大火快炒\n4. 加鹽調味上碟","tips":"椰菜花唔好炒太耐，保持爽脆口感"},
+        {"name":"腐乳炒生菜","cuisine":"中式","method":"炒","taste":"濃味","nutrition":"菜","time":7,"early":0,"spicy":0,"ingredients":"生菜300g,腐乳2磚,蒜蓉,糖,油","steps":"1. 生菜洗淨剝開\n2. 腐乳壓爛加少少糖拌勻\n3. 熱油大火爆香蒜蓉\n4. 落生菜大火快炒\n5. 加入腐乳醬快炒兜勻\n6. 即上碟","tips":"生菜要大火快炒，炒太耐會出水"},
+        {"name":"薑汁炒芥蘭","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":8,"early":0,"spicy":0,"ingredients":"芥蘭300g,薑汁1湯匙,鹽,糖,油","steps":"1. 芥蘭洗淨摘段\n2. 燒熱水加少少糖，汆水1分鐘\n3. 熱油爆香薑汁\n4. 落芥蘭大火快炒\n5. 加鹽調味上碟","tips":"薑汁炒芥蘭清熱解毒，冬天最啱食"},
+        {"name":"清炒菠菜","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":6,"early":0,"spicy":0,"ingredients":"菠菜300g,蒜蓉,鹽,油","steps":"1. 菠菜洗淨，摘去根部\n2. 熱油爆香蒜蓉\n3. 落菠菜大火快炒\n4. 菠菜軟身即加鹽兜勻\n5. 即上碟","tips":"菠菜好易熟，炒太耐會變黑出水"},
+        {"name":"粉絲炒椰菜","cuisine":"中式","method":"炒","taste":"濃味","nutrition":"菜,澱粉質","time":10,"early":0,"spicy":0,"ingredients":"椰菜半個,粉絲1把,蒜蓉,生抽,蠔油,油","steps":"1. 粉絲浸軟，椰菜切絲\n2. 熱油爆香蒜蓉\n3. 落椰菜絲大火快炒至軟身\n4. 加入粉絲、生抽、蠔油\n5. 快炒兜勻至粉絲吸收醬汁\n6. 上碟","tips":"粉絲唔好浸太耐，保持少少彈性"},
     ]
 
