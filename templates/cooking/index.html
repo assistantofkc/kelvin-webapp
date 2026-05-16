@@ -540,18 +540,6 @@
                         </div>
                         <input type="text" id="allergy-details" placeholder="請註明敏感食物..." style="display:none;margin-top:8px;">
                     </div>
-                    
-                    <!-- Kids -->
-                    <div style="margin-bottom:12px;">
-                        <div class="toggle-row">
-                            <input type="checkbox" id="has-kid" onchange="toggleKidAge(this)">
-                            <label>有小孩 👶</label>
-                        </div>
-                        <div id="kid-age-section" style="display:none;margin-top:6px;">
-                            <span style="font-size:0.85rem;color:var(--text-secondary);">小孩歲數：</span>
-                            <input type="number" id="kid-age" min="0" max="17" value="5" style="width:60px;">
-                        </div>
-                    </div>
                 </div>
             </div>
             
@@ -830,10 +818,6 @@
         
         function updateTimeLabel(v) { document.getElementById('time-label').textContent = v + '分鐘總時間'; }
         
-        function toggleKidAge(cb) {
-            document.getElementById('kid-age-section').style.display = cb.checked ? 'block' : 'none';
-        }
-        
         function getSelected(groupId) {
             return [...document.querySelectorAll('#' + groupId + ' .chip.active')].map(c => c.dataset.val);
         }
@@ -905,8 +889,8 @@
                 include_cold: document.getElementById('include-cold').checked,
                 count: dishCount,
                 ingredients: document.getElementById('have-ingredients').value.trim(),
-                has_kid: document.getElementById('has-kid').checked,
-                kid_age: parseInt(document.getElementById('kid-age').value) || 0
+                has_kid: document.getElementById('has-kids').checked,
+                kid_age: parseInt(document.getElementById('kids-age').value) || 0
             };
             
             // Spicy: check if '辣' taste chip is selected
