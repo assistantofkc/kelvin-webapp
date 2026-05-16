@@ -65,6 +65,27 @@ def _ensure_user_key_columns():
     except Exception as e:
         print(f'[Cooking] user_key migration: {e}')
 
+@cooking_bp.route('/manifest.json')
+def dynamic_manifest():
+    """Dynamic PWA manifest with user-specific start_url."""
+    user_key = request.args.get('user', 'default')
+    start = f'/cooking-ideas/{user_key}' if user_key != 'default' else '/cooking-ideas'
+    return jsonify({
+        'name': f'Cooking Ideas — {user_key}',
+        'short_name': 'Cooking Ideas',
+        'description': '隨機生成家常菜式食譜',
+        'start_url': start,
+        'scope': '/cooking-ideas/',
+        'display': 'standalone',
+        'display_override': ['window-controls-overlay'],
+        'background_color': '#3c1e0a',
+        'theme_color': '#3c1e0a',
+        'icons': [
+            {'src': '/static/cooking/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any maskable'},
+            {'src': '/static/cooking/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'}
+        ]
+    })
+
 @cooking_bp.route('/')
 @cooking_bp.route('/<user_key>')
 def index(user_key='default'):

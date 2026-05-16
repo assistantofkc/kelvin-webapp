@@ -1,7 +1,7 @@
 const CACHE_NAME = 'cooking-ideas-v1';
 const urlsToCache = [
   '/cooking-ideas',
-  '/static/cooking/manifest.json'
+  '/cooking-ideas/manifest.json'
 ];
 
 self.addEventListener('install', event => {
