@@ -28,11 +28,9 @@ def init_db():
         c.execute('SELECT version FROM db_version')
         row = c.fetchone()
         if row and row[0] < DB_VERSION:
-            c.execute('DROP TABLE IF EXISTS recipes')
-            c.execute('DROP TABLE IF EXISTS custom_dishes')
-            c.execute('DROP TABLE IF EXISTS bookmarks')
-            # Note: user_recipes is NEVER dropped — it contains user data
-            need_reinit = True
+            # Non-destructive migration: keep user data, just update schema + add new seed
+            # (user bookmarks, custom_dishes, and ai_custom/user_created recipes are preserved)
+            need_reinit = False
     else:
         # Check if tables exist but no version table (old DB)
         c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='recipes'")
@@ -132,8 +130,9 @@ def init_db():
     
     if count == 0 or need_reinit:
         _seed_recipes(c)
-        c.execute('DELETE FROM db_version')
-        c.execute('INSERT INTO db_version (version) VALUES (?)', (DB_VERSION,))
+    
+    c.execute('DELETE FROM db_version')
+    c.execute('INSERT INTO db_version (version) VALUES (?)', (DB_VERSION,))
     
     # Insert any extra recipes that don't exist yet (fill criteria gaps)
     _insert_extra_recipes(c)
