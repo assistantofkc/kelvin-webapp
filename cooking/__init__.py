@@ -1249,24 +1249,30 @@ def remove_user_recipe_from_db(recipe_id):
 # ===== ADMIN: User management (password-protected) =====
 
 def _admin_check(request):
-    """Verify admin password from request body. Returns True if valid."""
+    """Verify admin password from request body. Uses COOKING_ADMIN_PASSWORD env var."""
     password = (request.get_json(silent=True) or {}).get('password', '')
     if not password:
         return False
-    try:
-        import bcrypt
-        password_file = os.path.join(os.path.dirname(__file__), '..', 'geckolab', 'password.json')
-        if os.path.exists(password_file):
-            with open(password_file) as f:
-                data = json.load(f)
-            stored = data.get('password', '')
-            if stored.startswith('$2'):
-                return bcrypt.checkpw(password.encode(), stored.encode())
-            else:
-                return password == stored
-    except:
-        pass
-    return password == os.environ.get('GECKOLAB_PASSWORD', '')
+    import bcrypt
+    pw_file = os.path.join(os.path.dirname(__file__), 'admin_password.hash')
+    # If hash file exists, use bcrypt verification
+    if os.path.exists(pw_file):
+        with open(pw_file) as f:
+            stored = f.read().strip()
+        if stored.startswith('$2'):
+            return bcrypt.checkpw(password.encode(), stored.encode())
+    # Fallback: compare with env var (and store hash for future)
+    admin_pw = os.environ.get('COOKING_ADMIN_PASSWORD', 'cooking123')
+    if password == admin_pw:
+        # Auto-generate hash for future use
+        try:
+            hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+            with open(pw_file, 'w') as f:
+                f.write(hashed.decode())
+        except:
+            pass
+        return True
+    return False
 
 @cooking_bp.route('/api/admin/users', methods=['POST'])
 def admin_list_users():
