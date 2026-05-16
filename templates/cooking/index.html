@@ -657,6 +657,11 @@
             <textarea id="create-tips"></textarea>
             <label>份量</label>
             <input type="number" id="create-servings" min="1" max="20">
+            <label>適合小孩</label>
+            <div class="chip-group" id="create-kid-chips">
+                <span class="chip active" data-val="1" onclick="selectOne(this, 'create-kid-chips')">👶 適合</span>
+                <span class="chip" data-val="0" onclick="selectOne(this, 'create-kid-chips')">不適合</span>
+            </div>
             <div style="display:flex;gap:8px;margin-top:16px;">
                 <button class="btn btn-primary" onclick="saveUserRecipe()" style="width:auto;padding:10px 24px;flex:1;">💾 儲存</button>
                 <button class="btn btn-secondary" onclick="closeCreateForm()" style="flex:1;padding:10px;">取消</button>
@@ -719,6 +724,11 @@
             <textarea id="edit-tips"></textarea>
             <label>份量</label>
             <input type="number" id="edit-servings" min="1" max="20">
+            <label>適合小孩</label>
+            <div class="chip-group" id="edit-kid-chips">
+                <span class="chip active" data-val="1" onclick="selectOne(this, 'edit-kid-chips')">👶 適合</span>
+                <span class="chip" data-val="0" onclick="selectOne(this, 'edit-kid-chips')">不適合</span>
+            </div>
             <div style="display:flex;gap:8px;margin-top:16px;">
                 <button class="btn btn-primary" onclick="saveEdit()" style="width:auto;padding:10px 24px;flex:1;">💾 儲存</button>
                 <button class="btn btn-secondary" onclick="closeEditModal()" style="flex:1;padding:10px;">取消</button>
@@ -929,6 +939,7 @@
                         <span class="recipe-tag">${r.taste}</span>
                         <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
                         ${r.can_prep_early ? '<span class="recipe-tag">✅ 可提前準備</span>' : ''}
+                        ${r.kid_friendly ? '<span class="recipe-tag" style="background:rgba(34,197,94,0.2);color:#4ade80;">👶 適合小孩</span>' : ''}
                     </div>
                     <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                     <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
@@ -1007,6 +1018,7 @@
                                 <span class="recipe-tag">${r.cooking_method || ''}</span>
                                 <span class="recipe-tag">${r.taste || ''}</span>
                                 <span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span>
+                                ${r.kid_friendly ? '<span class="recipe-tag" style="background:rgba(34,197,94,0.2);color:#4ade80;">👶 適合小孩</span>' : ''}
                             </div>
                             <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients || ''}</div>
                             <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps || ''}</div>
@@ -1091,6 +1103,7 @@
                                     <span class="recipe-tag">${r.cooking_method}</span>
                                     <span class="recipe-tag">${r.taste}</span>
                                     <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
+                                    ${r.kid_friendly ? '<span class="recipe-tag" style="background:rgba(34,197,94,0.2);color:#4ade80;">👶 適合小孩</span>' : ''}
                                 </div>
                                 <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                                 <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
@@ -1133,6 +1146,7 @@
                     document.getElementById('edit-steps').value = r.steps || '';
                     document.getElementById('edit-tips').value = r.tips || '';
                     document.getElementById('edit-servings').value = r.servings || 4;
+                    setChipValue('edit-kid-chips', String(r.kid_friendly ?? 1));
                     document.getElementById('edit-modal').classList.add('show');
                     document.body.style.overflow = 'hidden';
                     document.body.style.position = 'fixed';
@@ -1164,7 +1178,8 @@
                 ingredients: document.getElementById('edit-ingredients').value.trim(),
                 steps: document.getElementById('edit-steps').value.trim(),
                 tips: document.getElementById('edit-tips').value.trim(),
-                servings: parseInt(document.getElementById('edit-servings').value) || 4
+                servings: parseInt(document.getElementById('edit-servings').value) || 4,
+                kid_friendly: parseInt(getChipValue('edit-kid-chips')) || 1
             };
             if (!data.name) { showToast('請輸入菜式名'); return; }
             try {
@@ -1288,6 +1303,7 @@
                                     <span class="recipe-tag">${r.cooking_method}</span>
                                     <span class="recipe-tag">${r.taste}</span>
                                     <span class="recipe-tag">⏱ ${r.prep_time_min}分鐘</span>
+                                    ${r.kid_friendly ? '<span class="recipe-tag" style="background:rgba(34,197,94,0.2);color:#4ade80;">👶 適合小孩</span>' : ''}
                                 </div>
                                 <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                                 <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
@@ -1466,6 +1482,7 @@
                 steps: document.getElementById('create-steps').value.trim(),
                 tips: document.getElementById('create-tips').value.trim(),
                 servings: parseInt(document.getElementById('create-servings').value) || 4,
+                kid_friendly: parseInt(getChipValue('create-kid-chips')) || 1,
                 creator: document.getElementById('create-creator').value.trim(),
                 image_base64: _userImageBase64
             };

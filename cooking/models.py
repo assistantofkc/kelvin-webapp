@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 7
+DB_VERSION = 8
 
 def init_db():
     conn = get_db()
@@ -56,6 +56,7 @@ def init_db():
             has_soup INTEGER DEFAULT 0,
             has_cold_dish INTEGER DEFAULT 0,
             is_spicy INTEGER DEFAULT 0,
+            kid_friendly INTEGER DEFAULT 0,
             ingredients TEXT NOT NULL,
             steps TEXT NOT NULL,
             tips TEXT DEFAULT '',
@@ -104,6 +105,7 @@ def init_db():
             image_base64 TEXT DEFAULT '',
             is_spicy INTEGER DEFAULT 0,
             can_prep_early INTEGER DEFAULT 0,
+            kid_friendly INTEGER DEFAULT 1,
             db_recipe_id INTEGER DEFAULT NULL,
             created_at TEXT DEFAULT (datetime('now'))
         )
@@ -115,6 +117,16 @@ def init_db():
         )
     ''')
     
+    # Migration: add kid_friendly column if missing (DB v7 → v8)
+    try:
+        c.execute('SELECT kid_friendly FROM recipes LIMIT 0')
+    except:
+        c.execute('ALTER TABLE recipes ADD COLUMN kid_friendly INTEGER DEFAULT 0')
+    try:
+        c.execute('SELECT kid_friendly FROM user_recipes LIMIT 0')
+    except:
+        c.execute('ALTER TABLE user_recipes ADD COLUMN kid_friendly INTEGER DEFAULT 1')
+    
     c.execute('SELECT COUNT(*) FROM recipes')
     count = c.fetchone()[0]
     
@@ -125,6 +137,15 @@ def init_db():
     
     # Insert any extra recipes that don't exist yet (fill criteria gaps)
     _insert_extra_recipes(c)
+    
+    # Flag kid-friendly: non-spicy + no alcohol in ingredients or steps
+    ALCOHOL_KW = ['%酒%', '%味醂%', '%紹興%', '%料酒%', '%清酒%', '%花雕%', '%米酒%', '%啤酒%']
+    alc_cond = ' AND '.join(['(ingredients NOT LIKE ? AND steps NOT LIKE ?)'] * len(ALCOHOL_KW))
+    alc_params = []
+    for kw in ALCOHOL_KW:
+        alc_params.extend([kw, kw])
+    c.execute(f'UPDATE recipes SET kid_friendly = 1 WHERE is_spicy = 0 AND ({alc_cond})', alc_params)
+    c.execute(f'UPDATE recipes SET kid_friendly = 0 WHERE is_spicy = 1 OR NOT ({alc_cond})', alc_params)
     
     conn.commit()
     conn.close()

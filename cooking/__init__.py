@@ -457,6 +457,7 @@ Output ONLY valid JSON, no markdown, no explanation:
   "cooking_method": "蒸/炒/炆/燉/煎/焗/炸",
   "taste": "清淡/濃味/辣",
   "is_spicy": 0或1,
+  "kid_friendly": 0或1,
   "ingredients": "材料列表(每項用逗號分隔)",
   "steps": "步驟(用\\n分隔每步)",
   "tips": "小貼士",
@@ -470,6 +471,7 @@ Rules:
 - ALL text MUST be Traditional Chinese (繁體中文)
 - Steps numbered, separated by \\n
 - Give realistic home-cooking recipes
+- kid_friendly=1 if non-spicy AND no alcohol (酒/清酒/味醂/紹興酒/料酒) in ingredients, otherwise 0
 - Output ONLY the JSON, nothing else"""
 
     try:
@@ -544,8 +546,8 @@ def save_recipe():
         c.execute('''
             INSERT INTO recipes 
             (name, name_en, cuisine, cooking_method, taste, nutrition_tags, 
-             prep_time_min, can_prep_early, is_spicy, ingredients, steps, tips, source, servings)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai_custom', ?)
+             prep_time_min, can_prep_early, is_spicy, kid_friendly, ingredients, steps, tips, source, servings)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai_custom', ?)
         ''', (
             data['name'],
             data.get('name_en', ''),
@@ -556,6 +558,7 @@ def save_recipe():
             data.get('prep_time_min', 30),
             data.get('can_prep_early', 0),
             data.get('is_spicy', 0),
+            data.get('kid_friendly', 1),
             data.get('ingredients', ''),
             data.get('steps', ''),
             data.get('tips', ''),
@@ -596,7 +599,7 @@ def update_recipe(recipe_id):
         return jsonify({'success': False, 'error': 'Recipe not found.'})
     try:
         fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
-                  'prep_time_min', 'can_prep_early', 'is_spicy', 'ingredients', 'steps', 'tips', 'servings']
+                  'prep_time_min', 'can_prep_early', 'is_spicy', 'kid_friendly', 'ingredients', 'steps', 'tips', 'servings']
         updates = []
         params = []
         for f in fields:
@@ -865,15 +868,16 @@ def user_recipes():
         try:
             c.execute('''
                 INSERT INTO user_recipes (name, cuisine, cooking_method, taste, nutrition_tags,
-                    prep_time_min, ingredients, steps, tips, servings, creator, image_base64, is_spicy, can_prep_early)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    prep_time_min, ingredients, steps, tips, servings, creator, image_base64, is_spicy, can_prep_early, kid_friendly)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data['name'], data.get('cuisine', '中式'), data.get('cooking_method', '炒'),
                 data.get('taste', '清淡'), data.get('nutrition_tags', ''),
                 data.get('prep_time_min', 30), data.get('ingredients', ''),
                 data.get('steps', ''), data.get('tips', ''),
                 data.get('servings', 4), data.get('creator', ''),
-                data.get('image_base64', ''), data.get('is_spicy', 0), data.get('can_prep_early', 0)
+                data.get('image_base64', ''), data.get('is_spicy', 0), data.get('can_prep_early', 0),
+                data.get('kid_friendly', 1)
             ))
             conn.commit()
             new_id = c.lastrowid
@@ -894,7 +898,7 @@ def edit_user_recipe(recipe_id):
         return jsonify({'success': False, 'error': 'Recipe not found.'})
     try:
         fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
-                  'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'creator', 'image_base64', 'is_spicy', 'can_prep_early']
+                  'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'creator', 'image_base64', 'is_spicy', 'can_prep_early', 'kid_friendly']
         updates = []
         params = []
         for f in fields:
@@ -913,7 +917,7 @@ def edit_user_recipe(recipe_id):
         row = c.fetchone()
         if row and row['db_recipe_id']:
             db_fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
-                        'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'image_base64', 'is_spicy', 'can_prep_early']
+                        'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'image_base64', 'is_spicy', 'can_prep_early', 'kid_friendly']
             db_updates = []
             db_params = []
             for f in db_fields:
@@ -966,12 +970,12 @@ def add_user_recipe_to_db(recipe_id):
     try:
         c.execute('''
             INSERT INTO recipes (name, cuisine, cooking_method, taste, nutrition_tags,
-                prep_time_min, can_prep_early, is_spicy, ingredients, steps, tips, source, servings, image_base64)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?, ?)
+                prep_time_min, can_prep_early, is_spicy, kid_friendly, ingredients, steps, tips, source, servings, image_base64)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?, ?)
         ''', (
             r['name'], r['cuisine'], r['cooking_method'], r['taste'],
             r['nutrition_tags'], r['prep_time_min'], r['can_prep_early'],
-            r['is_spicy'], r['ingredients'], r['steps'], r['tips'], r['servings'],
+            r['is_spicy'], r['kid_friendly'], r['ingredients'], r['steps'], r['tips'], r['servings'],
             r['image_base64']
         ))
         new_id = c.lastrowid
