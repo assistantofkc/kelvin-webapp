@@ -119,7 +119,7 @@
         .btn-secondary:hover { opacity: 0.8; }
         
         /* Inputs */
-        input[type="text"], input[type="number"], select {
+        input[type="text"], input[type="number"], input[type="password"], select, textarea {
             width: 100%; padding: 10px 14px; border-radius: 8px;
             border: 1px solid var(--input-border); background: var(--input-bg);
             color: var(--text-primary); font-size: 0.9rem;
@@ -809,10 +809,10 @@
             <button onclick="closeAdminModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);">✕</button>
             <h3 style="padding-right:30px;">🔧 用戶管理</h3>
             <div id="admin-content">
-                <div style="margin-bottom:12px;">
-                    <label>請輸入密碼</label>
-                    <input type="password" id="admin-password" placeholder="管理員密碼" style="margin-bottom:8px;">
-                    <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
+                <label>請輸入密碼</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="password" id="admin-password" placeholder="管理員密碼" style="flex:1;">
+                    <button class="btn btn-primary" onclick="adminLogin()" style="padding:10px 20px;">登入</button>
                 </div>
             </div>
         </div>
@@ -1552,10 +1552,10 @@
             document.body.style.position = 'fixed';
             document.body.style.width = '100%';
             document.getElementById('admin-content').innerHTML = `
-                <div style="margin-bottom:12px;">
-                    <label>請輸入密碼</label>
-                    <input type="password" id="admin-password" placeholder="管理員密碼" style="margin-bottom:8px;">
-                    <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
+                <label>請輸入密碼</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="password" id="admin-password" placeholder="管理員密碼" style="flex:1;">
+                    <button class="btn btn-primary" onclick="adminLogin()" style="padding:10px 20px;">登入</button>
                 </div>
             `;
             setTimeout(() => document.getElementById('admin-password').focus(), 100);
@@ -1578,7 +1578,7 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    let html = '<div style="margin-bottom:12px;display:flex;gap:8px;"><input type="text" id="admin-new-user" placeholder="新用戶名（英文字母+數字）" style="flex:1;"><button class="btn btn-primary" onclick="adminAddUser()" style="padding:6px 12px;font-size:0.8rem;">＋ 新增</button></div>';
+                    let html = '<div style="margin-bottom:12px;display:flex;gap:8px;"><input type="text" id="admin-new-user" placeholder="新用戶名（英文字母+數字）" style="flex:1;min-width:120px;"><button class="btn btn-primary" onclick="adminAddUser()" style="padding:6px 14px;font-size:0.8rem;white-space:nowrap;">＋ 新增</button></div>';
                     result.users.forEach(u => {
                         const statusColor = u.allowed ? '#4ade80' : '#ef4444';
                         const statusText = u.allowed ? '✅' : '🚫';
