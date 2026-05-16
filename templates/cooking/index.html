@@ -1578,22 +1578,27 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    let html = '';
-                    if (result.users.length === 0) {
-                        html = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">未有其他用戶</div>';
-                    } else {
-                        result.users.forEach(u => {
-                            html += `
-                                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--card-border);">
-                                    <div>
-                                        <strong>👤 ${u.user_key}</strong>
-                                        <div style="font-size:0.75rem;color:var(--text-secondary);">❤️ ${u.bookmarks} bookmarks | 📝 ${u.recipes} recipes</div>
-                                    </div>
-                                    ${u.user_key !== 'default' ? `<button class="btn btn-secondary" onclick="adminDeleteUser('${u.user_key}')" style="padding:4px 10px;font-size:0.7rem;color:#ef4444;">🗑️ 刪除</button>` : '<span style="font-size:0.7rem;color:var(--text-secondary);">系統</span>'}
+                    let html = '<div style="margin-bottom:12px;display:flex;gap:8px;"><input type="text" id="admin-new-user" placeholder="新用戶名（英文字母+數字）" style="flex:1;"><button class="btn btn-primary" onclick="adminAddUser()" style="padding:6px 12px;font-size:0.8rem;">＋ 新增</button></div>';
+                    result.users.forEach(u => {
+                        const statusColor = u.allowed ? '#4ade80' : '#ef4444';
+                        const statusText = u.allowed ? '✅' : '🚫';
+                        const actions = u.user_key !== 'default' 
+                            ? `<button class="btn btn-secondary" onclick="adminDeleteUser('${u.user_key}')" style="padding:4px 8px;font-size:0.65rem;color:#ef4444;">🗑️</button>`
+                            : '<span style="font-size:0.65rem;color:var(--text-secondary);">系統</span>';
+                        html += `
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--card-border);">
+                                <div>
+                                    <strong>👤 ${u.user_key}</strong> <span style="font-size:0.75rem;color:${statusColor};">${statusText}</span>
+                                    <div style="font-size:0.75rem;color:var(--text-secondary);">❤️ ${u.bookmarks} | 📝 ${u.recipes}</div>
                                 </div>
-                            `;
-                        });
-                    }
+                                <div style="display:flex;gap:4px;">
+                                    ${u.allowed && u.user_key !== 'default' ? `<button class="btn btn-secondary" onclick="adminRemoveUser('${u.user_key}')" style="padding:4px 6px;font-size:0.6rem;color:#f59e0b;">🚫 停用</button>` : ''}
+                                    ${!u.allowed ? `<button class="btn btn-secondary" onclick="adminAddUser('${u.user_key}')" style="padding:4px 6px;font-size:0.6rem;color:#4ade80;">✅ 啟用</button>` : ''}
+                                    ${actions}
+                                </div>
+                            </div>
+                        `;
+                    });
                     document.getElementById('admin-content').innerHTML = html;
                     window._adminPassword = password;
                 } else {
@@ -1602,20 +1607,45 @@
             } catch(e) { showToast('網絡錯誤'); }
         }
         
+        async function adminAddUser(userKey) {
+            if (!userKey) {
+                userKey = document.getElementById('admin-new-user').value.trim().toLowerCase();
+                if (!userKey) { showToast('請輸入用戶名'); return; }
+            }
+            try {
+                const res = await fetch('/cooking-ideas/api/admin/user/add', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: window._adminPassword, user_key: userKey})
+                });
+                const result = await res.json();
+                showToast(result.message || result.error);
+                if (result.success) adminLogin();
+            } catch(e) { showToast('網絡錯誤'); }
+        }
+        
+        async function adminRemoveUser(userKey) {
+            if (!confirm(`確定要停用「${userKey}」？佢將無法再使用 Cooking Ideas。`)) return;
+            try {
+                const res = await fetch('/cooking-ideas/api/admin/user/' + userKey + '/remove', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: window._adminPassword})
+                });
+                const result = await res.json();
+                showToast(result.message || result.error);
+                if (result.success) adminLogin();
+            } catch(e) { showToast('網絡錯誤'); }
+        }
+        
         async function adminDeleteUser(userKey) {
-            if (!confirm(`確定要刪除用戶「${userKey}」？所有 bookmarks 同自創食譜會被移除。`)) return;
+            if (!confirm('確定要永久刪除用戶「' + userKey + '」？所有 bookmarks 同自創食譜會被移除。')) return;
             try {
                 const res = await fetch('/cooking-ideas/api/admin/user/' + userKey + '/delete', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({password: window._adminPassword})
                 });
                 const result = await res.json();
-                if (result.success) {
-                    showToast(result.message);
-                    adminLogin();  // Refresh list
-                } else {
-                    showToast(result.error || '刪除失敗');
-                }
+                showToast(result.message || result.error);
+                if (result.success) adminLogin();
             } catch(e) { showToast('網絡錯誤'); }
         }
         

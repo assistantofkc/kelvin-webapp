@@ -90,6 +90,16 @@ def dynamic_manifest():
 @cooking_bp.route('/<user_key>')
 def index(user_key='default'):
     _ensure_user_key_columns()
+    # Check if user is allowed
+    if user_key != 'default':
+        conn = _get_db()
+        c = conn.cursor()
+        c.execute('SELECT id FROM allowed_users WHERE user_key = ?', [user_key])
+        if not c.fetchone():
+            conn.close()
+            from flask import abort
+            abort(404)
+        conn.close()
     return render_template('cooking/index.html', user_key=user_key)
 
 @cooking_bp.route('/api/random', methods=['POST'])
@@ -1290,9 +1300,50 @@ def admin_list_users():
         if uk not in users:
             users[uk] = {'bookmarks': 0, 'recipes': 0}
         users[uk]['recipes'] = r['cnt']
+    # Check allowed status
+    c.execute("SELECT user_key FROM allowed_users")
+    allowed = {r['user_key'] for r in c.fetchall()}
     conn.close()
-    result = [{'user_key': k, **v} for k, v in users.items()]
+    result = [{'user_key': k, **v, 'allowed': k in allowed} for k, v in users.items()]
+    # Also show allowed users with no data
+    for uk in allowed:
+        if uk not in users:
+            result.append({'user_key': uk, 'bookmarks': 0, 'recipes': 0, 'allowed': True})
     return jsonify({'success': True, 'users': result})
+
+@cooking_bp.route('/api/admin/user/add', methods=['POST'])
+def admin_add_user():
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    data = request.get_json() or {}
+    user_key = data.get('user_key', '').strip().lower()
+    if not user_key or user_key == 'default':
+        return jsonify({'success': False, 'error': '無效用戶名'})
+    if not user_key.isalnum():
+        return jsonify({'success': False, 'error': '用戶名只能包含英文字母同數字'})
+    conn = _get_db()
+    c = conn.cursor()
+    try:
+        c.execute('INSERT INTO allowed_users (user_key) VALUES (?)', [user_key])
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'已新增用戶 {user_key}', 'user_key': user_key})
+    except:
+        conn.close()
+        return jsonify({'success': False, 'error': '用戶名已存在'})
+
+@cooking_bp.route('/api/admin/user/<user_key>/remove', methods=['POST'])
+def admin_remove_allowed(user_key):
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    if user_key == 'default':
+        return jsonify({'success': False, 'error': '不能移除 default'})
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('DELETE FROM allowed_users WHERE user_key = ?', [user_key])
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': f'已停用 {user_key}'})
 
 @cooking_bp.route('/api/admin/user/<user_key>/delete', methods=['POST'])
 def admin_delete_user(user_key):
@@ -1307,6 +1358,7 @@ def admin_delete_user(user_key):
         bm = c.rowcount
         c.execute('DELETE FROM user_recipes WHERE user_key = ?', [user_key])
         ur = c.rowcount
+        c.execute('DELETE FROM allowed_users WHERE user_key = ?', [user_key])
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'message': f'已刪除 {user_key}（{bm} bookmarks, {ur} recipes）'})

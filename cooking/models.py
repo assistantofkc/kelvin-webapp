@@ -118,6 +118,16 @@ def init_db():
     ''')
     
     c.execute('''
+        CREATE TABLE IF NOT EXISTS allowed_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_key TEXT NOT NULL UNIQUE,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    # Default user always allowed
+    c.execute('INSERT OR IGNORE INTO allowed_users (user_key) VALUES (?)', ['default'])
+    
+    c.execute('''
         CREATE TABLE IF NOT EXISTS user_recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
