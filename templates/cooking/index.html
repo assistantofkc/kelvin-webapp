@@ -898,6 +898,7 @@
                     window._currentDishes = result.dishes;
                     window._lastSearchParams = data;
                     renderResults(result.dishes);
+                    document.getElementById('results').scrollIntoView({behavior: 'smooth'});
                     document.getElementById('regenerate-btn').style.display = 'block';
                 } else {
                     showToast(result.error || '找不到合適食譜');
@@ -942,7 +943,6 @@
             `).join('');
             checkBookmarkStatus(dishes.map(d => d.id));
             loadRecipeImages(dishes.map(d => d.name));
-            container.scrollIntoView({behavior: 'smooth'});
         }
         
         async function replaceDish(index) {
