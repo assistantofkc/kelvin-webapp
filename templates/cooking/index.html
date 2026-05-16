@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.25</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.26</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -1898,7 +1898,7 @@
             document.getElementById('create-steps').value = recipe ? recipe.steps : '';
             document.getElementById('create-tips').value = recipe ? recipe.tips : '';
             document.getElementById('create-servings').value = recipe ? recipe.servings : 4;
-            document.getElementById('create-creator').value = recipe ? (recipe.creator || '') : '';
+            document.getElementById('create-creator').value = recipe ? (recipe.creator || '') : USER_KEY;
             
             const preview = document.getElementById('create-img-preview');
             const placeholder = document.getElementById('create-img-placeholder');
