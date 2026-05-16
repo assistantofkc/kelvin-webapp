@@ -1,6 +1,9 @@
 """
 Cooking Ideas - SQLite Models
 Recipe database with seed data (住家菜)
+
+⚠️  SCHEMA LOCK: Destructive DROP TABLE is FORBIDDEN when tables contain user data.
+    Use ALTER TABLE + INSERT only. See _check_schema_lock() below.
 """
 
 import sqlite3
@@ -15,6 +18,25 @@ def get_db():
     return conn
 
 DB_VERSION = 11
+
+# Schema lock: prevents accidental destructive operations on production data
+SCHEMA_LOCKED = True  # Set to False ONLY for intentional full rebuild during dev
+
+def _check_schema_lock(conn, operation='DROP TABLE'):
+    """Raise RuntimeError if a destructive schema operation is attempted on locked DB."""
+    if not SCHEMA_LOCKED:
+        return
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='recipes'")
+    if not c.fetchone():
+        return  # No recipes table yet — safe to create from scratch
+    c.execute("SELECT COUNT(*) FROM recipes")
+    if c.fetchone()[0] > 0:
+        raise RuntimeError(
+            f'SCHEMA LOCKED: {operation} refused. '
+            f'Recipes table has data. Use ALTER TABLE + INSERT only. '
+            f'Set SCHEMA_LOCKED=False only for intentional dev rebuild.'
+        )
 
 def init_db():
     conn = get_db()
@@ -35,6 +57,13 @@ def init_db():
         # Check if tables exist but no version table (old DB)
         c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='recipes'")
         if c.fetchone():
+            c.execute("SELECT COUNT(*) FROM recipes WHERE source != 'seed'")
+            user_count = c.fetchone()[0]
+            if user_count > 0:
+                raise RuntimeError(
+                    f'SCHEMA LOCKED: Old DB format detected but {user_count} user recipes exist. '
+                    f'Manual migration required — do NOT auto-drop. Please contact admin.'
+                )
             c.execute('DROP TABLE IF EXISTS recipes')
             c.execute('DROP TABLE IF EXISTS custom_dishes')
             c.execute('DROP TABLE IF EXISTS bookmarks')
