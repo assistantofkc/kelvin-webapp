@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.24</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.25</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -937,7 +937,10 @@
         // User context (from URL: /cooking-ideas/mary → user_key = 'mary')
         const USER_KEY = '{{ user_key }}';
         document.getElementById('user-badge').textContent = '👤 ' + USER_KEY;
-        if (USER_KEY !== 'default') {
+        if (USER_KEY === 'default') {
+            // Auto-prompt admin password for default user
+            setTimeout(() => openAdminModal(), 300);
+        } else {
             document.getElementById('user-badge').style.cursor = 'default';
             document.getElementById('user-badge').style.opacity = '0.6';
         }
