@@ -1195,12 +1195,17 @@ def user_recipes():
 @cooking_bp.route('/api/user-recipes/<int:recipe_id>/edit', methods=['POST'])
 def edit_user_recipe(recipe_id):
     data = request.get_json() or {}
+    user_key = data.get('user_key', 'default')
     conn = _get_db()
     c = conn.cursor()
-    c.execute('SELECT id FROM user_recipes WHERE id = ?', [recipe_id])
-    if not c.fetchone():
+    c.execute('SELECT user_key FROM user_recipes WHERE id = ?', [recipe_id])
+    row = c.fetchone()
+    if not row:
         conn.close()
         return jsonify({'success': False, 'error': 'Recipe not found.'})
+    if row['user_key'] != user_key:
+        conn.close()
+        return jsonify({'success': False, 'error': '你只能編輯自己嘅食譜。'})
     try:
         fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
                   'prep_time_min', 'ingredients', 'steps', 'tips', 'servings', 'creator', 'image_base64', 'is_spicy', 'can_prep_early', 'kid_friendly']
@@ -1243,13 +1248,18 @@ def edit_user_recipe(recipe_id):
 
 @cooking_bp.route('/api/user-recipes/<int:recipe_id>/delete', methods=['POST'])
 def delete_user_recipe(recipe_id):
+    data = request.get_json() or {}
+    user_key = data.get('user_key', 'default')
     conn = _get_db()
     c = conn.cursor()
-    c.execute('SELECT id, name FROM user_recipes WHERE id = ?', [recipe_id])
+    c.execute('SELECT id, name, user_key FROM user_recipes WHERE id = ?', [recipe_id])
     r = c.fetchone()
     if not r:
         conn.close()
         return jsonify({'success': False, 'error': 'Recipe not found.'})
+    if r['user_key'] != user_key:
+        conn.close()
+        return jsonify({'success': False, 'error': '你只能刪除自己嘅食譜。'})
     try:
         c.execute('DELETE FROM user_recipes WHERE id = ?', [recipe_id])
         conn.commit()
@@ -1262,6 +1272,8 @@ def delete_user_recipe(recipe_id):
 @cooking_bp.route('/api/user-recipes/<int:recipe_id>/add-to-db', methods=['POST'])
 def add_user_recipe_to_db(recipe_id):
     """Copy a user recipe into the main recipes table."""
+    data = request.get_json() or {}
+    user_key = data.get('user_key', 'default')
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM user_recipes WHERE id = ?', [recipe_id])
@@ -1269,6 +1281,9 @@ def add_user_recipe_to_db(recipe_id):
     if not r:
         conn.close()
         return jsonify({'success': False, 'error': 'Recipe not found.'})
+    if r['user_key'] != user_key:
+        conn.close()
+        return jsonify({'success': False, 'error': '你只能加入自己嘅食譜。'})
     if r['db_recipe_id']:
         conn.close()
         return jsonify({'success': False, 'error': '已經加入過食譜庫。'})
@@ -1295,6 +1310,8 @@ def add_user_recipe_to_db(recipe_id):
 @cooking_bp.route('/api/user-recipes/<int:recipe_id>/remove-from-db', methods=['POST'])
 def remove_user_recipe_from_db(recipe_id):
     """Remove a previously added recipe from the main recipes table."""
+    data = request.get_json() or {}
+    user_key = data.get('user_key', 'default')
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM user_recipes WHERE id = ?', [recipe_id])
@@ -1302,6 +1319,9 @@ def remove_user_recipe_from_db(recipe_id):
     if not r:
         conn.close()
         return jsonify({'success': False, 'error': 'Recipe not found.'})
+    if r['user_key'] != user_key:
+        conn.close()
+        return jsonify({'success': False, 'error': '你只能移除自己嘅食譜。'})
     if not r['db_recipe_id']:
         conn.close()
         return jsonify({'success': False, 'error': '尚未加入食譜庫。'})
