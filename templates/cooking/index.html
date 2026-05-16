@@ -60,7 +60,7 @@
         .container {
             max-width: 900px;
             margin: 0 auto;
-            padding: env(safe-area-inset-top) 16px calc(140px + env(safe-area-inset-bottom)) 16px;
+            padding: calc(4px + env(safe-area-inset-top)) 16px calc(140px + env(safe-area-inset-bottom)) 16px;
         }
         h1 { font-size: 1.8rem; font-weight: 700; text-align: center; }
         body.light-mode .header-logo { filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.25)); }
@@ -264,7 +264,8 @@
         
         /* Mobile adjustments */
         @media (max-width: 768px) {
-            .container { padding: env(safe-area-inset-top) 12px calc(150px + env(safe-area-inset-bottom)) 12px; }
+            .container { padding: calc(20px + env(safe-area-inset-top)) 12px calc(150px + env(safe-area-inset-bottom)) 12px; }
+            .header-section { margin-top: -48px !important; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
@@ -367,7 +368,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 0 4px;
-            margin-bottom: 0;
+            margin-bottom: 4px;
         }
         .hamburger:hover { background: var(--card-border); }
         .hamburger-icon {
@@ -463,9 +464,9 @@
         </div>
         
         <!-- Header -->
-        <div style="text-align:center;margin-bottom:0;">
+        <div class="header-section" style="text-align:center;margin-top:-28px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.14</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.15</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
