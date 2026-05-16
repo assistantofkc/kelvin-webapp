@@ -255,26 +255,30 @@ def random_recipes():
         conn.close()
         return jsonify({'success': False, 'error': '未能組合出合適嘅餐單，試下放寬篩選條件。'})
     
-    # Pure vegetable rule: when total dishes ≤ 4, at most 1 pure vegetable dish
-    # Pure veg = nutrition_tags exactly '菜' (蕃茄/番茄 NOT pure veg)
+    # Pure vegetable rule: when total dishes ≤ 4, at most 1 vegetable-primary dish
+    # Veg dish = has '菜' in nutrition_tags, no 蕃茄/番茄 in name, no protein keyword in name
     if count <= 4:
+        PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
         TOMATO_KW = ['蕃茄', '番茄']
-        def _is_pure_veg(dish):
+        def _is_veg_dish(dish):
             name = dish.get('name', '')
-            nt = dish.get('nutrition_tags', '').strip()
-            if nt != '菜':
+            nt = dish.get('nutrition_tags', '')
+            if '菜' not in nt:
                 return False
             for tk in TOMATO_KW:
                 if tk in name:
                     return False
+            for pk in PROTEIN_KW:
+                if pk in name:
+                    return False
             return True
-        pv_indices = [i for i, d in enumerate(selected) if _is_pure_veg(d)]
+        pv_indices = [i for i, d in enumerate(selected) if _is_veg_dish(d)]
         if len(pv_indices) > 1:
-            # Keep first pure veg, replace others with non-pure-veg alternatives
+            # Keep first veg dish, replace others with non-veg alternatives
             for pvi in pv_indices[1:]:
                 alt = [r for r in all_candidates
                        if r['id'] not in {s['id'] for s in selected}
-                       and not _is_pure_veg(r)]
+                       and not _is_veg_dish(r)]
                 if alt:
                     alt.sort(key=lambda r: r.get('_score', 0), reverse=True)
                     # Prefer fast dishes if time is tight
@@ -446,35 +450,37 @@ def replace_dish():
             replaced_dish = r
             break
     
-    # Pure vegetable: nutrition_tags is exactly '菜' (no protein/starch tags)
-    # 蕃茄/番茄 dishes are NOT pure veg even if tags='菜'
+    # Veg dish = has '菜' in nutrition_tags, no 蕃茄/番茄 in name, no protein keyword in name
+    PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
     TOMATO_KW = ['蕃茄', '番茄']
-    def _is_pure_veg(dish):
+    def _is_veg_dish(dish):
         name = dish.get('name', '')
-        nt = dish.get('nutrition_tags', '').strip()
-        if nt != '菜':
+        nt = dish.get('nutrition_tags', '')
+        if '菜' not in nt:
             return False
         for tk in TOMATO_KW:
             if tk in name:
                 return False
+        for pk in PROTEIN_KW:
+            if pk in name:
+                return False
         return True
     
-    # Count pure veg in current dishes (excluding the one being replaced)
+    # Count veg dishes in current dishes (excluding the one being replaced)
     pv_count_others = 0
     for i, rid in enumerate(current_ids):
         if i == replace_idx:
             continue
         for r in all_candidates:
             if r['id'] == rid:
-                if _is_pure_veg(r):
+                if _is_veg_dish(r):
                     pv_count_others += 1
                 break
     
-    # Pure veg dedup: if another slot already has pure veg, hard-filter pure veg from candidates
-    # (only if the slot being replaced is NOT the pure veg itself)
-    replaced_is_pv = _is_pure_veg(replaced_dish) if replaced_dish else False
+    # Veg dish dedup
+    replaced_is_pv = _is_veg_dish(replaced_dish) if replaced_dish else False
     if count <= 4 and pv_count_others >= 1 and not replaced_is_pv:
-        candidates = [c for c in candidates if not _is_pure_veg(c)]
+        candidates = [c for c in candidates if not _is_veg_dish(c)]
         if not candidates:
             conn.close()
             return jsonify({'success': False, 'error': '冇其他合適嘅菜式可以替換。'})
@@ -489,16 +495,16 @@ def replace_dish():
         # Prefer similar cooking method
         if replaced_dish and c['cooking_method'] == replaced_dish.get('cooking_method'):
             score += 1
-        # Prefer same dish type: 湯→湯, pure veg→pure veg, 澱粉質→澱粉質
+        # Prefer same dish type: 湯→湯, veg dish→veg dish, 澱粉質→澱粉質
         if replaced_dish:
-            if _is_pure_veg(replaced_dish) and _is_pure_veg(c):
+            if _is_veg_dish(replaced_dish) and _is_veg_dish(c):
                 score += 4
             replaced_starch = '澱粉質' in replaced_dish.get('nutrition_tags', '')
             cand_starch = '澱粉質' in c.get('nutrition_tags', '')
             if replaced_starch and cand_starch:
                 score += 4
-        # Avoid new dish being pure veg if we already have one
-        if count <= 4 and _is_pure_veg(c) and pv_count_others >= 1:
+        # Avoid new dish being veg dish if we already have one
+        if count <= 4 and _is_veg_dish(c) and pv_count_others >= 1:
             score -= 10  # Strong penalty
         # Respect time: remaining time budget
         remaining_time = max_time - sum(
