@@ -322,7 +322,24 @@
             border: 1px solid var(--card-border);
             border-radius: 8px;
             transition: background 0.3s;
+            display: none;  /* Hidden — use theme button instead */
         }
+        
+        .theme-btn {
+            position: fixed;
+            top: calc(20px + env(safe-area-inset-top));
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 8px 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            font-size: 1.2rem;
+            transition: background 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .theme-btn:hover { background: var(--card-border); }
         .hamburger:hover { background: var(--card-border); }
         .hamburger-icon {
             display: block;
@@ -830,6 +847,8 @@
     <div class="toast" id="toast"></div>
 
     <!-- Hamburger Menu -->
+    <div class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle dark/light mode">🌙</div>
+    
     <div class="hamburger" onclick="toggleSidebar()">
         <span class="hamburger-icon"></span>
         <span class="hamburger-icon"></span>
@@ -1706,6 +1725,7 @@
             const isLight = document.body.classList.contains('light-mode');
             document.getElementById('theme-icon').textContent = isLight ? '☀️' : '🌙';
             document.getElementById('theme-text').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+            document.getElementById('theme-btn').textContent = isLight ? '☀️' : '🌙';
             document.documentElement.style.background = isLight ? '#f5f7fa' : '#3c1e0a';
             localStorage.setItem('theme', isLight ? 'light-mode' : 'dark');
         };
@@ -1716,7 +1736,9 @@
             document.documentElement.style.background = '#f5f7fa';
             const ti = document.getElementById('theme-icon');
             const tt = document.getElementById('theme-text');
+            const tb = document.getElementById('theme-btn');
             if (ti) ti.textContent = '☀️';
+            if (tb) tb.textContent = '☀️';
             if (tt) tt.textContent = 'Light Mode';
         }
     </script>
