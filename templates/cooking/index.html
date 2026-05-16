@@ -858,6 +858,9 @@
     <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
     
     <script>
+        // User context (from URL: /cooking-ideas/mary → user_key = 'mary')
+        const USER_KEY = '{{ user_key }}';
+        
         // Settings state
         let adults = 2, kids = 1, dishCount = 3;
         
@@ -1325,7 +1328,7 @@
             try {
                 const res = await fetch('/cooking-ideas/api/bookmark', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({recipe_id: recipeId})
+                    body: JSON.stringify({recipe_id: recipeId, user_key: USER_KEY})
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -1349,7 +1352,7 @@
             try {
                 const res = await fetch('/cooking-ideas/api/bookmark/status', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({recipe_ids: recipeIds})
+                    body: JSON.stringify({recipe_ids: recipeIds, user_key: USER_KEY})
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -1368,7 +1371,7 @@
             const container = document.getElementById('bookmarks-section');
             container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>';
             try {
-                const res = await fetch('/cooking-ideas/api/bookmarks');
+                const res = await fetch('/cooking-ideas/api/bookmarks?user_key=' + encodeURIComponent(USER_KEY));
                 const result = await res.json();
                 if (result.success) {
                     const bookmarks = result.bookmarks;
@@ -1569,7 +1572,8 @@
                 servings: parseInt(document.getElementById('create-servings').value) || 4,
                 kid_friendly: parseInt(getChipValue('create-kid-chips')) || 1,
                 creator: document.getElementById('create-creator').value.trim(),
-                image_base64: _userImageBase64
+                image_base64: _userImageBase64,
+                user_key: USER_KEY
             };
             if (!data.name) { showToast('請輸入菜式名'); return; }
             
@@ -1597,7 +1601,7 @@
             const container = document.getElementById('user-recipes-list');
             container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">載入中...</div>';
             try {
-                const res = await fetch('/cooking-ideas/api/user-recipes');
+                const res = await fetch('/cooking-ideas/api/user-recipes?user_key=' + encodeURIComponent(USER_KEY));
                 const result = await res.json();
                 if (result.success) {
                     if (result.recipes.length === 0) {

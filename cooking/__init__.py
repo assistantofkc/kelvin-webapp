@@ -29,9 +29,15 @@ def _init_db():
 
 _init_db()
 
+def _get_user_key():
+    """Extract user_key from request body, default 'default'."""
+    data = request.get_json(silent=True) or {}
+    return data.get('user_key', 'default')
+
 @cooking_bp.route('/')
-def index():
-    return render_template('cooking/index.html')
+@cooking_bp.route('/<user_key>')
+def index(user_key='default'):
+    return render_template('cooking/index.html', user_key=user_key)
 
 @cooking_bp.route('/api/random', methods=['POST'])
 def random_recipes():
@@ -742,20 +748,21 @@ def delete_recipe(recipe_id):
 def toggle_bookmark():
     data = request.get_json() or {}
     recipe_id = data.get('recipe_id')
+    user_key = data.get('user_key', 'default')
     if not recipe_id:
         return jsonify({'success': False, 'error': 'Recipe ID required.'})
     conn = _get_db()
     c = conn.cursor()
     try:
-        c.execute('SELECT id FROM bookmarks WHERE recipe_id = ?', [recipe_id])
+        c.execute('SELECT id FROM bookmarks WHERE recipe_id = ? AND user_key = ?', [recipe_id, user_key])
         existing = c.fetchone()
         if existing:
-            c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [recipe_id])
+            c.execute('DELETE FROM bookmarks WHERE recipe_id = ? AND user_key = ?', [recipe_id, user_key])
             conn.commit()
             conn.close()
             return jsonify({'success': True, 'bookmarked': False, 'message': '已移除收藏'})
         else:
-            c.execute('INSERT INTO bookmarks (recipe_id) VALUES (?)', [recipe_id])
+            c.execute('INSERT INTO bookmarks (recipe_id, user_key) VALUES (?, ?)', [recipe_id, user_key])
             conn.commit()
             conn.close()
             return jsonify({'success': True, 'bookmarked': True, 'message': '已收藏！'})
@@ -765,14 +772,16 @@ def toggle_bookmark():
 
 @cooking_bp.route('/api/bookmarks', methods=['GET'])
 def list_bookmarks():
+    user_key = request.args.get('user_key', 'default')
     conn = _get_db()
     c = conn.cursor()
     c.execute('''
         SELECT r.*, b.created_at as bookmarked_at
         FROM bookmarks b
         JOIN recipes r ON b.recipe_id = r.id
+        WHERE b.user_key = ?
         ORDER BY b.created_at DESC
-    ''')
+    ''', [user_key])
     recipes = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify({'success': True, 'bookmarks': recipes})
@@ -782,12 +791,14 @@ def bookmark_status():
     """Batch check bookmark status for a list of recipe IDs."""
     data = request.get_json() or {}
     recipe_ids = data.get('recipe_ids', [])
+    user_key = data.get('user_key', 'default')
     if not recipe_ids:
         return jsonify({'success': True, 'bookmarked': {}})
     conn = _get_db()
     c = conn.cursor()
     placeholders = ','.join(['?'] * len(recipe_ids))
-    c.execute(f'SELECT recipe_id FROM bookmarks WHERE recipe_id IN ({placeholders})', recipe_ids)
+    params = list(recipe_ids) + [user_key]
+    c.execute(f'SELECT recipe_id FROM bookmarks WHERE recipe_id IN ({placeholders}) AND user_key = ?', params)
     bookmarked = {str(r['recipe_id']): True for r in c.fetchall()}
     conn.close()
     return jsonify({'success': True, 'bookmarked': bookmarked})
@@ -1019,9 +1030,10 @@ Output ONLY valid JSON:
 @cooking_bp.route('/api/user-recipes', methods=['GET', 'POST'])
 def user_recipes():
     if request.method == 'GET':
+        user_key = request.args.get('user_key', 'default')
         conn = _get_db()
         c = conn.cursor()
-        c.execute('SELECT * FROM user_recipes ORDER BY created_at DESC')
+        c.execute('SELECT * FROM user_recipes WHERE user_key = ? ORDER BY created_at DESC', [user_key])
         recipes = [dict(r) for r in c.fetchall()]
         conn.close()
         return jsonify({'success': True, 'recipes': recipes})
@@ -1029,13 +1041,14 @@ def user_recipes():
         data = request.get_json() or {}
         if not data.get('name'):
             return jsonify({'success': False, 'error': 'Recipe name required.'})
+        user_key = data.get('user_key', 'default')
         conn = _get_db()
         c = conn.cursor()
         try:
             c.execute('''
                 INSERT INTO user_recipes (name, cuisine, cooking_method, taste, nutrition_tags,
-                    prep_time_min, ingredients, steps, tips, servings, creator, image_base64, is_spicy, can_prep_early, kid_friendly)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    prep_time_min, ingredients, steps, tips, servings, creator, image_base64, is_spicy, can_prep_early, kid_friendly, user_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data['name'], data.get('cuisine', '中式'), data.get('cooking_method', '炒'),
                 data.get('taste', '清淡'), data.get('nutrition_tags', ''),
@@ -1043,7 +1056,7 @@ def user_recipes():
                 data.get('steps', ''), data.get('tips', ''),
                 data.get('servings', 4), data.get('creator', ''),
                 data.get('image_base64', ''), data.get('is_spicy', 0), data.get('can_prep_early', 0),
-                data.get('kid_friendly', 1)
+                data.get('kid_friendly', 1), user_key
             ))
             conn.commit()
             new_id = c.lastrowid

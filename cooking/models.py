@@ -17,7 +17,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 11
+DB_VERSION = 12
 
 # Schema lock: prevents accidental destructive operations on production data
 SCHEMA_LOCKED = True  # Set to False ONLY for intentional full rebuild during dev
@@ -109,9 +109,11 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS bookmarks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            recipe_id INTEGER NOT NULL UNIQUE,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+            recipe_id INTEGER NOT NULL,
+            user_key TEXT DEFAULT ''default'',
+            created_at TEXT DEFAULT (datetime(''now'')),
+            FOREIGN KEY (recipe_id) REFERENCES recipes(id),
+            UNIQUE(recipe_id, user_key)
         )
     ''')
     
@@ -134,6 +136,7 @@ def init_db():
             can_prep_early INTEGER DEFAULT 0,
             kid_friendly INTEGER DEFAULT 1,
             db_recipe_id INTEGER DEFAULT NULL,
+            user_key TEXT DEFAULT ''default'',
             created_at TEXT DEFAULT (datetime('now'))
         )
     ''')
@@ -153,6 +156,21 @@ def init_db():
         c.execute('SELECT kid_friendly FROM user_recipes LIMIT 0')
     except:
         c.execute('ALTER TABLE user_recipes ADD COLUMN kid_friendly INTEGER DEFAULT 1')
+    
+    # Migration: add user_key column (DB v11 → v12)
+    try:
+        c.execute('SELECT user_key FROM bookmarks LIMIT 0')
+    except:
+        c.execute('ALTER TABLE bookmarks ADD COLUMN user_key TEXT DEFAULT ''default''')
+        c.execute('UPDATE bookmarks SET user_key = ''default'' WHERE user_key IS NULL')
+        # Drop old single-column unique index, create composite unique
+        c.execute('DROP INDEX IF EXISTS sqlite_autoindex_bookmarks_1')
+        c.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_recipe_user ON bookmarks(recipe_id, user_key)')
+    try:
+        c.execute('SELECT user_key FROM user_recipes LIMIT 0')
+    except:
+        c.execute('ALTER TABLE user_recipes ADD COLUMN user_key TEXT DEFAULT ''default''')
+        c.execute('UPDATE user_recipes SET user_key = ''default'' WHERE user_key IS NULL')
     
     c.execute('SELECT COUNT(*) FROM recipes')
     count = c.fetchone()[0]
