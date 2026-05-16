@@ -240,20 +240,16 @@ def random_recipes():
         return jsonify({'success': False, 'error': '未能組合出合適嘅餐單，試下放寬篩選條件。'})
     
     # Pure vegetable rule: when total dishes ≤ 4, at most 1 pure vegetable dish
-    # (蕃茄/番茄 is NOT considered pure vegetable — can coexist with 蒜蓉炒菜心 etc.)
+    # Pure veg = nutrition_tags exactly '菜' (蕃茄/番茄 NOT pure veg)
     if count <= 4:
-        PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
         TOMATO_KW = ['蕃茄', '番茄']
         def _is_pure_veg(dish):
             name = dish.get('name', '')
-            nt = dish.get('nutrition_tags', '')
-            if '菜' not in nt:
+            nt = dish.get('nutrition_tags', '').strip()
+            if nt != '菜':
                 return False
             for tk in TOMATO_KW:
                 if tk in name:
-                    return False
-            for pk in PROTEIN_KW:
-                if pk in name:
                     return False
             return True
         pv_indices = [i for i, d in enumerate(selected) if _is_pure_veg(d)]
@@ -386,19 +382,16 @@ def replace_dish():
             replaced_dish = r
             break
     
-    # Pure vegetable check helpers
-    PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
+    # Pure vegetable: nutrition_tags is exactly '菜' (no protein/starch tags)
+    # 蕃茄/番茄 dishes are NOT pure veg even if tags='菜'
     TOMATO_KW = ['蕃茄', '番茄']
     def _is_pure_veg(dish):
         name = dish.get('name', '')
-        nt = dish.get('nutrition_tags', '')
-        if '菜' not in nt:
+        nt = dish.get('nutrition_tags', '').strip()
+        if nt != '菜':
             return False
         for tk in TOMATO_KW:
             if tk in name:
-                return False
-        for pk in PROTEIN_KW:
-            if pk in name:
                 return False
         return True
     
