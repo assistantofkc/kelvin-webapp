@@ -828,28 +828,8 @@
             setTimeout(() => t.classList.remove('show'), 2500);
         }
         
-        // ===== SLIDER: long-press (300ms) for max-time only (Tab 1, prevents accidental scroll taps) =====
-        (() => {
-            const slider = document.getElementById('max-time');
-            if (!slider) return;
-            let timer = null, active = false, startVal;
-            slider.addEventListener('pointerdown', e => {
-                startVal = slider.value; active = false;
-                timer = setTimeout(() => { active = true; }, 300);
-            });
-            slider.addEventListener('input', e => {
-                if (!active) {
-                    slider.value = startVal;
-                    updateTimeLabel(startVal);
-                }
-            });
-            slider.addEventListener('change', e => {
-                if (!active) slider.value = startVal;
-            });
-            const cleanup = () => { clearTimeout(timer); active = false; };
-            slider.addEventListener('pointerup', cleanup);
-            slider.addEventListener('pointerleave', cleanup);
-        })();
+        // Slider interaction: no special handling needed — step values prevent accidental micro-changes
+        
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
