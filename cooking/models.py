@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 10
+DB_VERSION = 11
 
 def init_db():
     conn = get_db()
@@ -359,5 +359,14 @@ def _build_extra_recipes():
         {"name":"紫菜蛋花湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,蛋白質","time":10,"early":0,"has_soup":1,"spicy":0,"ingredients":"紫菜1片,雞蛋2隻,雞湯500ml,蔥花,麻油,鹽","steps":"1. 紫菜撕碎\n2. 雞湯煮滾\n3. 加入紫菜煮2分鐘\n4. 蛋液慢慢倒入攪成蛋花\n5. 加鹽、麻油調味，灑蔥花","tips":"蛋液要慢慢倒同攪拌先有靚蛋花"},
         {"name":"芫荽皮蛋魚片湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"魚,蛋白質","time":20,"early":0,"has_soup":1,"spicy":0,"ingredients":"魚片200g,皮蛋2隻,芫荽,薑絲,雞湯500ml,鹽,胡椒粉","steps":"1. 魚片用鹽、胡椒粉醃5分鐘\n2. 皮蛋去殼切粒\n3. 雞湯加薑絲煮滾\n4. 加入皮蛋煮3分鐘\n5. 放入魚片煮至變色\n6. 灑芫荽，熄火上碗","tips":"魚片要最後落，煮太耐會散"},
         {"name":"番茄豆腐湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,蛋白質","time":20,"early":0,"has_soup":1,"spicy":0,"ingredients":"番茄3個,嫩豆腐1盒,雞蛋1隻,蔥花,雞湯500ml,鹽","steps":"1. 番茄切塊，豆腐切粒\n2. 雞湯煮滾，加番茄煮5分鐘至出味\n3. 加入豆腐輕輕拌勻煮3分鐘\n4. 蛋液慢慢倒入攪成蛋花\n5. 加鹽調味，灑蔥花","tips":"番茄要煮到出汁溶入湯先夠味"},
+        {"name":"老黃瓜瘦肉湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"老黃瓜1條,瘦肉300g,蜜棗,薑片,鹽","steps":"1. 瘦肉汆水洗淨\n2. 老黃瓜去皮去籽切大塊\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"老黃瓜要揀深色多紋先夠老，煲湯最甜"},
+        {"name":"菜乾豬骨湯","cuisine":"中式","method":"炆","taste":"濃味","nutrition":"菜,紅肉","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"菜乾100g,豬骨400g,蜜棗,薑片,鹽","steps":"1. 菜乾浸水1小時洗淨，豬骨汆水\n2. 所有材料放入煲，加水蓋過\n3. 大火煮滾轉小火煲1.5小時\n4. 加鹽調味","tips":"菜乾要浸夠時間先出味，唔好貪快"},
+        {"name":"胡椒豬肚湯","cuisine":"中式","method":"炆","taste":"濃味","nutrition":"紅肉,蛋白質","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"豬肚1個,白胡椒粒2湯匙,瘦肉200g,薑片,鹽","steps":"1. 豬肚用鹽+生粉搓洗兩次，汆水\n2. 白胡椒粒略拍碎\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時至豬肚腍\n5. 豬肚撈起切片回煲，加鹽調味","tips":"豬肚一定要洗得乾淨，搓洗兩次先冇腥味"},
+        {"name":"木瓜魚湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"魚,菜","time":60,"early":1,"has_soup":1,"spicy":0,"ingredients":"木瓜1個,鯇魚尾2條,瘦肉200g,蜜棗,薑片,鹽","steps":"1. 魚尾洗淨抹乾，煎至金黃\n2. 木瓜去皮去籽切塊，瘦肉汆水\n3. 魚尾+瘦肉+薑片+蜜棗放入煲加水煲30分鐘\n4. 加入木瓜再煲20分鐘\n5. 加鹽調味","tips":"木瓜後落唔會煲溶，湯先清甜"},
+        {"name":"豆腐魚頭湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"魚,蛋白質","time":30,"early":0,"has_soup":1,"spicy":0,"ingredients":"大魚頭半個,嫩豆腐1盒,薑片,蔥花,鹽,胡椒粉","steps":"1. 魚頭洗淨斬件，抹乾\n2. 熱油爆香薑片，煎魚頭至金黃\n3. 加滾水大火滾10分鐘至奶白色\n4. 加入豆腐煮5分鐘\n5. 加鹽、胡椒粉，灑蔥花","tips":"魚頭煎香加滾水，湯即刻奶白"},
+        {"name":"蕃茄薯仔湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,澱粉質","time":30,"early":1,"has_soup":1,"spicy":0,"ingredients":"番茄3個,薯仔2個,瘦肉200g,薑片,鹽","steps":"1. 瘦肉汆水，番茄薯仔切塊\n2. 所有材料放入煲，加水蓋過\n3. 大火煮滾轉小火煲30分鐘\n4. 加鹽調味","tips":"薯仔唔好切太細，煲湯會溶晒"},
+        {"name":"冬瓜薏米湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,澱粉質","time":60,"early":1,"has_soup":1,"spicy":0,"ingredients":"冬瓜500g,薏米50g,瘦肉300g,薑片,鹽","steps":"1. 瘦肉汆水洗淨\n2. 冬瓜去皮去籽切大塊，薏米浸30分鐘\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1小時\n5. 加鹽調味","tips":"夏天飲最啱，消暑祛濕"},
+        {"name":"雪耳瘦肉湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"紅肉,蛋白質","time":60,"early":1,"has_soup":1,"spicy":0,"ingredients":"雪耳2朵,瘦肉300g,蜜棗,薑片,鹽","steps":"1. 雪耳浸軟去蒂，撕細朵\n2. 瘦肉汆水洗淨\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1小時\n5. 加鹽調味","tips":"雪耳要浸到全透先煲，出膠先靚"},
+        {"name":"蘋果雪梨瘦肉湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"蘋果2個,雪梨2個,瘦肉300g,蜜棗,薑片,鹽","steps":"1. 瘦肉汆水洗淨\n2. 蘋果雪梨去芯切塊（唔使去皮）\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"蘋果雪梨連皮煲更香，天然甜味唔使落糖"},
     ]
 
