@@ -461,7 +461,7 @@
         <!-- Header -->
         <div style="text-align:center;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.09</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.10</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -1619,21 +1619,26 @@
                     body: JSON.stringify({password: window._adminPassword, user_key: userKey})
                 });
                 const result = await res.json();
-                showToast(result.message || result.error);
-                if (result.success) adminLogin();
+                if (result.success) {
+                    showToast(result.message);
+                    adminLogin();
+                } else {
+                    showToast(result.error || '新增失敗');
+                }
             } catch(e) { showToast('網絡錯誤'); }
         }
         
         async function adminRemoveUser(userKey) {
-            if (!confirm(`確定要停用「${userKey}」？佢將無法再使用 Cooking Ideas。`)) return;
+            if (!confirm('確定要停用「' + userKey + '」？佢將無法再使用 Cooking Ideas。')) return;
             try {
                 const res = await fetch('/cooking-ideas/api/admin/user/' + userKey + '/remove', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({password: window._adminPassword})
                 });
                 const result = await res.json();
-                showToast(result.message || result.error);
-                if (result.success) adminLogin();
+                if (result.success) {
+                    showToast(result.message);
+                    adminLogin();
             } catch(e) { showToast('網絡錯誤'); }
         }
         
@@ -1645,8 +1650,12 @@
                     body: JSON.stringify({password: window._adminPassword})
                 });
                 const result = await res.json();
-                showToast(result.message || result.error);
-                if (result.success) adminLogin();
+                if (result.success) {
+                    showToast(result.message);
+                    adminLogin();
+                } else {
+                    showToast(result.error || '刪除失敗');
+                }
             } catch(e) { showToast('網絡錯誤'); }
         }
         
