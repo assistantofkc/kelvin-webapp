@@ -899,6 +899,7 @@
                     window._lastSearchParams = data;
                     renderResults(result.dishes);
                     document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+                    document.getElementById('settings-panel').classList.remove('open');
                     document.getElementById('regenerate-btn').style.display = 'block';
                 } else {
                     showToast(result.error || '找不到合適食譜');
