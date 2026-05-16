@@ -1081,14 +1081,6 @@ Output ONLY valid JSON:
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-
-    except req.exceptions.Timeout:
-        return jsonify({'success': False, 'error': 'AI 搜尋超時，請再試。'})
-    except json.JSONDecodeError as e:
-        return jsonify({'success': False, 'error': f'AI 回覆格式錯誤，請再試。'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
 # ===== USER RECIPES (創建菜式) =====
 
 @cooking_bp.route('/api/user-recipes', methods=['GET', 'POST'])
