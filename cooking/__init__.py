@@ -1104,6 +1104,37 @@ def save_preferences():
     conn.close()
     return jsonify({'success': True, 'message': '已儲存預設'})
 
+@cooking_bp.route('/api/preferences/theme', methods=['POST'])
+def save_theme_preference():
+    """Save just the theme preference for a user (lightweight, no merge needed)."""
+    data = request.get_json() or {}
+    user_key = data.get('user_key', 'default')
+    theme = data.get('theme', 'dark')
+    conn = _get_db()
+    c = conn.cursor()
+    # Load existing preferences, update theme, save back
+    c.execute('SELECT preferences FROM user_preferences WHERE user_key = ?', [user_key])
+    row = c.fetchone()
+    if row:
+        try:
+            prefs = json.loads(row['preferences'])
+        except json.JSONDecodeError:
+            prefs = {}
+    else:
+        prefs = {}
+    prefs['theme'] = theme
+    prefs_json = json.dumps(prefs, ensure_ascii=False)
+    c.execute('''
+        INSERT INTO user_preferences (user_key, preferences, updated_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(user_key) DO UPDATE SET
+            preferences = excluded.preferences,
+            updated_at = excluded.updated_at
+    ''', [user_key, prefs_json])
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 @cooking_bp.route('/api/preferences/load', methods=['GET'])
 def load_preferences():
     user_key = request.args.get('user_key', 'default')

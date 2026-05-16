@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.19</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.20</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -1037,7 +1037,8 @@
                 include_cold: document.getElementById('include-cold').checked,
                 ingredients: document.getElementById('have-ingredients').value.trim(),
                 allergy_val: document.querySelector('#allergy-chips .chip.active')?.dataset.val || 'no',
-                allergy_details: document.getElementById('allergy-details').value.trim()
+                allergy_details: document.getElementById('allergy-details').value.trim(),
+                theme: document.body.classList.contains('light-mode') ? 'light-mode' : 'dark'
             };
             try {
                 const res = await fetch('/cooking-ideas/api/preferences/save', {
@@ -1055,6 +1056,21 @@
                 const result = await res.json();
                 if (!result.success || !result.preferences || !Object.keys(result.preferences).length) return;
                 const p = result.preferences;
+                
+                // Theme (apply first to avoid flash)
+                if (p.theme) {
+                    if (p.theme === 'light-mode') {
+                        document.body.classList.add('light-mode');
+                        document.documentElement.style.background = '#f5f7fa';
+                        const tb = document.getElementById('theme-btn');
+                        if (tb) tb.innerHTML = '<span>☀️</span><span>淺色模式</span>';
+                    } else {
+                        document.body.classList.remove('light-mode');
+                        document.documentElement.style.background = '#3c1e0a';
+                        const tb = document.getElementById('theme-btn');
+                        if (tb) tb.innerHTML = '<span>🌙</span><span>深色模式</span>';
+                    }
+                }
                 
                 // Counters
                 if (p.count != null) { dishCount = p.count; document.getElementById('dish-count').textContent = p.count; }
@@ -1995,6 +2011,7 @@
         window.toggleTheme = function() {
             document.body.classList.toggle('light-mode');
             const isLight = document.body.classList.contains('light-mode');
+            const theme = isLight ? 'light-mode' : 'dark';
             const tb = document.getElementById('theme-btn');
             if (tb) tb.innerHTML = isLight ? '<span>☀️</span><span>淺色模式</span>' : '<span>🌙</span><span>深色模式</span>';
             const ti = document.getElementById('theme-icon');
@@ -2002,7 +2019,12 @@
             if (ti) ti.textContent = isLight ? '☀️' : '🌙';
             if (tt) tt.textContent = isLight ? 'Light Mode' : 'Dark Mode';
             document.documentElement.style.background = isLight ? '#f5f7fa' : '#3c1e0a';
-            localStorage.setItem('theme', isLight ? 'light-mode' : 'dark');
+            localStorage.setItem('theme', theme);
+            // Also persist to server per-user
+            fetch('/cooking-ideas/api/preferences/theme', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_key: USER_KEY, theme: theme})
+            }).catch(() => {});
         };
         
         // Set initial theme
