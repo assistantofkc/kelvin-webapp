@@ -569,13 +569,80 @@
             
             <!-- DB Search -->
             <div class="sub-tab active" id="sub-db">
-                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
                     <input type="text" id="db-search-input" placeholder="輸入菜式名或材料..." style="flex:1;">
                     <button class="btn btn-secondary" onclick="searchDB()" id="db-search-btn">
                         <span class="spinner" id="db-spinner"></span>
                         搜尋
                     </button>
                 </div>
+                
+                <!-- Advanced Filters -->
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="settings-toggle" onclick="toggleAdvSearch()" id="adv-search-toggle">
+                        <span>⚙️ 進階篩選</span>
+                        <span class="chevron">▼</span>
+                    </div>
+                    <div class="settings-panel" id="adv-search-panel">
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">菜系</label>
+                        <div class="chip-group" id="adv-cuisine-chips">
+                            <span class="chip" data-val="中式" onclick="toggleChip(this)">中式</span>
+                            <span class="chip" data-val="西式" onclick="toggleChip(this)">西式</span>
+                            <span class="chip" data-val="日式" onclick="toggleChip(this)">日式</span>
+                            <span class="chip" data-val="東南亞" onclick="toggleChip(this)">東南亞</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">煮法</label>
+                        <div class="chip-group" id="adv-method-chips">
+                            <span class="chip" data-val="蒸" onclick="toggleChip(this)">蒸</span>
+                            <span class="chip" data-val="炒" onclick="toggleChip(this)">炒</span>
+                            <span class="chip" data-val="炆" onclick="toggleChip(this)">炆</span>
+                            <span class="chip" data-val="燉" onclick="toggleChip(this)">燉</span>
+                            <span class="chip" data-val="煎" onclick="toggleChip(this)">煎</span>
+                            <span class="chip" data-val="焗" onclick="toggleChip(this)">焗</span>
+                            <span class="chip" data-val="炸" onclick="toggleChip(this)">炸</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">口味</label>
+                        <div class="chip-group" id="adv-taste-chips">
+                            <span class="chip" data-val="清淡" onclick="toggleChip(this)">清淡</span>
+                            <span class="chip" data-val="濃味" onclick="toggleChip(this)">濃味</span>
+                            <span class="chip" data-val="辣" onclick="toggleChip(this)">辣</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">營養標籤</label>
+                        <div class="chip-group" id="adv-nutrition-chips">
+                            <span class="chip" data-val="菜" onclick="toggleChip(this)">🥬 菜</span>
+                            <span class="chip" data-val="魚" onclick="toggleChip(this)">🐟 魚</span>
+                            <span class="chip" data-val="白肉" onclick="toggleChip(this)">🍗 白肉</span>
+                            <span class="chip" data-val="紅肉" onclick="toggleChip(this)">🥩 紅肉</span>
+                            <span class="chip" data-val="澱粉質" onclick="toggleChip(this)">🍚 澱粉質</span>
+                            <span class="chip" data-val="蛋白質" onclick="toggleChip(this)">🥚 蛋白質</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">烹調時間：≤ <span id="adv-time-label">不限</span></label>
+                        <input type="range" id="adv-max-time" min="5" max="180" value="180" step="5" oninput="document.getElementById('adv-time-label').textContent=this.value==180?'不限':this.value+'分鐘'">
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">適合小孩</label>
+                        <div class="chip-group" id="adv-kid-chips">
+                            <span class="chip active" data-val="" onclick="selectOne(this,'adv-kid-chips')">不限</span>
+                            <span class="chip" data-val="yes" onclick="selectOne(this,'adv-kid-chips')">👶 適合</span>
+                            <span class="chip" data-val="no" onclick="selectOne(this,'adv-kid-chips')">不適合</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">可提前準備</label>
+                        <div class="chip-group" id="adv-prep-chips">
+                            <span class="chip active" data-val="" onclick="selectOne(this,'adv-prep-chips')">不限</span>
+                            <span class="chip" data-val="yes" onclick="selectOne(this,'adv-prep-chips')">✅ 可以</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">類型</label>
+                        <div class="chip-group" id="adv-type-chips">
+                            <span class="chip" data-val="soup" onclick="toggleChip(this)">🍲 湯</span>
+                            <span class="chip" data-val="cold" onclick="toggleChip(this)">🥗 冷盤</span>
+                        </div>
+                        <label style="font-size:0.8rem;color:var(--text-secondary);">來源</label>
+                        <div class="chip-group" id="adv-source-chips">
+                            <span class="chip" data-val="seed" onclick="toggleChip(this)">📦 內置</span>
+                            <span class="chip" data-val="ai_custom" onclick="toggleChip(this)">🤖 AI生成</span>
+                            <span class="chip" data-val="user_created" onclick="toggleChip(this)">👤 用戶自創</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="db-results"></div>
             </div>
             
@@ -797,6 +864,11 @@
         function toggleSettings() {
             document.getElementById('settings-panel').classList.toggle('open');
             document.getElementById('settings-toggle').classList.toggle('open');
+        }
+        
+        function toggleAdvSearch() {
+            document.getElementById('adv-search-panel').classList.toggle('open');
+            document.getElementById('adv-search-toggle').classList.toggle('open');
         }
         
         function toggleChip(el) { el.classList.toggle('active'); }
@@ -1058,16 +1130,40 @@
         // ===== DB SEARCH =====
         async function searchDB() {
             const query = document.getElementById('db-search-input').value.trim();
-            if (!query) { showToast('請輸入搜尋關鍵字'); return; }
             
             const spinner = document.getElementById('db-spinner');
             const container = document.getElementById('db-results');
             spinner.classList.add('show');
             
+            // Collect advanced filters
+            const body = { q: query };
+            const advCuisine = getSelected('adv-cuisine-chips');
+            if (advCuisine.length) body.cuisines = advCuisine;
+            const advMethod = getSelected('adv-method-chips');
+            if (advMethod.length) body.methods = advMethod;
+            const advTaste = getSelected('adv-taste-chips');
+            if (advTaste.length) body.tastes = advTaste;
+            const advNut = getSelected('adv-nutrition-chips');
+            if (advNut.length) body.nutrition = advNut;
+            const advTime = parseInt(document.getElementById('adv-max-time').value);
+            if (advTime < 180) body.max_time = advTime;
+            const advKid = getChipValue('adv-kid-chips');
+            if (advKid) body.kid_friendly = advKid;
+            const advPrep = getChipValue('adv-prep-chips');
+            if (advPrep) body.prep_early = advPrep;
+            if (getSelected('adv-type-chips').includes('soup')) body.has_soup = true;
+            if (getSelected('adv-type-chips').includes('cold')) body.has_cold = true;
+            const advSource = getSelected('adv-source-chips');
+            if (advSource.length) body.sources = advSource;
+            
+            // Require at least text OR one filter
+            const hasFilters = advCuisine.length || advMethod.length || advTaste.length || advNut.length || advTime < 180 || advKid || advPrep || body.has_soup || body.has_cold || advSource.length;
+            if (!query && !hasFilters) { showToast('請輸入關鍵字或選擇篩選條件'); spinner.classList.remove('show'); return; }
+            
             try {
                 const res = await fetch('/cooking-ideas/api/search-db', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({q: query})
+                    body: JSON.stringify(body)
                 });
                 const result = await res.json();
                 

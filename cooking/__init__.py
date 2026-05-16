@@ -794,24 +794,95 @@ def bookmark_status():
 
 @cooking_bp.route('/api/search-db', methods=['POST'])
 def search_db():
-    """Search recipes in the database by name or ingredients."""
+    """Search recipes with text query + advanced filters."""
     data = request.get_json() or {}
     query = data.get('q', '').strip()
-    if not query:
-        return jsonify({'success': False, 'error': '請輸入搜尋關鍵字。'})
     
     conn = _get_db()
     c = conn.cursor()
-    # Search in name, ingredients, and cuisine
-    like = f'%{query}%'
-    c.execute('''
-        SELECT * FROM recipes 
-        WHERE name LIKE ? OR ingredients LIKE ? OR cuisine LIKE ?
-        ORDER BY 
-            CASE WHEN name LIKE ? THEN 0 ELSE 1 END,
-            name
-        LIMIT 20
-    ''', (like, like, like, like))
+    
+    # Build query
+    sql = 'SELECT * FROM recipes WHERE 1=1'
+    params = []
+    
+    # Text search
+    if query:
+        like = f'%{query}%'
+        sql += ' AND (name LIKE ? OR ingredients LIKE ? OR cuisine LIKE ?)'
+        params.extend([like, like, like])
+    
+    # Cuisine filter
+    cuisines = data.get('cuisines', [])
+    if cuisines:
+        placeholders = ','.join(['?'] * len(cuisines))
+        sql += f' AND cuisine IN ({placeholders})'
+        params.extend(cuisines)
+    
+    # Method filter
+    methods = data.get('methods', [])
+    if methods:
+        placeholders = ','.join(['?'] * len(methods))
+        sql += f' AND cooking_method IN ({placeholders})'
+        params.extend(methods)
+    
+    # Taste filter
+    tastes = data.get('tastes', [])
+    if tastes:
+        taste_conds = []
+        for t in tastes:
+            taste_conds.append('taste = ?')
+            params.append(t)
+        sql += f' AND ({" OR ".join(taste_conds)})'
+    
+    # Nutrition filter (dish has ANY of the selected tags)
+    nutrition = data.get('nutrition', [])
+    if nutrition:
+        nut_conds = []
+        for n in nutrition:
+            nut_conds.append('nutrition_tags LIKE ?')
+            params.append(f'%{n}%')
+        sql += f' AND ({" OR ".join(nut_conds)})'
+    
+    # Max time
+    max_time = data.get('max_time')
+    if max_time:
+        sql += ' AND prep_time_min <= ?'
+        params.append(int(max_time))
+    
+    # Kid friendly
+    kid_friendly = data.get('kid_friendly')
+    if kid_friendly == 'yes':
+        sql += ' AND kid_friendly = 1'
+    elif kid_friendly == 'no':
+        sql += ' AND kid_friendly = 0'
+    
+    # Prep early
+    prep_early = data.get('prep_early')
+    if prep_early == 'yes':
+        sql += ' AND can_prep_early = 1'
+    
+    # Soup / cold dish
+    if data.get('has_soup'):
+        sql += ' AND has_soup = 1'
+    if data.get('has_cold'):
+        sql += ' AND has_cold_dish = 1'
+    
+    # Source filter
+    sources = data.get('sources', [])
+    if sources:
+        placeholders = ','.join(['?'] * len(sources))
+        sql += f' AND source IN ({placeholders})'
+        params.extend(sources)
+    
+    # Order: by name match relevance if text query, else by name
+    if query:
+        like2 = f'%{query}%'
+        sql += ' ORDER BY CASE WHEN name LIKE ? THEN 0 ELSE 1 END, name LIMIT 30'
+        params.append(like2)
+    else:
+        sql += ' ORDER BY name LIMIT 30'
+    
+    c.execute(sql, params)
     results = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify({'success': True, 'results': results, 'count': len(results)})
