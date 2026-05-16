@@ -472,7 +472,8 @@ def replace_dish():
     
     # Pure veg dedup: if another slot already has pure veg, hard-filter pure veg from candidates
     # (only if the slot being replaced is NOT the pure veg itself)
-    if count <= 4 and pv_count_others >= 1 and replaced_dish and not _is_pure_veg(replaced_dish):
+    replaced_is_pv = _is_pure_veg(replaced_dish) if replaced_dish else False
+    if count <= 4 and pv_count_others >= 1 and not replaced_is_pv:
         candidates = [c for c in candidates if not _is_pure_veg(c)]
         if not candidates:
             conn.close()
