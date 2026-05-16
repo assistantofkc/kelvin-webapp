@@ -461,7 +461,7 @@
         <!-- Header -->
         <div style="text-align:center;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.05</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.06</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -811,10 +811,10 @@
             <h3 style="padding-right:30px;">🔧 用戶管理</h3>
             <div id="admin-content">
                 <label>請輸入密碼</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="password" id="admin-password" placeholder="管理員密碼" style="flex:1;min-width:0;">
-                    <button class="btn btn-primary" onclick="adminLogin()" style="padding:10px 14px;white-space:nowrap;flex-shrink:0;">登入</button>
+                <div style="margin-bottom:8px;">
+                    <input type="password" id="admin-password" placeholder="管理員密碼" style="width:100%;box-sizing:border-box;">
                 </div>
+                <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
             </div>
         </div>
     </div>
@@ -1554,10 +1554,10 @@
             document.body.style.width = '100%';
             document.getElementById('admin-content').innerHTML = `
                 <label>請輸入密碼</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="password" id="admin-password" placeholder="管理員密碼" style="flex:1;min-width:0;">
-                    <button class="btn btn-primary" onclick="adminLogin()" style="padding:10px 14px;white-space:nowrap;flex-shrink:0;">登入</button>
+                <div style="margin-bottom:8px;">
+                    <input type="password" id="admin-password" placeholder="管理員密碼" style="width:100%;box-sizing:border-box;">
                 </div>
+                <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
             `;
             setTimeout(() => document.getElementById('admin-password').focus(), 100);
         }
