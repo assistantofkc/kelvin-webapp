@@ -401,11 +401,8 @@ def replace_dish():
             recipe_ingredients = r['ingredients'].lower()
             r['_score'] = sum(1 for item in have_list if item in recipe_ingredients)
     
-    # Exclude current dishes + slot history (to prevent A→B→A cycling)
+    # Exclude current dishes
     exclude_ids = set(current_ids)
-    extra_exclude = data.get('exclude_ids', [])
-    if extra_exclude:
-        exclude_ids.update(extra_exclude)
     candidates = [r for r in all_candidates if r['id'] not in exclude_ids]
     
     # Also remove soup/cold if not wanted
@@ -497,7 +494,15 @@ def replace_dish():
     
     scored.sort(key=lambda x: x[0], reverse=True)
     
-    best = scored[0][1] if scored else candidates[0]
+    # Pick from top candidates randomly to avoid deterministic A↔B cycling
+    # (recycling is OK — A→B→C→A — just avoid immediate A→B→A bounce)
+    if scored:
+        top_score = scored[0][0]
+        # Take all candidates within 1 point of the best score
+        top_candidates = [c for s, c in scored if top_score - s <= 1]
+        best = random.choice(top_candidates)
+    else:
+        best = candidates[0]
     
     conn.close()
     result = {k: best[k] for k in best.keys() if not k.startswith('_')}
