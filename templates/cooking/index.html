@@ -555,7 +555,7 @@
             <!-- Results -->
             <div id="results" style="margin-top:16px;"></div>
             <div style="text-align:center;margin-top:8px;display:none;" id="regenerate-btn">
-                <button class="btn btn-secondary" onclick="generateDishes()">🔄 重新生成</button>
+                <button class="btn btn-secondary" onclick="generateDishes()">🔄 全部重新提議</button>
             </div>
         </div>
         
@@ -964,7 +964,7 @@
                     window._currentDishes[index] = result.dish;
                     renderResults(window._currentDishes);
                 } else {
-                    showToast(result.error || '換唔到，試下重新生成');
+                    showToast(result.error || '換唔到，試下全部重新提議');
                     if (replaceBtn) replaceBtn.textContent = '🔄 換一個';
                 }
             } catch(e) {
