@@ -90,7 +90,11 @@ def random_recipes():
         query += ' AND is_spicy = 0'
     
     nutrition = data.get('nutrition', [])
-    # Nutrition is handled in meal planning, not as SQL filter
+    # Default: exclude 澱粉質 dishes unless user explicitly selected 澱粉質
+    if '澱粉質' not in nutrition:
+        query += ' AND nutrition_tags NOT LIKE ?'
+        params.append('%澱粉質%')
+    # Nutrition is handled in meal planning, not as SQL filter (except 澱粉質 exclusion above)
     # We just fetch all matching recipes and plan from them
     
     max_time = data.get('max_time', 120)  # TOTAL time for all dishes (default generous)
@@ -374,6 +378,10 @@ def replace_dish():
     wants_soup = data.get('include_soup', False)
     wants_cold = data.get('include_cold', False)
     nutrition = data.get('nutrition', ['菜', '蛋白質'])
+    # Default: exclude 澱粉質 dishes unless user explicitly selected 澱粉質
+    if '澱粉質' not in nutrition:
+        query += ' AND nutrition_tags NOT LIKE ?'
+        params.append('%澱粉質%')
     
     have_ingredients = data.get('ingredients', '').strip()
     have_list = []
