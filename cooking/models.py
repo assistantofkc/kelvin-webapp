@@ -14,7 +14,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 9
+DB_VERSION = 10
 
 def init_db():
     conn = get_db()
@@ -347,5 +347,17 @@ def _build_extra_recipes():
         {"name":"薑汁炒芥蘭","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":8,"early":0,"spicy":0,"ingredients":"芥蘭300g,薑汁1湯匙,鹽,糖,油","steps":"1. 芥蘭洗淨摘段\n2. 燒熱水加少少糖，汆水1分鐘\n3. 熱油爆香薑汁\n4. 落芥蘭大火快炒\n5. 加鹽調味上碟","tips":"薑汁炒芥蘭清熱解毒，冬天最啱食"},
         {"name":"清炒菠菜","cuisine":"中式","method":"炒","taste":"清淡","nutrition":"菜","time":6,"early":0,"spicy":0,"ingredients":"菠菜300g,蒜蓉,鹽,油","steps":"1. 菠菜洗淨，摘去根部\n2. 熱油爆香蒜蓉\n3. 落菠菜大火快炒\n4. 菠菜軟身即加鹽兜勻\n5. 即上碟","tips":"菠菜好易熟，炒太耐會變黑出水"},
         {"name":"粉絲炒椰菜","cuisine":"中式","method":"炒","taste":"濃味","nutrition":"菜,澱粉質","time":10,"early":0,"spicy":0,"ingredients":"椰菜半個,粉絲1把,蒜蓉,生抽,蠔油,油","steps":"1. 粉絲浸軟，椰菜切絲\n2. 熱油爆香蒜蓉\n3. 落椰菜絲大火快炒至軟身\n4. 加入粉絲、生抽、蠔油\n5. 快炒兜勻至粉絲吸收醬汁\n6. 上碟","tips":"粉絲唔好浸太耐，保持少少彈性"},
+        
+        # ===== 中式湯品 (10 new, Chinese soups) =====
+        {"name":"冬瓜瘦肉湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉","time":60,"early":1,"has_soup":1,"spicy":0,"ingredients":"冬瓜500g,瘦肉300g,薑片,鹽","steps":"1. 瘦肉汆水洗淨\n2. 冬瓜去皮去籽切大塊\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉中小火煲45分鐘\n5. 加鹽調味","tips":"冬瓜唔好切太細，煲湯會溶晒"},
+        {"name":"西洋菜豬骨湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"西洋菜300g,豬骨400g,蜜棗2粒,薑片,鹽","steps":"1. 豬骨汆水洗淨\n2. 西洋菜洗淨摘段\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"西洋菜要水滾先落，唔係會苦"},
+        {"name":"青紅蘿蔔瘦肉湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"青蘿蔔1條,紅蘿蔔2條,瘦肉300g,蜜棗,薑片,鹽","steps":"1. 瘦肉汆水洗淨\n2. 青紅蘿蔔去皮切塊\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"青紅蘿蔔要切大塊，煲湯先出味"},
+        {"name":"蓮藕排骨湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"紅肉,澱粉質","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"蓮藕1節,排骨400g,花生,蜜棗,薑片,鹽","steps":"1. 排骨汆水洗淨\n2. 蓮藕去皮切片，花生浸軟\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"蓮藕揀粉藕煲湯先香濃"},
+        {"name":"節瓜排骨湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉","time":60,"early":1,"has_soup":1,"spicy":0,"ingredients":"節瓜2個,排骨400g,薑片,鹽","steps":"1. 排骨汆水洗淨\n2. 節瓜去皮切大塊\n3. 排骨、薑片放入煲加水煲30分鐘\n4. 加入節瓜再煲20分鐘\n5. 加鹽調味","tips":"節瓜後落唔會煲到溶晒"},
+        {"name":"粟米紅蘿蔔豬骨湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,紅肉,澱粉質","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"粟米2條,紅蘿蔔2條,豬骨400g,蜜棗,薑片,鹽","steps":"1. 豬骨汆水洗淨\n2. 粟米斬段，紅蘿蔔去皮切塊\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"粟米連芯煲湯更甜"},
+        {"name":"粉葛鯪魚湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"魚,澱粉質","time":90,"early":1,"has_soup":1,"spicy":0,"ingredients":"粉葛1條,鯪魚2條,赤小豆,蜜棗,薑片,鹽","steps":"1. 鯪魚洗淨抹乾，煎至兩面金黃\n2. 粉葛去皮切塊，赤小豆浸軟\n3. 所有材料放入煲，加水蓋過\n4. 大火煮滾轉小火煲1.5小時\n5. 加鹽調味","tips":"魚一定要煎香先煲，湯先奶白唔腥"},
+        {"name":"紫菜蛋花湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,蛋白質","time":10,"early":0,"has_soup":1,"spicy":0,"ingredients":"紫菜1片,雞蛋2隻,雞湯500ml,蔥花,麻油,鹽","steps":"1. 紫菜撕碎\n2. 雞湯煮滾\n3. 加入紫菜煮2分鐘\n4. 蛋液慢慢倒入攪成蛋花\n5. 加鹽、麻油調味，灑蔥花","tips":"蛋液要慢慢倒同攪拌先有靚蛋花"},
+        {"name":"芫荽皮蛋魚片湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"魚,蛋白質","time":20,"early":0,"has_soup":1,"spicy":0,"ingredients":"魚片200g,皮蛋2隻,芫荽,薑絲,雞湯500ml,鹽,胡椒粉","steps":"1. 魚片用鹽、胡椒粉醃5分鐘\n2. 皮蛋去殼切粒\n3. 雞湯加薑絲煮滾\n4. 加入皮蛋煮3分鐘\n5. 放入魚片煮至變色\n6. 灑芫荽，熄火上碗","tips":"魚片要最後落，煮太耐會散"},
+        {"name":"番茄豆腐湯","cuisine":"中式","method":"炆","taste":"清淡","nutrition":"菜,蛋白質","time":20,"early":0,"has_soup":1,"spicy":0,"ingredients":"番茄3個,嫩豆腐1盒,雞蛋1隻,蔥花,雞湯500ml,鹽","steps":"1. 番茄切塊，豆腐切粒\n2. 雞湯煮滾，加番茄煮5分鐘至出味\n3. 加入豆腐輕輕拌勻煮3分鐘\n4. 蛋液慢慢倒入攪成蛋花\n5. 加鹽調味，灑蔥花","tips":"番茄要煮到出汁溶入湯先夠味"},
     ]
 
