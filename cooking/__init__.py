@@ -34,9 +34,41 @@ def _get_user_key():
     data = request.get_json(silent=True) or {}
     return data.get('user_key', 'default')
 
+def _get_user_key():
+    """Extract user_key from request body, default 'default'."""
+    data = request.get_json(silent=True) or {}
+    return data.get('user_key', 'default')
+
+def _ensure_user_key_columns():
+    """Lazy migration: add user_key columns if missing (v11→v12)."""
+    try:
+        conn = _get_db()
+        c = conn.cursor()
+        # Check if column exists
+        try:
+            c.execute('SELECT user_key FROM bookmarks LIMIT 0')
+        except:
+            c.execute("ALTER TABLE bookmarks ADD COLUMN user_key TEXT DEFAULT 'default'")
+            c.execute("UPDATE bookmarks SET user_key = 'default' WHERE user_key IS NULL")
+            try:
+                c.execute('DROP INDEX IF EXISTS sqlite_autoindex_bookmarks_1')
+            except:
+                pass
+            c.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_bookmarks_recipe_user ON bookmarks(recipe_id, user_key)')
+        try:
+            c.execute('SELECT user_key FROM user_recipes LIMIT 0')
+        except:
+            c.execute("ALTER TABLE user_recipes ADD COLUMN user_key TEXT DEFAULT 'default'")
+            c.execute("UPDATE user_recipes SET user_key = 'default' WHERE user_key IS NULL")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f'[Cooking] user_key migration: {e}')
+
 @cooking_bp.route('/')
 @cooking_bp.route('/<user_key>')
 def index(user_key='default'):
+    _ensure_user_key_columns()
     return render_template('cooking/index.html', user_key=user_key)
 
 @cooking_bp.route('/api/random', methods=['POST'])
@@ -746,6 +778,7 @@ def delete_recipe(recipe_id):
 
 @cooking_bp.route('/api/bookmark', methods=['POST'])
 def toggle_bookmark():
+    _ensure_user_key_columns()
     data = request.get_json() or {}
     recipe_id = data.get('recipe_id')
     user_key = data.get('user_key', 'default')
