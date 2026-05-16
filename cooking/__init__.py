@@ -768,6 +768,8 @@ def get_recipe(recipe_id):
 
 @cooking_bp.route('/api/recipe/<int:recipe_id>/edit', methods=['POST'])
 def update_recipe(recipe_id):
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '只有管理員可以編輯食譜庫。'})
     data = request.get_json() or {}
     conn = _get_db()
     c = conn.cursor()
@@ -799,6 +801,8 @@ def update_recipe(recipe_id):
 
 @cooking_bp.route('/api/recipe/<int:recipe_id>/delete', methods=['POST'])
 def delete_recipe(recipe_id):
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '只有管理員可以刪除食譜。'})
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT id, source, name FROM recipes WHERE id = ?', [recipe_id])
