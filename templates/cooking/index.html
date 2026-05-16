@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.23</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.24</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -1746,6 +1746,8 @@
                             </div>
                         `;
                     });
+                    html += '<div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--card-border);"><button class="btn btn-primary" onclick="adminManageRecipes()" style="width:100%;">📋 管理食譜庫</button></div>';
+                    html += '<div id="admin-recipes-section" style="margin-top:12px;"></div>';
                     document.getElementById('admin-content').innerHTML = html;
                     window._adminPassword = password;
                 } else {
@@ -1804,6 +1806,62 @@
                     showToast(result.error || '刪除失敗');
                 }
             } catch(e) { showToast('網絡錯誤'); }
+        }
+        
+        // ===== ADMIN: Recipe DB management =====
+        
+        async function adminManageRecipes() {
+            const section = document.getElementById('admin-recipes-section');
+            section.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-secondary);">載入中...</div>';
+            try {
+                const res = await fetch('/cooking-ideas/api/admin/recipes', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: window._adminPassword})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    if (result.recipes.length === 0) {
+                        section.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-secondary);font-size:0.85rem;">暫無用戶貢獻嘅食譜</div>';
+                        return;
+                    }
+                    section.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:8px;">共 ' + result.recipes.length + ' 個食譜</div>' +
+                        result.recipes.map(r => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--card-border);flex-wrap:wrap;gap:4px;">
+                            <div style="flex:1;min-width:120px;">
+                                <strong style="font-size:0.85rem;">🍳 ${r.name}</strong>
+                                <div style="font-size:0.7rem;color:var(--text-secondary);">${r.cuisine} · ${r.cooking_method} · <span style="color:var(--accent);">${r.source === 'ai_search' ? '🤖 AI' : '👤 用戶'}</span></div>
+                            </div>
+                            <div style="display:flex;gap:4px;">
+                                <button class="btn btn-secondary" onclick="adminEditRecipeFromList(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 6px;font-size:0.6rem;">✏️</button>
+                                <button class="btn btn-secondary" onclick="adminDeleteRecipeFromList(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 6px;font-size:0.6rem;color:#ef4444;">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) { section.innerHTML = '<div style="color:#ef4444;text-align:center;padding:8px;">載入失敗</div>'; }
+        }
+        
+        function adminEditRecipeFromList(id, name) {
+            const newName = prompt('編輯菜式名：', name);
+            if (!newName || newName === name) return;
+            fetch('/cooking-ideas/api/admin/recipes/' + id + '/edit', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: window._adminPassword, name: newName})
+            }).then(r => r.json()).then(result => {
+                showToast(result.success ? result.message : (result.error || '編輯失敗'));
+                if (result.success) adminManageRecipes();
+            }).catch(() => showToast('網絡錯誤'));
+        }
+        
+        function adminDeleteRecipeFromList(id, name) {
+            if (!confirm('確定要從食譜庫刪除「' + name + '」？\n（唔會刪除用戶嘅原始 recipe，只係從共享庫移除）')) return;
+            fetch('/cooking-ideas/api/admin/recipes/' + id + '/delete', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({password: window._adminPassword})
+            }).then(r => r.json()).then(result => {
+                showToast(result.success ? result.message : (result.error || '刪除失敗'));
+                if (result.success) adminManageRecipes();
+            }).catch(() => showToast('網絡錯誤'));
         }
         
         // ===== USER RECIPES (創建菜式) =====

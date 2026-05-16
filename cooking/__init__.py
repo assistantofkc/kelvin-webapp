@@ -1461,3 +1461,78 @@ def admin_delete_user(user_key):
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
+
+# ===== ADMIN: Recipe database management =====
+
+@cooking_bp.route('/api/admin/recipes', methods=['POST'])
+def admin_list_recipes():
+    """List all user-contributed recipes in the shared DB (admin only)."""
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute("SELECT * FROM recipes WHERE source != 'seed' ORDER BY created_at DESC")
+    recipes = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify({'success': True, 'recipes': recipes})
+
+@cooking_bp.route('/api/admin/recipes/<int:recipe_id>/edit', methods=['POST'])
+def admin_edit_recipe(recipe_id):
+    """Admin edit any recipe in the shared DB."""
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    data = request.get_json() or {}
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT id FROM recipes WHERE id = ?', [recipe_id])
+    if not c.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    try:
+        fields = ['name', 'cuisine', 'cooking_method', 'taste', 'nutrition_tags',
+                  'prep_time_min', 'ingredients', 'steps', 'tips', 'servings',
+                  'is_spicy', 'can_prep_early', 'kid_friendly']
+        updates = []
+        params = []
+        for f in fields:
+            if f in data:
+                updates.append(f'{f} = ?')
+                params.append(data[f])
+        if not updates:
+            conn.close()
+            return jsonify({'success': False, 'error': 'No fields to update.'})
+        params.append(recipe_id)
+        sql = f'UPDATE recipes SET {", ".join(updates)} WHERE id = ?'
+        c.execute(sql, params)
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': '已更新！'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+@cooking_bp.route('/api/admin/recipes/<int:recipe_id>/delete', methods=['POST'])
+def admin_delete_recipe(recipe_id):
+    """Admin delete any recipe from the shared DB (keeps original in user_recipes)."""
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    conn = _get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM recipes WHERE id = ?', [recipe_id])
+    r = c.fetchone()
+    if not r:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Recipe not found.'})
+    try:
+        # Clear references from user_recipes
+        c.execute('UPDATE user_recipes SET db_recipe_id = NULL WHERE db_recipe_id = ?', [recipe_id])
+        # Remove bookmarks
+        c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [recipe_id])
+        # Delete the recipe
+        c.execute('DELETE FROM recipes WHERE id = ?', [recipe_id])
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'已從食譜庫刪除「{r["name"]}」'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
