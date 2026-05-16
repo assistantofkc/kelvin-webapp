@@ -351,8 +351,11 @@
             padding: 6px 14px;
             font-size: 0.85rem;
             color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.3s;
             -webkit-tap-highlight-color: transparent;
         }
+        .user-badge:hover { background: var(--card-border); }
         
         .top-bar {
             display: flex;
@@ -456,7 +459,7 @@
                 <span id="theme-icon">🌙</span>
                 <span>深色模式</span>
             </div>
-            <div class="user-badge" id="user-badge">👤</div>
+            <div class="user-badge" id="user-badge" onclick="openAdminModal()">👤</div>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -799,6 +802,21 @@
         </div>
     </div>
     
+    <!-- Admin Modal (user maintenance) -->
+    <div class="modal-overlay" id="admin-modal" onclick="if(event.target===this)closeAdminModal()">
+        <div class="modal-content" style="max-width:420px;">
+            <button onclick="closeAdminModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);">✕</button>
+            <h3 style="padding-right:30px;">🔧 用戶管理</h3>
+            <div id="admin-content">
+                <div style="margin-bottom:12px;">
+                    <label>請輸入密碼</label>
+                    <input type="password" id="admin-password" placeholder="管理員密碼" style="margin-bottom:8px;">
+                    <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Edit Recipe Modal -->
     <div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeEditModal()">
         <div class="modal-content">
@@ -907,6 +925,10 @@
         // User context (from URL: /cooking-ideas/mary → user_key = 'mary')
         const USER_KEY = '{{ user_key }}';
         document.getElementById('user-badge').textContent = '👤 ' + USER_KEY;
+        if (USER_KEY !== 'default') {
+            document.getElementById('user-badge').onclick = null;
+            document.getElementById('user-badge').style.cursor = 'default';
+        }
         
         // Settings state
         let adults = 2, kids = 1, dishCount = 3;
@@ -1519,6 +1541,81 @@
             document.body.style.overflow = '';
             document.body.style.position = '';
             document.body.style.width = '';
+        }
+        
+        // ===== ADMIN: User management =====
+        function openAdminModal() {
+            if (USER_KEY !== 'default') return;
+            document.getElementById('admin-modal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            document.getElementById('admin-password').value = '';
+            document.getElementById('admin-content').innerHTML = `
+                <div style="margin-bottom:12px;">
+                    <label>請輸入密碼</label>
+                    <input type="password" id="admin-password" placeholder="管理員密碼" style="margin-bottom:8px;">
+                    <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
+                </div>
+            `;
+        }
+        
+        function closeAdminModal() {
+            document.getElementById('admin-modal').classList.remove('show');
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+        }
+        
+        async function adminLogin() {
+            const password = document.getElementById('admin-password').value.trim();
+            if (!password) { showToast('請輸入密碼'); return; }
+            try {
+                const res = await fetch('/cooking-ideas/api/admin/users', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    let html = '';
+                    if (result.users.length === 0) {
+                        html = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">未有其他用戶</div>';
+                    } else {
+                        result.users.forEach(u => {
+                            html += `
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--card-border);">
+                                    <div>
+                                        <strong>👤 ${u.user_key}</strong>
+                                        <div style="font-size:0.75rem;color:var(--text-secondary);">❤️ ${u.bookmarks} bookmarks | 📝 ${u.recipes} recipes</div>
+                                    </div>
+                                    ${u.user_key !== 'default' ? `<button class="btn btn-secondary" onclick="adminDeleteUser('${u.user_key}')" style="padding:4px 10px;font-size:0.7rem;color:#ef4444;">🗑️ 刪除</button>` : '<span style="font-size:0.7rem;color:var(--text-secondary);">系統</span>'}
+                                </div>
+                            `;
+                        });
+                    }
+                    document.getElementById('admin-content').innerHTML = html;
+                    window._adminPassword = password;
+                } else {
+                    showToast(result.error || '密碼錯誤');
+                }
+            } catch(e) { showToast('網絡錯誤'); }
+        }
+        
+        async function adminDeleteUser(userKey) {
+            if (!confirm(`確定要刪除用戶「${userKey}」？所有 bookmarks 同自創食譜會被移除。`)) return;
+            try {
+                const res = await fetch('/cooking-ideas/api/admin/user/' + userKey + '/delete', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: window._adminPassword})
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast(result.message);
+                    adminLogin();  // Refresh list
+                } else {
+                    showToast(result.error || '刪除失敗');
+                }
+            } catch(e) { showToast('網絡錯誤'); }
         }
         
         // ===== USER RECIPES (創建菜式) =====

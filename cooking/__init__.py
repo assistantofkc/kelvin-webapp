@@ -1245,3 +1245,65 @@ def remove_user_recipe_from_db(recipe_id):
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
+
+# ===== ADMIN: User management (password-protected) =====
+
+def _admin_check(request):
+    """Verify admin password from request body. Returns True if valid."""
+    password = (request.get_json(silent=True) or {}).get('password', '')
+    if not password:
+        return False
+    try:
+        import bcrypt
+        password_file = os.path.join(os.path.dirname(__file__), '..', 'geckolab', 'password.json')
+        if os.path.exists(password_file):
+            with open(password_file) as f:
+                data = json.load(f)
+            stored = data.get('password', '')
+            if stored.startswith('$2'):
+                return bcrypt.checkpw(password.encode(), stored.encode())
+            else:
+                return password == stored
+    except:
+        pass
+    return password == os.environ.get('GECKOLAB_PASSWORD', '')
+
+@cooking_bp.route('/api/admin/users', methods=['POST'])
+def admin_list_users():
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    conn = _get_db()
+    c = conn.cursor()
+    users = {}
+    c.execute("SELECT DISTINCT user_key, COUNT(*) as cnt FROM bookmarks GROUP BY user_key")
+    for r in c.fetchall():
+        users[r['user_key']] = {'bookmarks': r['cnt'], 'recipes': 0}
+    c.execute("SELECT DISTINCT user_key, COUNT(*) as cnt FROM user_recipes GROUP BY user_key")
+    for r in c.fetchall():
+        uk = r['user_key']
+        if uk not in users:
+            users[uk] = {'bookmarks': 0, 'recipes': 0}
+        users[uk]['recipes'] = r['cnt']
+    conn.close()
+    result = [{'user_key': k, **v} for k, v in users.items()]
+    return jsonify({'success': True, 'users': result})
+
+@cooking_bp.route('/api/admin/user/<user_key>/delete', methods=['POST'])
+def admin_delete_user(user_key):
+    if not _admin_check(request):
+        return jsonify({'success': False, 'error': '密碼錯誤'})
+    if user_key == 'default':
+        return jsonify({'success': False, 'error': '不能刪除 default user'})
+    conn = _get_db()
+    c = conn.cursor()
+    try:
+        c.execute('DELETE FROM bookmarks WHERE user_key = ?', [user_key])
+        bm = c.rowcount
+        c.execute('DELETE FROM user_recipes WHERE user_key = ?', [user_key])
+        ur = c.rowcount
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': f'已刪除 {user_key}（{bm} bookmarks, {ur} recipes）'})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
