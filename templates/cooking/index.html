@@ -265,7 +265,7 @@
         /* Mobile adjustments */
         @media (max-width: 768px) {
             .container { padding: calc(20px + env(safe-area-inset-top)) 12px calc(150px + env(safe-area-inset-bottom)) 12px; }
-            .header-section { margin-top: -48px !important; }
+            .header-section { margin-top: -20px !important; }
             h1 { font-size: 1.3rem; }
             .card { padding: 12px; }
             .chip { padding: 4px 8px; font-size: 0.75rem; }
@@ -340,6 +340,8 @@
             color: var(--text-primary);
             transition: background 0.3s;
             -webkit-tap-highlight-color: transparent;
+            min-width: 80px;
+            justify-content: center;
         }
         .theme-btn:hover { background: var(--card-border); }
         
@@ -464,9 +466,9 @@
         </div>
         
         <!-- Header -->
-        <div class="header-section" style="text-align:center;margin-top:-28px;margin-bottom:0;">
+        <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.17</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.18</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
