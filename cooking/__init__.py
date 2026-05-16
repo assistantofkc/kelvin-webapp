@@ -470,6 +470,14 @@ def replace_dish():
                     pv_count_others += 1
                 break
     
+    # Pure veg dedup: if another slot already has pure veg, hard-filter pure veg from candidates
+    # (only if the slot being replaced is NOT the pure veg itself)
+    if count <= 4 and pv_count_others >= 1 and replaced_dish and not _is_pure_veg(replaced_dish):
+        candidates = [c for c in candidates if not _is_pure_veg(c)]
+        if not candidates:
+            conn.close()
+            return jsonify({'success': False, 'error': '冇其他合適嘅菜式可以替換。'})
+    
     # Score candidates: prefer matching nutrition, cuisine, and ingredient overlap
     scored = []
     for c in candidates:
