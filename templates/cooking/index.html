@@ -828,8 +828,10 @@
             setTimeout(() => t.classList.remove('show'), 2500);
         }
         
-        // ===== SLIDER: long-press (300ms) to activate, preventing accidental taps =====
-        document.querySelectorAll('input[type="range"]').forEach(slider => {
+        // ===== SLIDER: long-press (300ms) for max-time only (Tab 1, prevents accidental scroll taps) =====
+        (() => {
+            const slider = document.getElementById('max-time');
+            if (!slider) return;
             let timer = null, active = false, startVal;
             slider.addEventListener('pointerdown', e => {
                 startVal = slider.value; active = false;
@@ -838,10 +840,7 @@
             slider.addEventListener('input', e => {
                 if (!active) {
                     slider.value = startVal;
-                    // Manually update labels since programmatic value change doesn't trigger oninput
-                    if (slider.id === 'max-time') updateTimeLabel(startVal);
-                    if (slider.id === 'create-time') document.getElementById('create-time-label').textContent = startVal + '分鐘';
-                    if (slider.id === 'edit-time-slider') document.getElementById('edit-time-label').textContent = startVal + '分鐘';
+                    updateTimeLabel(startVal);
                 }
             });
             slider.addEventListener('change', e => {
@@ -850,7 +849,7 @@
             const cleanup = () => { clearTimeout(timer); active = false; };
             slider.addEventListener('pointerup', cleanup);
             slider.addEventListener('pointerleave', cleanup);
-        });
+        })();
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
