@@ -17,7 +17,7 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-DB_VERSION = 12
+DB_VERSION = 13
 
 # Schema lock: prevents accidental destructive operations on production data
 SCHEMA_LOCKED = True  # Set to False ONLY for intentional full rebuild during dev
@@ -190,6 +190,12 @@ def init_db():
     except:
         c.execute('ALTER TABLE user_recipes ADD COLUMN user_key TEXT DEFAULT ''default''')
         c.execute('UPDATE user_recipes SET user_key = ''default'' WHERE user_key IS NULL')
+    
+    # Migration: add owner_user_key column (DB v12 -> v13)
+    try:
+        c.execute('SELECT owner_user_key FROM recipes LIMIT 0')
+    except:
+        c.execute("ALTER TABLE recipes ADD COLUMN owner_user_key TEXT DEFAULT ''")
     
     c.execute('SELECT COUNT(*) FROM recipes')
     count = c.fetchone()[0]

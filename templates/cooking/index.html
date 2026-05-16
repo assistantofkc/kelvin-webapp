@@ -468,7 +468,7 @@
         <!-- Header -->
         <div class="header-section" style="text-align:center;margin-top:-10px;margin-bottom:0;">
             <img src="/static/cooking/header-logo.png" alt="Cooking Ideas" class="header-logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
-            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.28</span>
+            <span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.5;">v2.29</span>
         </div>
         
         <!-- ===== TAB 1: 隨機菜式提議 ===== -->
@@ -1304,7 +1304,7 @@
             try {
                 const res = await fetch('/cooking-ideas/api/save', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(recipe)
+                    body: JSON.stringify({...recipe, user_key: USER_KEY})
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -1376,6 +1376,10 @@
                                     <h3 style="margin:0;">${r.name}</h3>
                                     <div style="display:flex;gap:4px;">
                                         <button class="bookmark-btn" data-rid="${r.id}" onclick="toggleBookmark(${r.id}, this)" title="收藏">♡</button>
+                                        ${r.owner_user_key && r.owner_user_key === USER_KEY ? `
+                                            <button class="btn btn-secondary" onclick="openEditModal(${r.id})" style="padding:3px 8px;font-size:0.7rem;" title="編輯">✏️</button>
+                                            <button class="btn btn-secondary" onclick="deleteRecipe(${r.id}, '${r.name.replace(/'/g, "\\'")}')" style="padding:3px 8px;font-size:0.7rem;color:#ef4444;" title="刪除">🗑️</button>
+                                        ` : ''}
                                     </div>
                                 </div>
                                 <img class="recipe-img" data-dish="${r.name.replace(/"/g, '&quot;')}" data-user-img="${(r.image_base64 || '').replace(/"/g, '&quot;')}" src="${r.image_base64 || ''}" alt="${r.name}" loading="lazy" style="${r.image_base64 ? '' : 'display:none'}">
@@ -1460,7 +1464,8 @@
                 steps: document.getElementById('edit-steps').value.trim(),
                 tips: document.getElementById('edit-tips').value.trim(),
                 servings: parseInt(document.getElementById('edit-servings').value) || 4,
-                kid_friendly: parseInt(getChipValue('edit-kid-chips')) || 1
+                kid_friendly: parseInt(getChipValue('edit-kid-chips')) || 1,
+                user_key: USER_KEY
             };
             if (!data.name) { showToast('請輸入菜式名'); return; }
             try {
@@ -1482,7 +1487,10 @@
         async function deleteRecipe(recipeId, name) {
             if (!confirm(`確定要刪除「${name}」？此操作不能還原。`)) return;
             try {
-                const res = await fetch('/cooking-ideas/api/recipe/' + recipeId + '/delete', { method: 'POST' });
+                const res = await fetch('/cooking-ideas/api/recipe/' + recipeId + '/delete', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_key: USER_KEY})
+                });
                 const result = await res.json();
                 showToast(result.success ? result.message : (result.error || '刪除失敗'));
                 if (result.success) searchDB(); // Refresh search results

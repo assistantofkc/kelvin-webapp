@@ -71,7 +71,7 @@ def dynamic_manifest():
     user_key = request.args.get('user', 'default')
     start = f'/cooking-ideas/{user_key}' if user_key != 'default' else '/cooking-ideas'
     return jsonify({
-        'name': f'Cooking Ideas — {user_key}',
+        'name': f'Cooking Ideas - {user_key}',
         'short_name': 'Cooking Ideas',
         'description': '隨機生成家常菜式食譜',
         'start_url': start,
@@ -107,10 +107,10 @@ def random_recipes():
     data = request.get_json() or {}
     conn = _get_db()
     c = conn.cursor()
-    
+
     query = 'SELECT * FROM recipes WHERE 1=1'
     params = []
-    
+
     cuisines = data.get('cuisines', [])
     if cuisines:
         placeholders = ','.join(['?'] * len(cuisines))
@@ -118,13 +118,13 @@ def random_recipes():
         params.extend(cuisines)
     else:
         cuisines = ['中式', '西式', '日式', '東南亞']  # Default all
-    
+
     methods = data.get('methods', [])
     if methods:
         placeholders = ','.join(['?'] * len(methods))
         query += f' AND cooking_method IN ({placeholders})'
         params.extend(methods)
-    
+
     tastes = data.get('tastes', [])
     if tastes:
         taste_conditions = []
@@ -132,14 +132,14 @@ def random_recipes():
             taste_conditions.append('taste = ?')
             params.append(t)
         query += f' AND ({" OR ".join(taste_conditions)})'
-        
+
     allergies = data.get('allergies', '').strip()
     if allergies:
-        allergy_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', allergies) if x.strip()]
+        allergy_list = [x.strip().lower() for x in re.split(r'[,,、\s]+', allergies) if x.strip()]
         for allergen in allergy_list:
             query += ' AND ingredients NOT LIKE ?'
             params.append(f'%{allergen}%')
-    
+
     # Kid filter: age < 9 → no alcohol ever, no spicy unless user explicitly chose 辣
     spicy = data.get('spicy')
     has_kid = data.get('has_kid', False)
@@ -152,12 +152,12 @@ def random_recipes():
         if spicy != 'yes':
             query += ' AND is_spicy = 0'
             spicy = None
-    
+
     if spicy == 'yes':
         query += ' AND is_spicy = 1'
     elif spicy == 'no':
         query += ' AND is_spicy = 0'
-    
+
     nutrition = data.get('nutrition', [])
     # Default: exclude 澱粉質 dishes unless user explicitly selected 澱粉質
     if '澱粉質' not in nutrition:
@@ -165,29 +165,29 @@ def random_recipes():
         params.append('%澱粉質%')
     # Nutrition is handled in meal planning, not as SQL filter (except 澱粉質 exclusion above)
     # We just fetch all matching recipes and plan from them
-    
+
     max_time = data.get('max_time', 120)  # TOTAL time for all dishes (default generous)
-    
+
     prep_early = data.get('prep_early')
     if prep_early == 'yes':
         query += ' AND can_prep_early = 1'
-    
+
     count = min(int(data.get('count', 3)), 10)
     wants_soup = data.get('include_soup', False)
     wants_cold = data.get('include_cold', False)
-    
+
     have_ingredients = data.get('ingredients', '').strip()
     have_list = []
     if have_ingredients:
-        have_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', have_ingredients) if x.strip()]
-    
+        have_list = [x.strip().lower() for x in re.split(r'[,,、\s]+', have_ingredients) if x.strip()]
+
     c.execute(query, params)
     all_candidates = [dict(r) for r in c.fetchall()]
-    
+
     if not all_candidates:
         conn.close()
-        return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
-    
+        return jsonify({'success': False, 'error': '未找到符合條件嘅食譜,試下放寬篩選條件。'})
+
     # Score by ingredient overlap if provided
     if have_list:
         for r in all_candidates:
@@ -197,25 +197,25 @@ def random_recipes():
         has_matches = [r for r in all_candidates if r.get('_score', 0) > 0]
         if has_matches:
             all_candidates = has_matches
-    
+
     # === MEAL PLANNING ALGORITHM ===
     # Nutrition types to cover (one dish per type, no duplicates)
     required_nutrition = list(nutrition) if nutrition else ['菜', '蛋白質']  # default
-    
+
     # Remove soup/cold from candidates if not wanted
     if not wants_soup:
         all_candidates = [r for r in all_candidates if r['has_soup'] == 0]
     if not wants_cold:
         all_candidates = [r for r in all_candidates if r['has_cold_dish'] == 0]
-    
+
     if not all_candidates:
         conn.close()
-        return jsonify({'success': False, 'error': '未找到符合條件嘅食譜，試下放寬篩選條件。'})
-    
+        return jsonify({'success': False, 'error': '未找到符合條件嘅食譜,試下放寬篩選條件。'})
+
     # Build meal plan: distribute nutrition across dishes
     selected = []
     used_nutrition = set()
-    
+
     # Step 1: Pick soup if requested
     if wants_soup:
         soups = [r for r in all_candidates if r['has_soup'] == 1 and r['id'] not in {s['id'] for s in selected}]
@@ -224,7 +224,7 @@ def random_recipes():
             selected.append(soups[0])
             # Don't pick another soup for remaining slots
             all_candidates = [r for r in all_candidates if r['has_soup'] == 0 or r['id'] == soups[0]['id']]
-    
+
     # Step 2: Pick cold dish if requested
     if wants_cold:
         colds = [r for r in all_candidates if r['has_cold_dish'] == 1 and r['id'] not in {s['id'] for s in selected}]
@@ -233,16 +233,16 @@ def random_recipes():
             selected.append(colds[0])
             # Don't pick another cold dish for remaining slots
             all_candidates = [r for r in all_candidates if r['has_cold_dish'] == 0 or r['id'] == colds[0]['id']]
-    
+
     # Step 3: Fill remaining slots with dishes covering remaining nutrition needs
     dishes_needed = count - len(selected)
     remaining_nutrition = [n for n in required_nutrition if n not in used_nutrition]
-    
+
     # Distribute remaining nutrition across remaining slots
     # Shuffle to avoid always picking same order
     if remaining_nutrition:
         random.shuffle(remaining_nutrition)
-    
+
     # Assign nutrition to slots (round-robin if more slots than nutrition)
     slot_nutrition = []
     for i in range(dishes_needed):
@@ -250,32 +250,32 @@ def random_recipes():
             slot_nutrition.append(remaining_nutrition[i % len(remaining_nutrition)])
         else:
             slot_nutrition.append(None)  # any dish fine
-    
+
     # Also distribute cuisines roughly evenly
     shuffled_cuisines = list(cuisines)
     random.shuffle(shuffled_cuisines)
     cuisine_cycle = shuffled_cuisines * 5  # repeat enough times
-    
+
     for slot_idx in range(dishes_needed):
         target_nut = slot_nutrition[slot_idx]
         target_cuisine = cuisine_cycle[slot_idx % len(shuffled_cuisines)]
-        
+
         # Find candidates covering this nutrition and cuisine
-        candidates = [r for r in all_candidates 
+        candidates = [r for r in all_candidates
                      if r['id'] not in {s['id'] for s in selected}
                      and r['cuisine'] == target_cuisine]
-        
+
         # If no match with specific cuisine, try without cuisine constraint
         if not candidates:
             candidates = [r for r in all_candidates
                          if r['id'] not in {s['id'] for s in selected}]
-        
+
         if not candidates:
             continue  # skip if no match
-        
+
         # Sort by score and avoid already-used nutrition when possible
         candidates.sort(key=lambda r: r.get('_score', 0), reverse=True)
-        
+
         # Pick best candidate whose nutrition doesn't overlap too much with used
         best = None
         for c in candidates:
@@ -286,15 +286,15 @@ def random_recipes():
                 for n in new_nuts:
                     used_nutrition.add(n)
                 break
-        
+
         if not best:
             best = candidates[0]  # fallback: pick top scorer
             for n in required_nutrition:
                 if any(n in cn for cn in best['nutrition_tags'].split(',')):
                     used_nutrition.add(n)
-        
+
         selected.append(best)
-    
+
     # Step 4: Check total time constraint
     total_time = sum(r['prep_time_min'] for r in selected)
     if total_time > max_time and len(selected) > 1:
@@ -319,11 +319,11 @@ def random_recipes():
             total_time = sum(r['prep_time_min'] for r in selected)
             if total_time <= max_time:
                 break
-    
+
     if not selected:
         conn.close()
-        return jsonify({'success': False, 'error': '未能組合出合適嘅餐單，試下放寬篩選條件。'})
-    
+        return jsonify({'success': False, 'error': '未能組合出合適嘅餐單,試下放寬篩選條件。'})
+
     # Pure vegetable rule: when total dishes ≤ 4, at most 1 vegetable-primary dish
     # Veg dish = has '菜' in nutrition_tags, no 蕃茄/番茄 in name, no protein keyword in name
     if count <= 4:
@@ -355,7 +355,7 @@ def random_recipes():
                     if total_remaining + alt[0]['prep_time_min'] > max_time:
                         alt.sort(key=lambda r: r['prep_time_min'])
                     selected[pvi] = alt[0]
-    
+
     # Soup dedup safety net: at most 1 soup dish (should already be guaranteed by algorithm)
     if wants_soup:
         soup_indices = [i for i, d in enumerate(selected) if d.get('has_soup') == 1]
@@ -370,7 +370,7 @@ def random_recipes():
                     if total_remaining + alt[0]['prep_time_min'] > max_time:
                         alt.sort(key=lambda r: r['prep_time_min'])
                     selected[si] = alt[0]
-    
+
     random.shuffle(selected)
     result = [{k: r[k] for k in r.keys() if not k.startswith('_')} for r in selected]
     conn.close()
@@ -382,18 +382,18 @@ def replace_dish():
     data = request.get_json() or {}
     conn = _get_db()
     c = conn.cursor()
-    
+
     current_ids = data.get('current_ids', [])
     replace_idx = data.get('replace_index', 0)
-    
+
     if not current_ids:
         conn.close()
         return jsonify({'success': False, 'error': '缺少當前餐單資料。'})
-    
+
     # Build same filters as random_recipes
     query = 'SELECT * FROM recipes WHERE 1=1'
     params = []
-    
+
     cuisines = data.get('cuisines', [])
     if cuisines:
         placeholders = ','.join(['?'] * len(cuisines))
@@ -401,13 +401,13 @@ def replace_dish():
         params.extend(cuisines)
     else:
         cuisines = ['中式', '西式', '日式', '東南亞']
-    
+
     methods = data.get('methods', [])
     if methods:
         placeholders = ','.join(['?'] * len(methods))
         query += f' AND cooking_method IN ({placeholders})'
         params.extend(methods)
-    
+
     tastes = data.get('tastes', [])
     if tastes:
         taste_conditions = []
@@ -415,9 +415,9 @@ def replace_dish():
             taste_conditions.append('taste = ?')
             params.append(t)
         query += f' AND ({" OR ".join(taste_conditions)})'
-    
+
     spicy = data.get('spicy')
-    
+
     # Kid filter: age < 9 → no alcohol ever, no spicy unless user explicitly chose 辣
     has_kid = data.get('has_kid', False)
     kid_age = int(data.get('kid_age', 0)) if data.get('kid_age') else 0
@@ -429,24 +429,24 @@ def replace_dish():
         if spicy != 'yes':
             query += ' AND is_spicy = 0'
             spicy = None
-    
+
     if spicy == 'yes':
         query += ' AND is_spicy = 1'
     elif spicy == 'no':
         query += ' AND is_spicy = 0'
-    
+
     allergies = data.get('allergies', '').strip()
     if allergies:
-        allergy_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', allergies) if x.strip()]
+        allergy_list = [x.strip().lower() for x in re.split(r'[,,、\s]+', allergies) if x.strip()]
         for allergen in allergy_list:
             query += ' AND ingredients NOT LIKE ?'
             params.append(f'%{allergen}%')
-    
+
     max_time = data.get('max_time', 120)
     prep_early = data.get('prep_early')
     if prep_early == 'yes':
         query += ' AND can_prep_early = 1'
-    
+
     count = min(int(data.get('count', 3)), 10)
     wants_soup = data.get('include_soup', False)
     wants_cold = data.get('include_cold', False)
@@ -455,35 +455,35 @@ def replace_dish():
     if '澱粉質' not in nutrition:
         query += ' AND nutrition_tags NOT LIKE ?'
         params.append('%澱粉質%')
-    
+
     have_ingredients = data.get('ingredients', '').strip()
     have_list = []
     if have_ingredients:
-        have_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', have_ingredients) if x.strip()]
-    
+        have_list = [x.strip().lower() for x in re.split(r'[,,、\s]+', have_ingredients) if x.strip()]
+
     c.execute(query, params)
     all_candidates = [dict(r) for r in c.fetchall()]
-    
+
     if not all_candidates:
         conn.close()
         return jsonify({'success': False, 'error': '未找到符合條件嘅食譜。'})
-    
+
     # Score by ingredient overlap
     if have_list:
         for r in all_candidates:
             recipe_ingredients = r['ingredients'].lower()
             r['_score'] = sum(1 for item in have_list if item in recipe_ingredients)
-    
+
     # Exclude current dishes
     exclude_ids = set(current_ids)
     candidates = [r for r in all_candidates if r['id'] not in exclude_ids]
-    
+
     # Also remove soup/cold if not wanted
     if not wants_soup:
         candidates = [r for r in candidates if r['has_soup'] == 0]
     if not wants_cold:
         candidates = [r for r in candidates if r['has_cold_dish'] == 0]
-    
+
     # If soup/cold is included, non-soup/cold slots should NOT get soup/cold replacements
     # Detect actual soup/cold positions from current dishes (may be shuffled)
     soup_slot = -1
@@ -500,17 +500,17 @@ def replace_dish():
         candidates = [r for r in candidates if r['has_soup'] == 0]
     if wants_cold and replace_idx != cold_slot:
         candidates = [r for r in candidates if r['has_cold_dish'] == 0]
-    
+
     # Match type of replaced dish: if replacing soup/cold slot, must be same type
     if wants_soup and replace_idx == soup_slot:
         candidates = [r for r in candidates if r['has_soup'] == 1]
     if wants_cold and replace_idx == cold_slot:
         candidates = [r for r in candidates if r['has_cold_dish'] == 1]
-    
+
     if not candidates:
         conn.close()
         return jsonify({'success': False, 'error': '冇其他合適嘅菜式可以替換。'})
-    
+
     # Determine what the replaced dish was covering (nutrition, cuisine)
     replaced_id = current_ids[replace_idx] if replace_idx < len(current_ids) else None
     replaced_dish = None
@@ -518,7 +518,7 @@ def replace_dish():
         if r['id'] == replaced_id:
             replaced_dish = r
             break
-    
+
     # Veg dish = has '菜' in nutrition_tags, no 蕃茄/番茄 in name, no protein keyword in name
     PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
     TOMATO_KW = ['蕃茄', '番茄']
@@ -534,7 +534,7 @@ def replace_dish():
             if pk in name:
                 return False
         return True
-    
+
     # Count veg dishes in current dishes (excluding the one being replaced)
     pv_count_others = 0
     for i, rid in enumerate(current_ids):
@@ -545,7 +545,7 @@ def replace_dish():
                 if _is_veg_dish(r):
                     pv_count_others += 1
                 break
-    
+
     # Veg dish dedup
     replaced_is_pv = _is_veg_dish(replaced_dish) if replaced_dish else False
     if count <= 4 and pv_count_others >= 1 and not replaced_is_pv:
@@ -553,7 +553,7 @@ def replace_dish():
         if not candidates:
             conn.close()
             return jsonify({'success': False, 'error': '冇其他合適嘅菜式可以替換。'})
-    
+
     # Score candidates: prefer matching nutrition, cuisine, and ingredient overlap
     scored = []
     for c in candidates:
@@ -583,11 +583,11 @@ def replace_dish():
         if c['prep_time_min'] > remaining_time:
             score -= 5
         scored.append((score, c))
-    
+
     scored.sort(key=lambda x: x[0], reverse=True)
-    
+
     # Pick from top candidates randomly to avoid deterministic A↔B cycling
-    # (recycling is OK — A→B→C→A — just avoid immediate A→B→A bounce)
+    # (recycling is OK - A→B→C→A - just avoid immediate A→B→A bounce)
     if scored:
         top_score = scored[0][0]
         # Take all candidates within 1 point of the best score
@@ -595,7 +595,7 @@ def replace_dish():
         best = random.choice(top_candidates)
     else:
         best = candidates[0]
-    
+
     conn.close()
     result = {k: best[k] for k in best.keys() if not k.startswith('_')}
     return jsonify({'success': True, 'dish': result})
@@ -604,10 +604,10 @@ def replace_dish():
 def ai_search():
     data = request.get_json() or {}
     dish_name = data.get('dish_name', '').strip()
-    
+
     if not dish_name:
         return jsonify({'success': False, 'error': '請輸入菜式名稱。'})
-    
+
     if not GEMINI_API_KEY:
         return jsonify({'success': False, 'error': 'AI search not configured.'})
 
@@ -618,7 +618,7 @@ Output ONLY a valid JSON array with 3 recipe objects, no markdown, no explanatio
 
 [
   {{
-    "name": "菜名（變化一）",
+    "name": "菜名(變化一)",
     "cuisine": "中式/西式/日式/東南亞",
     "cooking_method": "蒸/炒/炆/燉/煎/焗/炸",
     "taste": "清淡/濃味/辣",
@@ -665,7 +665,7 @@ Rules:
         if not candidates:
             block_reason = result.get('promptFeedback', {}).get('blockReason', '')
             if block_reason:
-                return jsonify({'success': False, 'error': f'內容被攔截：{block_reason}。請嘗試其他菜式名稱。'})
+                return jsonify({'success': False, 'error': f'內容被攔截:{block_reason}。請嘗試其他菜式名稱。'})
             return jsonify({'success': False, 'error': 'No response from AI.'})
 
         content = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
@@ -673,8 +673,8 @@ Rules:
         if not content:
             finish_reason = candidates[0].get('finishReason', 'unknown')
             if finish_reason == 'SAFETY':
-                return jsonify({'success': False, 'error': 'AI 無法生成此食譜（安全限制）。請嘗試其他菜式名稱。'})
-            return jsonify({'success': False, 'error': 'AI 未返回內容，請再試。'})
+                return jsonify({'success': False, 'error': 'AI 無法生成此食譜(安全限制)。請嘗試其他菜式名稱。'})
+            return jsonify({'success': False, 'error': 'AI 未返回內容,請再試。'})
 
         # Clean JSON
         content = re.sub(r'```json', '', content, flags=re.IGNORECASE)
@@ -701,11 +701,11 @@ Rules:
         return jsonify({'success': True, 'recipes': recipes})
 
     except req.exceptions.Timeout:
-        return jsonify({'success': False, 'error': 'AI 搜尋超時（35秒），請用更簡單嘅菜式名再試。'})
+        return jsonify({'success': False, 'error': 'AI 搜尋超時(35秒),請用更簡單嘅菜式名再試。'})
     except req.exceptions.RequestException as e:
-        return jsonify({'success': False, 'error': f'網絡錯誤，請再試。'})
+        return jsonify({'success': False, 'error': f'網絡錯誤,請再試。'})
     except json.JSONDecodeError:
-        return jsonify({'success': False, 'error': 'AI 回覆格式錯誤，請再試。'})
+        return jsonify({'success': False, 'error': 'AI 回覆格式錯誤,請再試。'})
     except Exception as e:
         print(f'[Cooking] AI search error: {type(e).__name__}: {e}')
         return jsonify({'success': False, 'error': str(e)})
@@ -713,19 +713,19 @@ Rules:
 @cooking_bp.route('/api/save', methods=['POST'])
 def save_recipe():
     data = request.get_json() or {}
-    
+
     if not data.get('name'):
         return jsonify({'success': False, 'error': 'Recipe name required.'})
-    
+
     conn = _get_db()
     c = conn.cursor()
-    
+
     try:
         c.execute('''
             INSERT INTO recipes 
             (name, name_en, cuisine, cooking_method, taste, nutrition_tags, 
-             prep_time_min, can_prep_early, is_spicy, kid_friendly, ingredients, steps, tips, source, servings)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai_custom', ?)
+             prep_time_min, can_prep_early, is_spicy, kid_friendly, ingredients, steps, tips, source, servings, owner_user_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai_custom', ?, ?)
         ''', (
             data['name'],
             data.get('name_en', ''),
@@ -740,17 +740,18 @@ def save_recipe():
             data.get('ingredients', ''),
             data.get('steps', ''),
             data.get('tips', ''),
-            data.get('servings', 4)
+            data.get('servings', 4),
+            data.get('user_key', 'default')
         ))
         conn.commit()
         new_id = c.lastrowid
-        
+
         c.execute('INSERT INTO custom_dishes (name, recipe_id) VALUES (?, ?)',
                   (data['name'], new_id))
         conn.commit()
-        
+
         conn.close()
-        return jsonify({'success': True, 'id': new_id, 'message': '已儲存！'})
+        return jsonify({'success': True, 'id': new_id, 'message': '已儲存!'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
@@ -768,9 +769,17 @@ def get_recipe(recipe_id):
 
 @cooking_bp.route('/api/recipe/<int:recipe_id>/edit', methods=['POST'])
 def update_recipe(recipe_id):
-    if not _admin_check(request):
-        return jsonify({'success': False, 'error': '只有管理員可以編輯食譜庫。'})
     data = request.get_json() or {}
+    user_key = data.get('user_key', '')
+    # Allow admin or recipe owner
+    if not _admin_check(request):
+        conn = _get_db()
+        c = conn.cursor()
+        c.execute('SELECT owner_user_key FROM recipes WHERE id = ?', [recipe_id])
+        row = c.fetchone()
+        conn.close()
+        if not row or row['owner_user_key'] != user_key:
+            return jsonify({'success': False, 'error': '你只能編輯自己嘅食譜。'})
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT id FROM recipes WHERE id = ?', [recipe_id])
@@ -794,15 +803,24 @@ def update_recipe(recipe_id):
         c.execute(sql, params)
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'message': '已更新！'})
+        return jsonify({'success': True, 'message': '已更新!'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
 
 @cooking_bp.route('/api/recipe/<int:recipe_id>/delete', methods=['POST'])
 def delete_recipe(recipe_id):
+    data = request.get_json() or {}
+    user_key = data.get('user_key', '')
+    # Allow admin or recipe owner
     if not _admin_check(request):
-        return jsonify({'success': False, 'error': '只有管理員可以刪除食譜。'})
+        conn = _get_db()
+        c = conn.cursor()
+        c.execute('SELECT owner_user_key FROM recipes WHERE id = ?', [recipe_id])
+        row = c.fetchone()
+        conn.close()
+        if not row or row['owner_user_key'] != user_key:
+            return jsonify({'success': False, 'error': '你只能刪除自己嘅食譜。'})
     conn = _get_db()
     c = conn.cursor()
     c.execute('SELECT id, source, name FROM recipes WHERE id = ?', [recipe_id])
@@ -812,7 +830,7 @@ def delete_recipe(recipe_id):
         return jsonify({'success': False, 'error': 'Recipe not found.'})
     if r['source'] == 'seed':
         conn.close()
-        return jsonify({'success': False, 'error': '不能刪除內置食譜，只可以刪除 AI 加入嘅食譜。'})
+        return jsonify({'success': False, 'error': '不能刪除內置食譜,只可以刪除 AI 加入嘅食譜。'})
     try:
         c.execute('DELETE FROM bookmarks WHERE recipe_id = ?', [recipe_id])
         c.execute('DELETE FROM custom_dishes WHERE recipe_id = ?', [recipe_id])
@@ -847,7 +865,7 @@ def toggle_bookmark():
             c.execute('INSERT INTO bookmarks (recipe_id, user_key) VALUES (?, ?)', [recipe_id, user_key])
             conn.commit()
             conn.close()
-            return jsonify({'success': True, 'bookmarked': True, 'message': '已收藏！'})
+            return jsonify({'success': True, 'bookmarked': True, 'message': '已收藏!'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
@@ -890,34 +908,34 @@ def search_db():
     """Search recipes with text query + advanced filters."""
     data = request.get_json() or {}
     query = data.get('q', '').strip()
-    
+
     conn = _get_db()
     c = conn.cursor()
-    
+
     # Build query
     sql = 'SELECT * FROM recipes WHERE 1=1'
     params = []
-    
+
     # Text search
     if query:
         like = f'%{query}%'
         sql += ' AND (name LIKE ? OR ingredients LIKE ? OR cuisine LIKE ?)'
         params.extend([like, like, like])
-    
+
     # Cuisine filter
     cuisines = data.get('cuisines', [])
     if cuisines:
         placeholders = ','.join(['?'] * len(cuisines))
         sql += f' AND cuisine IN ({placeholders})'
         params.extend(cuisines)
-    
+
     # Method filter
     methods = data.get('methods', [])
     if methods:
         placeholders = ','.join(['?'] * len(methods))
         sql += f' AND cooking_method IN ({placeholders})'
         params.extend(methods)
-    
+
     # Taste filter
     tastes = data.get('tastes', [])
     if tastes:
@@ -926,7 +944,7 @@ def search_db():
             taste_conds.append('taste = ?')
             params.append(t)
         sql += f' AND ({" OR ".join(taste_conds)})'
-    
+
     # Nutrition filter (dish has ANY of the selected tags)
     nutrition = data.get('nutrition', [])
     if nutrition:
@@ -935,38 +953,38 @@ def search_db():
             nut_conds.append('nutrition_tags LIKE ?')
             params.append(f'%{n}%')
         sql += f' AND ({" OR ".join(nut_conds)})'
-    
+
     # Max time
     max_time = data.get('max_time')
     if max_time:
         sql += ' AND prep_time_min <= ?'
         params.append(int(max_time))
-    
+
     # Kid friendly
     kid_friendly = data.get('kid_friendly')
     if kid_friendly == 'yes':
         sql += ' AND kid_friendly = 1'
     elif kid_friendly == 'no':
         sql += ' AND kid_friendly = 0'
-    
+
     # Prep early
     prep_early = data.get('prep_early')
     if prep_early == 'yes':
         sql += ' AND can_prep_early = 1'
-    
+
     # Soup / cold dish
     if data.get('has_soup'):
         sql += ' AND has_soup = 1'
     if data.get('has_cold'):
         sql += ' AND has_cold_dish = 1'
-    
+
     # Source filter
     sources = data.get('sources', [])
     if sources:
         placeholders = ','.join(['?'] * len(sources))
         sql += f' AND source IN ({placeholders})'
         params.extend(sources)
-    
+
     # Order: by name match relevance if text query, else by name
     if query:
         like2 = f'%{query}%'
@@ -974,7 +992,7 @@ def search_db():
         params.append(like2)
     else:
         sql += ' ORDER BY name LIMIT 30'
-    
+
     c.execute(sql, params)
     results = [dict(r) for r in c.fetchall()]
     conn.close()
@@ -989,7 +1007,7 @@ def recipe_images():
     dishes = data.get('dishes', [])
     if not dishes:
         return jsonify({'success': True, 'images': {}})
-    
+
     # Batch translate Chinese dish names to English via Gemini
     search_terms = {}
     if GEMINI_API_KEY and dishes:
@@ -1013,7 +1031,7 @@ Example format:
                     search_terms = json.loads(raw[s:e])
         except Exception:
             pass
-    
+
     images = {}
     for dish in dishes[:6]:
         # Use English translation if available, otherwise original name
@@ -1032,7 +1050,7 @@ Example format:
                     images[dish] = src
         except Exception:
             pass
-    
+
     return jsonify({'success': True, 'images': images})
 
 @cooking_bp.route('/api/expand-recipe', methods=['POST'])
@@ -1078,7 +1096,7 @@ Output ONLY valid JSON:
         s = raw.find('{'); e = raw.rfind('}') + 1
         if s < 0 or e <= 0:
             return jsonify({'success': False, 'error': 'AI response format error.'})
-        
+
         json_str = raw[s:e]
         # Try to parse, with simple repair for unescaped newlines
         try:
@@ -1089,13 +1107,13 @@ Output ONLY valid JSON:
                 lambda m: '"' + m.group(1).replace('\n', '\\n').replace('\r', '') + '"',
                 json_str)
             recipe = json.loads(fixed)
-        
+
         return jsonify({'success': True, 'recipe': recipe})
 
     except req.exceptions.Timeout:
-        return jsonify({'success': False, 'error': 'AI 搜尋超時，請再試。'})
+        return jsonify({'success': False, 'error': 'AI 搜尋超時,請再試。'})
     except json.JSONDecodeError:
-        return jsonify({'success': False, 'error': 'AI 回覆格式錯誤，請再試。'})
+        return jsonify({'success': False, 'error': 'AI 回覆格式錯誤,請再試。'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -1205,7 +1223,7 @@ def user_recipes():
             conn.commit()
             new_id = c.lastrowid
             conn.close()
-            return jsonify({'success': True, 'id': new_id, 'message': '已創建！'})
+            return jsonify({'success': True, 'id': new_id, 'message': '已創建!'})
         except Exception as e:
             conn.close()
             return jsonify({'success': False, 'error': str(e)})
@@ -1239,7 +1257,7 @@ def edit_user_recipe(recipe_id):
         params.append(recipe_id)
         sql = f'UPDATE user_recipes SET {", ".join(updates)} WHERE id = ?'
         c.execute(sql, params)
-        
+
         # If this recipe was added to the main DB, sync changes there too
         c.execute('SELECT db_recipe_id FROM user_recipes WHERE id = ?', [recipe_id])
         row = c.fetchone()
@@ -1256,10 +1274,10 @@ def edit_user_recipe(recipe_id):
                 db_params.append(row['db_recipe_id'])
                 db_sql = f'UPDATE recipes SET {", ".join(db_updates)} WHERE id = ?'
                 c.execute(db_sql, db_params)
-        
+
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'message': '已更新！'})
+        return jsonify({'success': True, 'message': '已更新!'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
@@ -1308,19 +1326,19 @@ def add_user_recipe_to_db(recipe_id):
     try:
         c.execute('''
             INSERT INTO recipes (name, cuisine, cooking_method, taste, nutrition_tags,
-                prep_time_min, can_prep_early, is_spicy, kid_friendly, ingredients, steps, tips, source, servings, image_base64)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?, ?)
+                prep_time_min, can_prep_early, is_spicy, kid_friendly, ingredients, steps, tips, source, servings, image_base64, owner_user_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user_created', ?, ?, ?)
         ''', (
             r['name'], r['cuisine'], r['cooking_method'], r['taste'],
             r['nutrition_tags'], r['prep_time_min'], r['can_prep_early'],
             r['is_spicy'], r['kid_friendly'], r['ingredients'], r['steps'], r['tips'], r['servings'],
-            r['image_base64']
+            r['image_base64'], user_key
         ))
         new_id = c.lastrowid
         c.execute('UPDATE user_recipes SET db_recipe_id = ? WHERE id = ?', [new_id, recipe_id])
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'id': new_id, 'message': f'「{r["name"]}」已加入食譜庫！'})
+        return jsonify({'success': True, 'id': new_id, 'message': f'「{r["name"]}」已加入食譜庫!'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
@@ -1461,7 +1479,7 @@ def admin_delete_user(user_key):
         c.execute('DELETE FROM allowed_users WHERE user_key = ?', [user_key])
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'message': f'已刪除 {user_key}（{bm} bookmarks, {ur} recipes）'})
+        return jsonify({'success': True, 'message': f'已刪除 {user_key}({bm} bookmarks, {ur} recipes)'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
@@ -1510,7 +1528,7 @@ def admin_edit_recipe(recipe_id):
         c.execute(sql, params)
         conn.commit()
         conn.close()
-        return jsonify({'success': True, 'message': '已更新！'})
+        return jsonify({'success': True, 'message': '已更新!'})
     except Exception as e:
         conn.close()
         return jsonify({'success': False, 'error': str(e)})
