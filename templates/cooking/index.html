@@ -897,6 +897,8 @@
                 const result = await res.json();
                 
                 if (result.success) {
+                    window._currentDishes = result.dishes;
+                    window._lastSearchParams = data;
                     renderResults(result.dishes);
                     document.getElementById('regenerate-btn').style.display = 'block';
                 } else {
@@ -910,8 +912,8 @@
         
         function renderResults(dishes) {
             const container = document.getElementById('results');
-            container.innerHTML = dishes.map(r => `
-                <div class="recipe-card">
+            container.innerHTML = dishes.map((r, i) => `
+                <div class="recipe-card" data-index="${i}">
                     <div class="recipe-body">
                     <div style="display:flex;justify-content:space-between;align-items:start;">
                         <h3 style="margin:0;">${r.name}</h3>
@@ -931,7 +933,10 @@
                     <div class="recipe-ingredients"><strong>材料：</strong>${r.ingredients}</div>
                     <div class="recipe-steps"><strong>步驟：</strong>\n${r.steps}</div>
                     ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
-                    <div style="text-align:right;margin-top:8px;"><button class="btn btn-secondary expand-btn" data-name="${r.name.replace(/"/g, '&quot;')}" data-ingredients="${(r.ingredients || '').replace(/"/g, '&quot;')}" data-steps="${(r.steps || '').replace(/"/g, '&quot;')}" data-cuisine="${(r.cuisine || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;font-size:0.75rem;">🤖 AI 綱絡搜尋</button></div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary replace-btn" onclick="replaceDish(${i})" style="padding:4px 10px;font-size:0.75rem;">🔄 換一個</button>
+                        <button class="btn btn-secondary expand-btn" data-name="${r.name.replace(/"/g, '&quot;')}" data-ingredients="${(r.ingredients || '').replace(/"/g, '&quot;')}" data-steps="${(r.steps || '').replace(/"/g, '&quot;')}" data-cuisine="${(r.cuisine || '').replace(/"/g, '&quot;')}" style="padding:4px 10px;font-size:0.75rem;">🤖 AI 綱絡搜尋</button>
+                    </div>
                     </div>
                 
                 </div>
@@ -939,6 +944,33 @@
             checkBookmarkStatus(dishes.map(d => d.id));
             loadRecipeImages(dishes.map(d => d.name));
             container.scrollIntoView({behavior: 'smooth'});
+        }
+        
+        async function replaceDish(index) {
+            if (!window._currentDishes || !window._lastSearchParams) {
+                showToast('請先生成菜式先');
+                return;
+            }
+            const card = document.querySelector(`.recipe-card[data-index="${index}"]`);
+            const replaceBtn = card ? card.querySelector('.replace-btn') : null;
+            if (replaceBtn) replaceBtn.textContent = '⏳';
+            const params = { ...window._lastSearchParams, current_ids: window._currentDishes.map(d => d.id), replace_index: index };
+            try {
+                const res = await fetch('/cooking-ideas/api/replace', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(params)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    window._currentDishes[index] = result.dish;
+                    renderResults(window._currentDishes);
+                } else {
+                    showToast(result.error || '換唔到，試下重新生成');
+                    if (replaceBtn) replaceBtn.textContent = '🔄 換一個';
+                }
+            } catch(e) {
+                showToast('網絡錯誤');
+                if (replaceBtn) replaceBtn.textContent = '🔄 換一個';
+            }
         }
         
         // ===== TAB 2: AI SEARCH =====

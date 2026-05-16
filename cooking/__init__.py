@@ -239,10 +239,209 @@ def random_recipes():
         conn.close()
         return jsonify({'success': False, 'error': '未能組合出合適嘅餐單，試下放寬篩選條件。'})
     
+    # Pure vegetable rule: when total dishes ≤ 4, at most 1 pure vegetable dish
+    # (蕃茄/番茄 is NOT considered pure vegetable — can coexist with 蒜蓉炒菜心 etc.)
+    if count <= 4:
+        PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
+        TOMATO_KW = ['蕃茄', '番茄']
+        def _is_pure_veg(dish):
+            name = dish.get('name', '')
+            nt = dish.get('nutrition_tags', '')
+            if '菜' not in nt:
+                return False
+            for tk in TOMATO_KW:
+                if tk in name:
+                    return False
+            for pk in PROTEIN_KW:
+                if pk in name:
+                    return False
+            return True
+        pv_indices = [i for i, d in enumerate(selected) if _is_pure_veg(d)]
+        if len(pv_indices) > 1:
+            # Keep first pure veg, replace others with non-pure-veg alternatives
+            for pvi in pv_indices[1:]:
+                alt = [r for r in all_candidates
+                       if r['id'] not in {s['id'] for s in selected}
+                       and not _is_pure_veg(r)]
+                if alt:
+                    alt.sort(key=lambda r: r.get('_score', 0), reverse=True)
+                    # Prefer fast dishes if time is tight
+                    total_remaining = sum(d['prep_time_min'] for i, d in enumerate(selected) if i != pvi)
+                    if total_remaining + alt[0]['prep_time_min'] > max_time:
+                        alt.sort(key=lambda r: r['prep_time_min'])
+                    selected[pvi] = alt[0]
+    
     random.shuffle(selected)
     result = [{k: r[k] for k in r.keys() if not k.startswith('_')} for r in selected]
     conn.close()
     return jsonify({'success': True, 'dishes': result, 'total_time': sum(r['prep_time_min'] for r in selected)})
+
+@cooking_bp.route('/api/replace', methods=['POST'])
+def replace_dish():
+    """Replace a single dish in the current meal plan while respecting overall composition."""
+    data = request.get_json() or {}
+    conn = _get_db()
+    c = conn.cursor()
+    
+    current_ids = data.get('current_ids', [])
+    replace_idx = data.get('replace_index', 0)
+    
+    if not current_ids:
+        conn.close()
+        return jsonify({'success': False, 'error': '缺少當前餐單資料。'})
+    
+    # Build same filters as random_recipes
+    query = 'SELECT * FROM recipes WHERE 1=1'
+    params = []
+    
+    cuisines = data.get('cuisines', [])
+    if cuisines:
+        placeholders = ','.join(['?'] * len(cuisines))
+        query += f' AND cuisine IN ({placeholders})'
+        params.extend(cuisines)
+    else:
+        cuisines = ['中式', '西式', '日式', '東南亞']
+    
+    methods = data.get('methods', [])
+    if methods:
+        placeholders = ','.join(['?'] * len(methods))
+        query += f' AND cooking_method IN ({placeholders})'
+        params.extend(methods)
+    
+    tastes = data.get('tastes', [])
+    if tastes:
+        taste_conditions = []
+        for t in tastes:
+            taste_conditions.append('taste = ?')
+            params.append(t)
+        query += f' AND ({" OR ".join(taste_conditions)})'
+    
+    spicy = data.get('spicy')
+    if spicy == 'yes':
+        query += ' AND is_spicy = 1'
+    elif spicy == 'no':
+        query += ' AND is_spicy = 0'
+    
+    allergies = data.get('allergies', '').strip()
+    if allergies:
+        allergy_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', allergies) if x.strip()]
+        for allergen in allergy_list:
+            query += ' AND ingredients NOT LIKE ?'
+            params.append(f'%{allergen}%')
+    
+    max_time = data.get('max_time', 120)
+    prep_early = data.get('prep_early')
+    if prep_early == 'yes':
+        query += ' AND can_prep_early = 1'
+    
+    count = min(int(data.get('count', 3)), 10)
+    wants_soup = data.get('include_soup', False)
+    wants_cold = data.get('include_cold', False)
+    nutrition = data.get('nutrition', ['菜', '蛋白質'])
+    
+    have_ingredients = data.get('ingredients', '').strip()
+    have_list = []
+    if have_ingredients:
+        have_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', have_ingredients) if x.strip()]
+    
+    c.execute(query, params)
+    all_candidates = [dict(r) for r in c.fetchall()]
+    
+    if not all_candidates:
+        conn.close()
+        return jsonify({'success': False, 'error': '未找到符合條件嘅食譜。'})
+    
+    # Score by ingredient overlap
+    if have_list:
+        for r in all_candidates:
+            recipe_ingredients = r['ingredients'].lower()
+            r['_score'] = sum(1 for item in have_list if item in recipe_ingredients)
+    
+    # Exclude current dishes
+    exclude_ids = set(current_ids)
+    candidates = [r for r in all_candidates if r['id'] not in exclude_ids]
+    
+    # Also remove soup/cold if not wanted
+    if not wants_soup:
+        candidates = [r for r in candidates if r['has_soup'] == 0]
+    if not wants_cold:
+        candidates = [r for r in candidates if r['has_cold_dish'] == 0]
+    
+    # Match type of replaced dish: soup at index 0, cold at index 1 (or 0 if no soup)
+    if wants_soup and replace_idx == 0:
+        candidates = [r for r in candidates if r['has_soup'] == 1]
+    cold_idx = 1 if wants_soup else 0
+    if wants_cold and replace_idx == cold_idx:
+        candidates = [r for r in candidates if r['has_cold_dish'] == 1]
+    
+    if not candidates:
+        conn.close()
+        return jsonify({'success': False, 'error': '冇其他合適嘅菜式可以替換。'})
+    
+    # Determine what the replaced dish was covering (nutrition, cuisine)
+    replaced_id = current_ids[replace_idx] if replace_idx < len(current_ids) else None
+    replaced_dish = None
+    for r in all_candidates:
+        if r['id'] == replaced_id:
+            replaced_dish = r
+            break
+    
+    # Pure vegetable check helpers
+    PROTEIN_KW = ['蛋', '肉', '魚', '蝦', '蟹', '雞', '豬', '牛', '羊']
+    TOMATO_KW = ['蕃茄', '番茄']
+    def _is_pure_veg(dish):
+        name = dish.get('name', '')
+        nt = dish.get('nutrition_tags', '')
+        if '菜' not in nt:
+            return False
+        for tk in TOMATO_KW:
+            if tk in name:
+                return False
+        for pk in PROTEIN_KW:
+            if pk in name:
+                return False
+        return True
+    
+    # Count pure veg in current dishes (excluding the one being replaced)
+    pv_count_others = 0
+    for i, rid in enumerate(current_ids):
+        if i == replace_idx:
+            continue
+        for r in all_candidates:
+            if r['id'] == rid:
+                if _is_pure_veg(r):
+                    pv_count_others += 1
+                break
+    
+    # Score candidates: prefer matching nutrition, cuisine, and ingredient overlap
+    scored = []
+    for c in candidates:
+        score = c.get('_score', 0)
+        # Prefer same cuisine as replaced dish
+        if replaced_dish and c['cuisine'] == replaced_dish.get('cuisine'):
+            score += 2
+        # Prefer similar cooking method
+        if replaced_dish and c['cooking_method'] == replaced_dish.get('cooking_method'):
+            score += 1
+        # Avoid new dish being pure veg if we already have one
+        if count <= 4 and _is_pure_veg(c) and pv_count_others >= 1:
+            score -= 10  # Strong penalty
+        # Respect time: remaining time budget
+        remaining_time = max_time - sum(
+            r['prep_time_min'] for i, rid in enumerate(current_ids)
+            for r in all_candidates if r['id'] == rid and i != replace_idx
+        )
+        if c['prep_time_min'] > remaining_time:
+            score -= 5
+        scored.append((score, c))
+    
+    scored.sort(key=lambda x: x[0], reverse=True)
+    
+    best = scored[0][1] if scored else candidates[0]
+    
+    conn.close()
+    result = {k: best[k] for k in best.keys() if not k.startswith('_')}
+    return jsonify({'success': True, 'dish': result})
 
 @cooking_bp.route('/api/search', methods=['POST'])
 def ai_search():
