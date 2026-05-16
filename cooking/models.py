@@ -110,8 +110,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS bookmarks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             recipe_id INTEGER NOT NULL,
-            user_key TEXT DEFAULT ''default'',
-            created_at TEXT DEFAULT (datetime(''now'')),
+            user_key TEXT DEFAULT 'default',
+            created_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (recipe_id) REFERENCES recipes(id),
             UNIQUE(recipe_id, user_key)
         )
