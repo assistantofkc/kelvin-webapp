@@ -279,6 +279,21 @@ def random_recipes():
                         alt.sort(key=lambda r: r['prep_time_min'])
                     selected[pvi] = alt[0]
     
+    # Soup dedup safety net: at most 1 soup dish (should already be guaranteed by algorithm)
+    if wants_soup:
+        soup_indices = [i for i, d in enumerate(selected) if d.get('has_soup') == 1]
+        if len(soup_indices) > 1:
+            for si in soup_indices[1:]:
+                alt = [r for r in all_candidates
+                       if r['id'] not in {s['id'] for s in selected}
+                       and r.get('has_soup') == 0]
+                if alt:
+                    alt.sort(key=lambda r: r.get('_score', 0), reverse=True)
+                    total_remaining = sum(d['prep_time_min'] for i, d in enumerate(selected) if i != si)
+                    if total_remaining + alt[0]['prep_time_min'] > max_time:
+                        alt.sort(key=lambda r: r['prep_time_min'])
+                    selected[si] = alt[0]
+    
     random.shuffle(selected)
     result = [{k: r[k] for k in r.keys() if not k.startswith('_')} for r in selected]
     conn.close()
@@ -386,6 +401,14 @@ def replace_dish():
     if not wants_soup:
         candidates = [r for r in candidates if r['has_soup'] == 0]
     if not wants_cold:
+        candidates = [r for r in candidates if r['has_cold_dish'] == 0]
+    
+    # If soup/cold is included, non-soup/cold slots should NOT get soup/cold replacements
+    soup_slot = 0 if wants_soup else -1
+    cold_slot = (1 if wants_soup else 0) if wants_cold else -1
+    if wants_soup and replace_idx != soup_slot:
+        candidates = [r for r in candidates if r['has_soup'] == 0]
+    if wants_cold and replace_idx != cold_slot:
         candidates = [r for r in candidates if r['has_cold_dish'] == 0]
     
     # Match type of replaced dish: soup at index 0, cold at index 1 (or 0 if no soup)
