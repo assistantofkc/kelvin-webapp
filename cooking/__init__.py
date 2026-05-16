@@ -480,6 +480,14 @@ def replace_dish():
         # Prefer similar cooking method
         if replaced_dish and c['cooking_method'] == replaced_dish.get('cooking_method'):
             score += 1
+        # Prefer same dish type: 湯→湯, pure veg→pure veg, 澱粉質→澱粉質
+        if replaced_dish:
+            if _is_pure_veg(replaced_dish) and _is_pure_veg(c):
+                score += 4
+            replaced_starch = '澱粉質' in replaced_dish.get('nutrition_tags', '')
+            cand_starch = '澱粉質' in c.get('nutrition_tags', '')
+            if replaced_starch and cand_starch:
+                score += 4
         # Avoid new dish being pure veg if we already have one
         if count <= 4 and _is_pure_veg(c) and pv_count_others >= 1:
             score -= 10  # Strong penalty
