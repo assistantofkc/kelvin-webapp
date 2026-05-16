@@ -1280,7 +1280,7 @@ def admin_list_users():
         return jsonify({'success': False, 'error': '密碼錯誤'})
     conn = _get_db()
     c = conn.cursor()
-    users = {}
+    users = {'default': {'bookmarks': 0, 'recipes': 0}}
     c.execute("SELECT DISTINCT user_key, COUNT(*) as cnt FROM bookmarks GROUP BY user_key")
     for r in c.fetchall():
         users[r['user_key']] = {'bookmarks': r['cnt'], 'recipes': 0}
