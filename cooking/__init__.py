@@ -63,19 +63,31 @@ def random_recipes():
             taste_conditions.append('taste = ?')
             params.append(t)
         query += f' AND ({" OR ".join(taste_conditions)})'
-    
-    spicy = data.get('spicy')
-    if spicy == 'yes':
-        query += ' AND is_spicy = 1'
-    elif spicy == 'no':
-        query += ' AND is_spicy = 0'
-    
+        
     allergies = data.get('allergies', '').strip()
     if allergies:
         allergy_list = [x.strip().lower() for x in re.split(r'[,，、\s]+', allergies) if x.strip()]
         for allergen in allergy_list:
             query += ' AND ingredients NOT LIKE ?'
             params.append(f'%{allergen}%')
+    
+    # Kid filter: age < 9 → no alcohol ever, no spicy unless user explicitly chose 辣
+    spicy = data.get('spicy')
+    has_kid = data.get('has_kid', False)
+    kid_age = int(data.get('kid_age', 0)) if data.get('kid_age') else 0
+    if has_kid and kid_age < 9:
+        ALCOHOL_KW = ['%酒%', '%味醂%', '%清酒%', '%花雕%', '%米酒%', '%啤酒%', '%紹興%', '%料酒%']
+        for kw in ALCOHOL_KW:
+            query += ' AND ingredients NOT LIKE ? AND steps NOT LIKE ?'
+            params.extend([kw, kw])
+        if spicy != 'yes':
+            query += ' AND is_spicy = 0'
+            spicy = None
+    
+    if spicy == 'yes':
+        query += ' AND is_spicy = 1'
+    elif spicy == 'no':
+        query += ' AND is_spicy = 0'
     
     nutrition = data.get('nutrition', [])
     # Nutrition is handled in meal planning, not as SQL filter
@@ -313,6 +325,19 @@ def replace_dish():
         query += f' AND ({" OR ".join(taste_conditions)})'
     
     spicy = data.get('spicy')
+    
+    # Kid filter: age < 9 → no alcohol ever, no spicy unless user explicitly chose 辣
+    has_kid = data.get('has_kid', False)
+    kid_age = int(data.get('kid_age', 0)) if data.get('kid_age') else 0
+    if has_kid and kid_age < 9:
+        ALCOHOL_KW = ['%酒%', '%味醂%', '%清酒%', '%花雕%', '%米酒%', '%啤酒%', '%紹興%', '%料酒%']
+        for kw in ALCOHOL_KW:
+            query += ' AND ingredients NOT LIKE ? AND steps NOT LIKE ?'
+            params.extend([kw, kw])
+        if spicy != 'yes':
+            query += ' AND is_spicy = 0'
+            spicy = None
+    
     if spicy == 'yes':
         query += ' AND is_spicy = 1'
     elif spicy == 'no':
