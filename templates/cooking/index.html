@@ -1551,7 +1551,6 @@
             document.body.style.overflow = 'hidden';
             document.body.style.position = 'fixed';
             document.body.style.width = '100%';
-            document.getElementById('admin-password').value = '';
             document.getElementById('admin-content').innerHTML = `
                 <div style="margin-bottom:12px;">
                     <label>請輸入密碼</label>
@@ -1559,6 +1558,7 @@
                     <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;">登入</button>
                 </div>
             `;
+            setTimeout(() => document.getElementById('admin-password').focus(), 100);
         }
         
         function closeAdminModal() {
