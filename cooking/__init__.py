@@ -1262,7 +1262,7 @@ def _admin_check(request):
         if stored.startswith('$2'):
             return bcrypt.checkpw(password.encode(), stored.encode())
     # Fallback: compare with env var (and store hash for future)
-    admin_pw = os.environ.get('COOKING_ADMIN_PASSWORD', 'cooking123')
+    admin_pw = os.environ.get('COOKING_ADMIN_PASSWORD', '')
     if password == admin_pw:
         # Auto-generate hash for future use
         try:
