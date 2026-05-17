@@ -1118,6 +1118,30 @@ Output ONLY valid JSON:
                 json_str)
             recipe = json.loads(fixed)
 
+        # Normalize Gemini output: convert array formats to strings
+        if isinstance(recipe.get('ingredients'), list):
+            items = recipe['ingredients']
+            if items and isinstance(items[0], dict) and 'item' in items[0]:
+                recipe['ingredients'] = '\n'.join(
+                    f"{it.get('item','')} {it.get('quantity','')}{it.get('unit','')}".strip()
+                    for it in items
+                )
+            else:
+                recipe['ingredients'] = '\n'.join(str(it) for it in items)
+        if isinstance(recipe.get('steps'), list):
+            st = recipe['steps']
+            if st and isinstance(st[0], dict):
+                inst_key = 'instruction' if 'instruction' in st[0] else ('description' if 'description' in st[0] else None)
+                if inst_key:
+                    recipe['steps'] = '\n'.join(
+                        f"{s.get('step_number',i+1)}. {s.get(inst_key,'')}"
+                        for i, s in enumerate(st)
+                    )
+                else:
+                    recipe['steps'] = '\n'.join(str(s) for s in st)
+            else:
+                recipe['steps'] = '\n'.join(str(s) for s in st)
+
         return jsonify({'success': True, 'recipe': recipe})
 
     except req.exceptions.Timeout:
