@@ -62,13 +62,19 @@ def rate_limit(max_requests, window_seconds, key_fn=None):
 # Auto-pull latest code on EVERY request (ensures latest code is always loaded)
 @app.before_request
 def auto_git_pull():
+    import os as _os
+    app_dir = _os.path.dirname(__file__)
+    lock_file = _os.path.join(app_dir, '.git', 'index.lock')
     try:
-        r = subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=30)
+        # Remove stale lock file if it exists
+        if _os.path.exists(lock_file):
+            _os.remove(lock_file)
+        r = subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=app_dir, capture_output=True, text=True, timeout=30)
         if r.returncode != 0:
             with open('/tmp/auto_pull.log', 'a') as f:
                 f.write(f'FETCH FAIL [{r.returncode}]: {r.stderr.strip()}\n')
             return
-        r = subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=30)
+        r = subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=app_dir, capture_output=True, text=True, timeout=30)
         with open('/tmp/auto_pull.log', 'a') as f:
             f.write(f'OK: {r.stdout.strip()}\n')
     except Exception as e:
