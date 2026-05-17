@@ -60,13 +60,23 @@ def rate_limit(max_requests, window_seconds, key_fn=None):
     return decorator
 
 # Auto-pull latest code on EVERY request (ensures latest code is always loaded)
-# DISABLED temporarily - git pull failing on PA, relying on direct API uploads
-# @app.before_request
-# def auto_git_pull():
-#     try:
-#         subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
-#         subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
-#     except: pass
+@app.before_request
+def auto_git_pull():
+    import logging
+    logger = logging.getLogger('auto_pull')
+    try:
+        r = subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+        if r.returncode != 0:
+            with open('/tmp/auto_pull.log', 'a') as f:
+                f.write(f'FETCH FAIL: {r.stderr.strip()}\n')
+            return
+        r = subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+        if r.returncode != 0:
+            with open('/tmp/auto_pull.log', 'a') as f:
+                f.write(f'RESET FAIL: {r.stderr.strip()}\n')
+    except Exception as e:
+        with open('/tmp/auto_pull.log', 'a') as f:
+            f.write(f'EXCEPTION: {e}\n')
 
 # App version
 APP_VERSION = 'v7.77'
