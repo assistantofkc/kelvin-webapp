@@ -1630,18 +1630,15 @@
             loadBookmarks();
         }
         
-        // ===== AI EXPAND RECIPE =====
+        // ===== AI SEARCH FROM DISH =====
         document.addEventListener('click', function(e) {
             const btn = e.target.closest('.expand-btn');
             if (!btn) return;
             const name = btn.dataset.name;
-            const ingredients = btn.dataset.ingredients || '';
-            const steps = btn.dataset.steps || '';
-            const cuisine = btn.dataset.cuisine || '';
-            expandRecipe(name, ingredients, steps, cuisine);
+            if (name) expandRecipe(name);
         });
         
-        async function expandRecipe(name, ingredients, steps, cuisine) {
+        async function expandRecipe(name) {
             const modal = document.getElementById('expand-modal');
             const content = document.getElementById('expand-content');
             modal.classList.add('show');
@@ -1650,31 +1647,43 @@
             document.body.style.width = '100%';
             content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 網絡搜尋中...</div></div>';
             try {
-                const res = await fetch('/cooking-ideas/api/expand-recipe', {
+                const res = await fetch('/cooking-ideas/api/search', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({name: name, ingredients: ingredients, steps: steps, cuisine: cuisine})
+                    body: JSON.stringify({dish_name: name})
                 });
                 const result = await res.json();
                 if (result.success) {
-                    const r = result.recipe;
-                    // The AI search returns flat strings for ingredients and steps
-                    const ingText = (r.ingredients || '').replace(/\n/g, '<br>');
-                    const stepsRaw = (r.steps || '').replace(/\n/g, '\n');
-                    // Bold step numbers: "1. xxx" -> "<strong>1.</strong> xxx"
-                    const stepText = stepsRaw.split('\n').map(s => {
-                        const m = s.match(/^(\d+)\.\s*/);
-                        if (m) return `<div style="margin-bottom:10px;"><strong>${m[1]}.</strong> ${s.substring(m[0].length)}</div>`;
-                        return s ? `<div style="margin-bottom:10px;">${s}</div>` : '';
+                    const recipes = result.recipes || (result.recipe ? [result.recipe] : []);
+                    if (recipes.length === 0) {
+                        content.innerHTML = '<div style="color:#ef4444;text-align:center;padding:20px;">AI 未返回結果</div>';
+                        return;
+                    }
+                    content.innerHTML = recipes.map((r, i) => {
+                        const ingText = (r.ingredients || '').replace(/\n/g, '<br>');
+                        const stepsRaw = (r.steps || '').replace(/\n/g, '\n');
+                        const stepText = stepsRaw.split('\n').map(s => {
+                            const m = s.match(/^(\d+)\.\s*/);
+                            if (m) return `<div style="margin-bottom:10px;"><strong>${m[1]}.</strong> ${s.substring(m[0].length)}</div>`;
+                            return s ? `<div style="margin-bottom:10px;">${s}</div>` : '';
+                        }).join('');
+                        return `
+                            <div class="recipe-card" style="margin-bottom:16px;">
+                                <div class="recipe-body">
+                                <h3 style="margin:0 0 8px 0;">🤖 ${r.name || name} <span style="font-size:0.7rem;color:var(--text-secondary);">#${i+1}</span></h3>
+                                <div class="recipe-meta">
+                                    <span class="recipe-tag">${r.cuisine || ''}</span>
+                                    <span class="recipe-tag">${r.cooking_method || ''}</span>
+                                    <span class="recipe-tag">${r.taste || ''}</span>
+                                    <span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span>
+                                    ${r.kid_friendly ? '<span class="recipe-tag" style="background:rgba(34,197,94,0.2);color:#4ade80;">👶 適合小孩</span>' : ''}
+                                </div>
+                                <div class="recipe-ingredients"><strong>材料：</strong><br>${ingText}</div>
+                                <div class="recipe-steps"><strong>步驟：</strong><br>${stepText}</div>
+                                ${r.tips ? `<div class="recipe-tips">💡 ${r.tips}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
                     }).join('');
-                    content.innerHTML = `
-                        <div style="font-size:1.05rem;">
-                        <h3 style="margin-bottom:8px;"><strong>${r.name || name}</strong></h3>
-                        <div class="recipe-meta"><span class="recipe-tag">⏱ ${r.prep_time_min || '?'}分鐘</span></div>
-                        <div style="margin:12px 0;"><strong style="font-size:1rem;">材料：</strong><br><strong style="line-height:2;">${ingText}</strong></div>
-                        <div style="margin:12px 0;"><strong style="font-size:1rem;">步驟：</strong><br>${stepText}</div>
-                        ${r.tips ? `<div style="margin:12px 0;"><strong style="font-size:1rem;">💡 小貼士：</strong><br><span style="line-height:1.8;">${r.tips.replace(/\n/g, '<br>')}</span></div>` : ''}
-                        </div>
-                    `;
                 } else {
                     content.innerHTML = `<div style="color:#ef4444;text-align:center;padding:20px;">${result.error || '生成失敗'}</div>`;
                 }
