@@ -60,12 +60,13 @@ def rate_limit(max_requests, window_seconds, key_fn=None):
     return decorator
 
 # Auto-pull latest code on EVERY request (ensures latest code is always loaded)
-@app.before_request
-def auto_git_pull():
-    try:
-        subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
-        subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
-    except: pass
+# DISABLED temporarily - git pull failing on PA, relying on direct API uploads
+# @app.before_request
+# def auto_git_pull():
+#     try:
+#         subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+#         subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+#     except: pass
 
 # App version
 APP_VERSION = 'v7.77'
