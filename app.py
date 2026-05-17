@@ -63,7 +63,8 @@ def rate_limit(max_requests, window_seconds, key_fn=None):
 @app.before_request
 def auto_git_pull():
     try:
-        result = subprocess.run(['git', 'pull', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+        subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+        subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
     except: pass
 
 # App version
