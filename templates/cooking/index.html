@@ -1642,9 +1642,12 @@
             const modal = document.getElementById('expand-modal');
             const content = document.getElementById('expand-content');
             modal.classList.add('show');
+            const scrollY = window.scrollY;
             document.body.style.overflow = 'hidden';
             document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollY}px`;
             document.body.style.width = '100%';
+            document.body.dataset.scrollY = scrollY;
             content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 網絡搜尋中...</div></div>';
             try {
                 const res = await fetch('/cooking-ideas/api/search', {
@@ -1696,7 +1699,11 @@
             document.getElementById('expand-modal').classList.remove('show');
             document.body.style.overflow = '';
             document.body.style.position = '';
+            document.body.style.top = '';
             document.body.style.width = '';
+            const scrollY = parseInt(document.body.dataset.scrollY || '0');
+            if (scrollY) window.scrollTo(0, scrollY);
+            delete document.body.dataset.scrollY;
         }
         
         // ===== ADMIN: User management =====
