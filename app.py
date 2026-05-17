@@ -62,24 +62,30 @@ def rate_limit(max_requests, window_seconds, key_fn=None):
 # Auto-pull latest code on EVERY request (ensures latest code is always loaded)
 @app.before_request
 def auto_git_pull():
-    import logging
-    logger = logging.getLogger('auto_pull')
     try:
-        r = subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
+        r = subprocess.run(['git', 'fetch', 'origin', 'main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=30)
         if r.returncode != 0:
             with open('/tmp/auto_pull.log', 'a') as f:
-                f.write(f'FETCH FAIL: {r.stderr.strip()}\n')
+                f.write(f'FETCH FAIL [{r.returncode}]: {r.stderr.strip()}\n')
             return
-        r = subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=10)
-        if r.returncode != 0:
-            with open('/tmp/auto_pull.log', 'a') as f:
-                f.write(f'RESET FAIL: {r.stderr.strip()}\n')
+        r = subprocess.run(['git', 'reset', '--hard', 'origin/main'], cwd=os.path.dirname(__file__), capture_output=True, text=True, timeout=30)
+        with open('/tmp/auto_pull.log', 'a') as f:
+            f.write(f'OK: {r.stdout.strip()}\n')
     except Exception as e:
         with open('/tmp/auto_pull.log', 'a') as f:
             f.write(f'EXCEPTION: {e}\n')
 
 # App version
-APP_VERSION = 'v7.77'
+APP_VERSION = 'v7.78'
+
+# Debug: read auto-pull log
+@app.route('/debug/auto-pull.log')
+def debug_auto_pull_log():
+    try:
+        with open('/tmp/auto_pull.log', 'r') as f:
+            return f'<pre>{f.read()[-2000:]}</pre>'
+    except FileNotFoundError:
+        return 'No log yet'
 
 
 def generate_sentences(vocabularies, max_retries=2):
