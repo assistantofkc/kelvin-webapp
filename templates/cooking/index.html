@@ -1650,9 +1650,9 @@
             document.body.style.width = '100%';
             content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><span class="spinner show" style="margin:0 auto 12px;display:inline-block;"></span><div>AI 網絡搜尋中...</div></div>';
             try {
-                const res = await fetch('/cooking-ideas/api/search', {
+                const res = await fetch('/cooking-ideas/api/expand-recipe', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({dish_name: name})
+                    body: JSON.stringify({name: name, ingredients: ingredients, steps: steps, cuisine: cuisine})
                 });
                 const result = await res.json();
                 if (result.success) {
