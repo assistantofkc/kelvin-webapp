@@ -221,6 +221,14 @@ def random_recipes():
         soups = [r for r in all_candidates if r['has_soup'] == 1 and r['id'] not in {s['id'] for s in selected}]
         if soups:
             soups.sort(key=lambda r: r.get('_score', 0), reverse=True)
+            # Shuffle top-score tier to avoid always picking same soup
+            if len(soups) > 1:
+                top_score = soups[0].get('_score', 0)
+                tie_count = sum(1 for s in soups if s.get('_score', 0) == top_score)
+                if tie_count > 1:
+                    tied = soups[:tie_count]
+                    random.shuffle(tied)
+                    soups[:tie_count] = tied
             selected.append(soups[0])
             # Don't pick another soup for remaining slots
             all_candidates = [r for r in all_candidates if r['has_soup'] == 0 or r['id'] == soups[0]['id']]
@@ -230,6 +238,14 @@ def random_recipes():
         colds = [r for r in all_candidates if r['has_cold_dish'] == 1 and r['id'] not in {s['id'] for s in selected}]
         if colds:
             colds.sort(key=lambda r: r.get('_score', 0), reverse=True)
+            # Shuffle top-score tier to avoid always picking same cold dish
+            if len(colds) > 1:
+                top_score = colds[0].get('_score', 0)
+                tie_count = sum(1 for c in colds if c.get('_score', 0) == top_score)
+                if tie_count > 1:
+                    tied = colds[:tie_count]
+                    random.shuffle(tied)
+                    colds[:tie_count] = tied
             selected.append(colds[0])
             # Don't pick another cold dish for remaining slots
             all_candidates = [r for r in all_candidates if r['has_cold_dish'] == 0 or r['id'] == colds[0]['id']]
@@ -285,6 +301,15 @@ def random_recipes():
 
         # Sort by score and avoid already-used nutrition when possible
         candidates.sort(key=lambda r: r.get('_score', 0), reverse=True)
+        # Shuffle top-score tier to avoid deterministic first-pick bias
+        # (e.g. 蕃茄炒蛋 was always picked first because it's the first DB record)
+        if len(candidates) > 1:
+            top_score = candidates[0].get('_score', 0)
+            tie_count = sum(1 for c in candidates if c.get('_score', 0) == top_score)
+            if tie_count > 1:
+                tied = candidates[:tie_count]
+                random.shuffle(tied)
+                candidates[:tie_count] = tied
 
         # Pick best candidate whose nutrition doesn't overlap too much with used
         best = None
