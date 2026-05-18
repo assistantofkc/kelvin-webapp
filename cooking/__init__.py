@@ -1020,13 +1020,13 @@ def search_db():
         sql += f' AND source IN ({placeholders})'
         params.extend(sources)
 
-    # Order: by name match relevance if text query, else by name
+    # Order: by name match relevance if text query, else random for variety
     if query:
         like2 = f'%{query}%'
         sql += ' ORDER BY CASE WHEN name LIKE ? THEN 0 ELSE 1 END, name LIMIT 30'
         params.append(like2)
     else:
-        sql += ' ORDER BY name LIMIT 30'
+        sql += ' ORDER BY RANDOM() LIMIT 30'
 
     c.execute(sql, params)
     results = [dict(r) for r in c.fetchall()]
